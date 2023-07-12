@@ -1,2 +1,5 @@
+[target.riscv64imac-unknown-none-elf]
+runner = "qemu-system-riscv64 -S -gdb tcp::10000 -bios none -nographic -machine sifive_u -kernel"
+
 [build]
 target = "riscv64imac-unknown-none-elf"
