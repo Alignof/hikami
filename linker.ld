@@ -1,6 +1,6 @@
 OUTPUT_ARCH("riscv")
 
-ENTRY(__start_rust)
+ENTRY(_start)
 EXTERN(abort);
 
 SECTIONS
@@ -21,7 +21,7 @@ SECTIONS
     /* rodata: Read-only data */
     .rodata :
     {
-        *(.rdata .rodata. rodata.*);
+        *(.rdata .rodata. .rodata.*);
     }
 
     /* data: Writable data */
