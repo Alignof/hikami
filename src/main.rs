@@ -3,23 +3,24 @@
 
 use core::arch::global_asm;
 
-#[link_section = ".boot"]
 global_asm!(
     r#"
+.option norvc
+.section .reset.boot, "ax",@progbits
 .global _start
+.global abort
+
 _start:
     /* Set up stack pointer. */
-    lui     sp, %hi(stack_end)
-    ori     sp, sp, %lo(stack_end)
-
+    lui     sp, %hi(stacks + 1024)
+    ori     sp, sp, %lo(stacks + 1024)
     /* Now jump to the rust world; __start_rust.  */
     j       __start_rust
 
 .bss
 
-stack_start:
+stacks:
     .skip 1024
-stack_end:
 "#
 );
 
