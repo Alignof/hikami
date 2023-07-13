@@ -12,15 +12,16 @@ global_asm!(
 
 _start:
     /* Set up stack pointer. */
-    lui     sp, %hi(stacks + 1024)
-    ori     sp, sp, %lo(stacks + 1024)
+    ld sp, stacks_addr
     /* Now jump to the rust world; __start_rust.  */
     j       __start_rust
 
 .bss
-
 stacks:
     .skip 1024
+
+.data
+stacks_addr: .dword stacks
 "#
 );
 
