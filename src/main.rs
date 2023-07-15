@@ -12,23 +12,23 @@ global_asm!(
 
 _start:
     /* Set up stack pointer. */
-    lui     sp, %hi(stacks + 1024)
-    ori     sp, sp, %lo(stacks + 1024)
+    lla      sp, stacks_end
     /* Now jump to the rust world; __start_rust.  */
     j       __start_rust
 
 .bss
-.global stacks
 stacks:
     .skip 1024
+stacks_end:
 "#
 );
 
 #[no_mangle]
 pub extern "C" fn __start_rust() -> ! {
-    let uart = 0x1001_1000 as *mut u8;
+    let uart = 0x1001_0000 as *mut u8;
     for c in b"Hello from Rust!".iter() {
         unsafe {
+            while (*uart as i32) < 0 {}
             *uart = *c as u8;
         }
     }
