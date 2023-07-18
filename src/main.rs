@@ -26,10 +26,11 @@ stacks_end:
 #[no_mangle]
 pub extern "C" fn __start_rust() -> ! {
     let uart = 0x1001_0000 as *mut u32;
-    for c in b"Hello from Rust!".iter() {
+
+    for c in b"Hello from Rust!\n".iter() {
         unsafe {
-            while (*uart as i32) < 0 {}
-            *uart = *c as u32;
+            while (uart.read_volatile() as i32) < 0 {}
+            uart.write_volatile(*c as u32);
         }
     }
 
