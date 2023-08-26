@@ -1,31 +1,14 @@
 #![no_main]
 #![no_std]
 
-use core::arch::global_asm;
+extern crate panic_halt;
 
-global_asm!(
-    r#"
-.option norvc
-.section .reset.boot, "ax",@progbits
-.global _start
-.global abort
+use riscv_rt::entry;
 
-_start:
-    /* Set up stack pointer. */
-    lla      sp, stacks_end
-    /* Now jump to the rust world; __start_rust.  */
-    j       __start_rust
-
-.bss
-stacks:
-    .skip 1024
-stacks_end:
-"#
-);
-
-#[no_mangle]
-pub extern "C" fn __start_rust() -> ! {
-    let uart = 0x1001_0000 as *mut u32;
+#[entry]
+#[allow(clippy::empty_loop)]
+fn main() -> ! {
+    let uart = 0x1000_0000 as *mut u32;
 
     for c in b"Hello from Rust!\n".iter() {
         unsafe {
@@ -34,17 +17,5 @@ pub extern "C" fn __start_rust() -> ! {
         }
     }
 
-    loop {}
-}
-
-use core::panic::PanicInfo;
-#[panic_handler]
-#[no_mangle]
-pub fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
-
-#[no_mangle]
-pub extern "C" fn abort() -> ! {
     loop {}
 }
