@@ -1,4 +1,6 @@
 use core::arch::asm;
+use riscv::asm::sfence_vma;
+use riscv::register::{mtvec, satp, stvec};
 
 const DRAM_BASE: u64 = 0x8000_0000;
 const PAGE_TABLE_BASE: u64 = 0x8020_0000;
@@ -33,10 +35,25 @@ pub fn init() {
     let offset_from_dram_base = init as *const fn() as u64 - DRAM_BASE;
     let offset_from_dram_base_masked = (offset_from_dram_base >> 21) << 19;
     let page_table_start = PAGE_TABLE_BASE + offset_from_dram_base + hart_id * PAGE_TABLE_SIZE;
-    for pt_num in 511..1024 {
-        let pt_offset = (page_table_start + pt_num * 8) as *mut u64;
+    for pt_index in 511..1024 {
+        let pt_offset = (page_table_start + pt_index * 8) as *mut u64;
         unsafe {
             pt_offset.write_volatile(pt_offset.read_volatile() + offset_from_dram_base_masked);
         }
     }
+
+    unsafe {
+        // init trap vector
+        stvec::write(trampoline as *const fn() as usize, mtvec::TrapMode::Direct);
+
+        // set satp(Supervisor Address Translation and Protection) register
+        satp::set(satp::Mode::Sv39, 0, (page_table_start >> 12) as usize);
+
+        // sfence.vma
+        sfence_vma(0, 0);
+    }
+
+    trampoline()
 }
+
+pub fn trampoline() {}
