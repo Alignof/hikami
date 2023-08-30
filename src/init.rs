@@ -3,6 +3,7 @@
 
 extern crate panic_halt;
 mod start;
+
 use core::arch::asm;
 use riscv::asm::sfence_vma;
 use riscv::register::{mtvec, satp, stvec};
@@ -19,9 +20,11 @@ const PA2VA_OFFSET: u64 = 0xffff_ffff_4000_0000;
 #[entry]
 fn init() -> ! {
     let hart_id: u64;
+    let dtb_addr: u64;
     unsafe {
         // get hart id
         asm!("mv {}, a0", out(reg) hart_id);
+        asm!("mv {}, a1", out(reg) dtb_addr);
 
         // debug output
         let uart = 0x1000_0000 as *mut u32;
@@ -63,12 +66,12 @@ fn init() -> ! {
     }
 
     // jump to trampoline
-    trampoline();
+    trampoline(hart_id, dtb_addr);
 
     unreachable!()
 }
 
 /// Jump to start
-pub fn trampoline() {
-    start::start();
+pub fn trampoline(hart_id: u64, dtb_addr: u64) {
+    start::start(hart_id, dtb_addr);
 }
