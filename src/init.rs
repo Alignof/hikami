@@ -1,6 +1,11 @@
+#![no_main]
+#![no_std]
+
+extern crate panic_halt;
 use core::arch::asm;
 use riscv::asm::sfence_vma;
 use riscv::register::{mtvec, satp, stvec};
+use riscv_rt::entry;
 
 const DRAM_BASE: u64 = 0x8000_0000;
 const PAGE_TABLE_BASE: u64 = 0x8020_0000;
@@ -8,8 +13,10 @@ const PAGE_TABLE_SIZE: u64 = 1024;
 const STACK_BASE: u64 = 0x8030_0000;
 const PA2VA_OFFSET: u64 = 0xffff_ffff_4000_0000;
 
+/// entry point  
 /// Initialize CSRs, page tables, stack pointer
-pub fn init() {
+#[entry]
+fn init() -> ! {
     let hart_id: u64;
     unsafe {
         // get hart id
@@ -32,7 +39,8 @@ pub fn init() {
     }
 
     // init page tables
-    let offset_from_dram_base = init as *const fn() as u64 - DRAM_BASE;
+    let init_func = __risc_v_rt__main;
+    let offset_from_dram_base = init_func as *const fn() as u64 - DRAM_BASE;
     let offset_from_dram_base_masked = (offset_from_dram_base >> 21) << 19;
     let page_table_start = PAGE_TABLE_BASE + offset_from_dram_base + hart_id * PAGE_TABLE_SIZE;
     for pt_index in 511..1024 {
@@ -53,7 +61,11 @@ pub fn init() {
         sfence_vma(0, 0);
     }
 
-    trampoline()
+    // jump to trampoline
+    trampoline();
+
+    unreachable!()
 }
 
+/// Jump to start
 pub fn trampoline() {}
