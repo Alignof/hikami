@@ -2,6 +2,7 @@
 #![no_std]
 
 extern crate panic_halt;
+mod start;
 use core::arch::asm;
 use riscv::asm::sfence_vma;
 use riscv::register::{mtvec, satp, stvec};
@@ -68,4 +69,6 @@ fn init() -> ! {
 }
 
 /// Jump to start
-pub fn trampoline() {}
+pub fn trampoline() {
+    start::start();
+}
