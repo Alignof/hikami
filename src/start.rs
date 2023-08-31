@@ -1,3 +1,4 @@
+use crate::memmap;
 use crate::uart;
 use riscv::register::{sstatus, stvec};
 
@@ -12,23 +13,17 @@ pub fn start(hart_id: u64, dtb_addr: u64) {
             panic_handler as *const fn() as usize,
             stvec::TrapMode::Direct,
         );
+    }
 
-        let device_tree = match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+    let device_tree = unsafe {
+        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
-        };
+        }
+    };
 
-        let uart_addr = device_tree
-            .find_node("/soc/uart")
-            .unwrap()
-            .reg()
-            .unwrap()
-            .next()
-            .unwrap()
-            .starting_address;
-
-        let uart = uart::Uart::new(uart_addr as u64);
-    }
+    let mmap = memmap::Memmap::new(device_tree);
+    let uart = uart::Uart::new(mmap.uart_addr as u64);
 }
 
 /// Panic handler

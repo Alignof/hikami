@@ -2,19 +2,15 @@
 #![no_std]
 
 extern crate panic_halt;
+mod memmap;
 mod start;
 mod uart;
 
+use crate::memmap::{DRAM_BASE, PA2VA_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_SIZE, STACK_BASE};
 use core::arch::asm;
 use riscv::asm::sfence_vma;
 use riscv::register::{mtvec, satp, stvec};
 use riscv_rt::entry;
-
-const DRAM_BASE: u64 = 0x8000_0000;
-const PAGE_TABLE_BASE: u64 = 0x8020_0000;
-const PAGE_TABLE_SIZE: u64 = 1024;
-const STACK_BASE: u64 = 0x8030_0000;
-const PA2VA_OFFSET: u64 = 0xffff_ffff_4000_0000;
 
 /// entry point  
 /// Initialize CSRs, page tables, stack pointer
