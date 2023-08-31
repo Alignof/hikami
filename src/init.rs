@@ -3,6 +3,7 @@
 
 extern crate panic_halt;
 mod start;
+mod uart;
 
 use core::arch::asm;
 use riscv::asm::sfence_vma;
