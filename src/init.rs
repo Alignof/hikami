@@ -22,15 +22,6 @@ fn init() -> ! {
         // get hart id
         asm!("mv {}, a0", out(reg) hart_id);
         asm!("mv {}, a1", out(reg) dtb_addr);
-
-        // debug output
-        let uart = 0x1000_0000 as *mut u32;
-        for c in b"hart_id: ".iter() {
-            while (uart.read_volatile() as i32) < 0 {}
-            uart.write_volatile(*c as u32);
-        }
-        uart.write_volatile(hart_id as u32 + '0' as u32);
-        uart.write_volatile('\n' as u32);
     }
 
     // init stack pointer

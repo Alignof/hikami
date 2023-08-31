@@ -24,6 +24,7 @@ pub fn start(hart_id: u64, dtb_addr: u64) {
 
     let mmap = memmap::Memmap::new(device_tree);
     let uart = uart::Uart::new(mmap.uart_addr as u64);
+    uart.println("starting...");
 }
 
 /// Panic handler
