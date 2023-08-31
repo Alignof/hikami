@@ -1,10 +1,11 @@
 use fdt::Fdt;
 
-pub const DRAM_BASE: u64 = 0x8000_0000;
-pub const PAGE_TABLE_BASE: u64 = 0x8020_0000;
-pub const PAGE_TABLE_SIZE: u64 = 1024;
-pub const STACK_BASE: u64 = 0x8030_0000;
-pub const PA2VA_OFFSET: u64 = 0xffff_ffff_4000_0000;
+pub const DRAM_BASE: usize = 0x8000_0000;
+pub const PAGE_TABLE_BASE: usize = 0x8020_0000;
+pub const PAGE_TABLE_SIZE: usize = 1024;
+pub const STACK_BASE: usize = 0x8030_0000;
+pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
+pub const PA2VA_OFFSET: usize = 0xffff_ffff_4000_0000;
 
 pub struct Memmap {
     pub uart_addr: u64,
