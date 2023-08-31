@@ -1,31 +1,71 @@
-use crate::memmap;
-use crate::uart;
-use riscv::register::{sstatus, stvec};
+#![no_main]
+#![no_std]
+
+extern crate panic_halt;
+mod memmap;
+
+use core::arch::asm;
+use memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
+use riscv::asm::sfence_vma_all;
+use riscv::register::{mcounteren, medeleg, mideleg, mie, mscratch, mstatus, mtvec, satp, stvec};
+use riscv_rt::entry;
 
 /// Start function
-pub fn start(hart_id: u64, dtb_addr: u64) {
+/// - set stack pointer
+/// - init mtvec and stvec
+/// - jump to mstart
+#[entry]
+fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        // clear sstatus.sie
-        sstatus::clear_sie();
-
-        // register panic_handler to stvec
-        stvec::write(
-            panic_handler as *const fn() as usize,
-            stvec::TrapMode::Direct,
+        // set stack pointer
+        asm!(
+            "li sp, {}
+            li t1, {}
+            mul t0, a0, t1
+            add sp, sp, t0",
+            in(reg) STACK_BASE,
+            in(reg) STACK_SIZE_PER_HART,
         );
+
+        mtvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
+        stvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
     }
 
-    let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
-            Ok(fdt) => fdt,
-            Err(e) => panic!("{}", e),
-        }
-    };
+    mstart(hart_id, dtb_addr);
 
-    let mmap = memmap::Memmap::new(device_tree);
-    let uart = uart::Uart::new(mmap.uart_addr as u64);
-    uart.println("starting...");
+    unreachable!();
 }
 
-/// Panic handler
-fn panic_handler() {}
+/// Machine start function
+fn mstart(hart_id: usize, dtb_addr: usize) {
+    unsafe {
+        // mideleg = 0x0222
+        mideleg::set_sext();
+        mideleg::set_ssoft();
+        mideleg::set_stimer();
+        // medeleg = 0xb1ff
+        medeleg::set_instruction_misaligned();
+        medeleg::set_instruction_fault();
+        medeleg::set_illegal_instruction();
+        medeleg::set_breakpoint();
+        medeleg::set_load_misaligned();
+        medeleg::set_load_fault();
+        medeleg::set_store_misaligned();
+        medeleg::set_store_fault();
+        medeleg::set_user_env_call();
+        medeleg::set_instruction_page_fault();
+        medeleg::set_load_page_fault();
+        medeleg::set_store_page_fault();
+        // mie = 0x088
+        mie::set_msoft();
+        mie::set_mtimer();
+
+        mstatus::set_mpp(mstatus::MPP::Supervisor);
+        mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
+        satp::set(satp::Mode::Bare, 0, 0);
+
+        mtvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
+
+        sfence_vma_all();
+    }
+}
