@@ -68,4 +68,14 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
 
         sfence_vma_all();
     }
+
+    enter_supervisor_mode(hart_id, dtb_addr);
+}
+
+/// enter supervisor (just exec mret)
+#[inline(never)]
+fn enter_supervisor_mode(_hart_id: usize, _dtb_addr: usize) {
+    unsafe {
+        asm!("mret");
+    }
 }
