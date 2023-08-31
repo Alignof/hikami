@@ -1,20 +1,10 @@
-#![no_main]
-#![no_std]
-
-extern crate panic_halt;
-mod memmap;
-mod start;
-mod uart;
-
 use crate::memmap::{DRAM_BASE, PA2VA_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_SIZE, STACK_BASE};
 use core::arch::asm;
 use riscv::asm::sfence_vma;
 use riscv::register::{mtvec, satp, stvec};
-use riscv_rt::entry;
 
 /// entry point  
 /// Initialize CSRs, page tables, stack pointer
-#[entry]
 fn init() -> ! {
     let hart_id: u64;
     let dtb_addr: u64;
