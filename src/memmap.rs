@@ -13,7 +13,7 @@ pub struct Memmap {
 impl Memmap {
     pub fn new(device_tree: Fdt) -> Self {
         let uart_addr = device_tree
-            .find_node("/soc/uart")
+            .find_node("/soc/serial")
             .unwrap()
             .reg()
             .unwrap()
