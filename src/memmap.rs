@@ -9,6 +9,7 @@ pub const PA2VA_OFFSET: usize = 0xffff_ffff_4000_0000;
 
 pub struct Memmap {
     pub uart_addr: u64,
+    pub initrd_addr: usize,
 }
 
 impl Memmap {
@@ -21,7 +22,16 @@ impl Memmap {
             .next()
             .unwrap()
             .starting_address as u64;
+        let initrd_addr = device_tree
+            .find_node("/soc/chosen")
+            .unwrap()
+            .property("linux,initrd-start")
+            .unwrap()
+            .value[0] as usize;
 
-        Memmap { uart_addr }
+        Memmap {
+            uart_addr,
+            initrd_addr,
+        }
     }
 }
