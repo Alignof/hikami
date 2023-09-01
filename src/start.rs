@@ -4,11 +4,13 @@
 extern crate panic_halt;
 mod memmap;
 
-use core::arch::asm;
+use core::arch::{asm, global_asm};
 use memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use riscv::asm::sfence_vma_all;
-use riscv::register::{mcounteren, medeleg, mideleg, mie, mscratch, mstatus, mtvec, satp, stvec};
+use riscv::register::{medeleg, mideleg, mie, mscratch, mstatus, mtvec, satp, stvec};
 use riscv_rt::entry;
+
+global_asm!(include_str!("trap.S"));
 
 /// Start function
 /// - set stack pointer
@@ -19,8 +21,8 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // set stack pointer
         asm!(
-            "li sp, {}
-            li t1, {}
+            "mv sp, {}
+            mv t1, {}
             mul t0, a0, t1
             add sp, sp, t0",
             in(reg) STACK_BASE,
@@ -64,7 +66,9 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
         satp::set(satp::Mode::Bare, 0, 0);
 
-        mtvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
+        // set trap_vector in trap.S to mtvec
+        asm!("lla t0, trap_vector");
+        asm!("csrw mtvec, t0");
 
         sfence_vma_all();
     }
@@ -72,7 +76,7 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
     enter_supervisor_mode(hart_id, dtb_addr);
 }
 
-/// enter supervisor (just exec mret)
+/// Enter supervisor (just exec mret)
 #[inline(never)]
 fn enter_supervisor_mode(_hart_id: usize, _dtb_addr: usize) {
     unsafe {
