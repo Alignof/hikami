@@ -7,7 +7,7 @@ mod memmap;
 use core::arch::{asm, global_asm};
 use memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use riscv::asm::sfence_vma_all;
-use riscv::register::{medeleg, mideleg, mie, mscratch, mstatus, mtvec, satp, stvec};
+use riscv::register::{medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, satp, stvec};
 use riscv_rt::entry;
 
 global_asm!(include_str!("trap.S"));
@@ -17,17 +17,25 @@ global_asm!(include_str!("trap.S"));
 /// - init mtvec and stvec
 /// - jump to mstart
 #[entry]
-fn _start(hart_id: usize, dtb_addr: usize) -> ! {
+fn _start(mut hart_id: usize, mut dtb_addr: usize) -> ! {
     unsafe {
         // set stack pointer
         asm!(
-            "mv sp, {}
+            "
+            mv a0, {}
+            mv a1, {}
             mv t1, {}
             mul t0, a0, t1
+            mv sp, {}
             add sp, sp, t0",
-            in(reg) STACK_BASE,
+            in(reg) hart_id,
+            in(reg) dtb_addr,
             in(reg) STACK_SIZE_PER_HART,
+            in(reg) STACK_BASE,
         );
+
+        asm!("mv {}, a0", out(reg) hart_id);
+        asm!("mv {}, a1", out(reg) dtb_addr);
 
         mtvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
         stvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
@@ -40,6 +48,14 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
 
 /// Machine start function
 fn mstart(hart_id: usize, dtb_addr: usize) {
+    let device_tree = unsafe {
+        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+            Ok(fdt) => fdt,
+            Err(e) => panic!("{}", e),
+        }
+    };
+    let mmap = memmap::Memmap::new(device_tree);
+
     unsafe {
         // mideleg = 0x0222
         mideleg::set_sext();
@@ -65,6 +81,8 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mstatus::set_mpp(mstatus::MPP::Supervisor);
         mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
         satp::set(satp::Mode::Bare, 0, 0);
+
+        mepc::write(mmap.initrd_addr);
 
         // set trap_vector in trap.S to mtvec
         asm!("lla t0, trap_vector");
