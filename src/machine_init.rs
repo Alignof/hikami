@@ -3,9 +3,10 @@
 
 extern crate panic_halt;
 mod memmap;
+mod supervisor_init;
 
+use crate::memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::{asm, global_asm};
-use memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use riscv::asm::sfence_vma_all;
 use riscv::register::{medeleg, mepc, mideleg, mie, mscratch, mstatus, satp};
 use riscv_rt::entry;
@@ -72,7 +73,7 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
         satp::set(satp::Mode::Bare, 0, 0);
 
-        mepc::write(sstart as *const fn() as usize);
+        mepc::write(supervisor_init::sstart as *const fn() as usize);
 
         // set trap_vector in trap.S to mtvec
         asm!("lla t0, trap_vector");
@@ -85,16 +86,10 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
 }
 
 /// Enter supervisor (just exec mret)
+/// Jump to sstart
 #[inline(never)]
 fn enter_supervisor_mode(_hart_id: usize, _dtb_addr: usize) {
     unsafe {
         asm!("mret");
-    }
-}
-
-/// Supervisor start function
-fn sstart() {
-    unsafe {
-        asm!("");
     }
 }
