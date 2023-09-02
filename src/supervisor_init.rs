@@ -1,22 +1,22 @@
 use crate::memmap::{DRAM_BASE, PA2VA_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_SIZE, STACK_BASE};
 use core::arch::asm;
 use riscv::asm::sfence_vma;
-use riscv::register::{mtvec, satp, stvec};
+use riscv::register::{mtvec, satp, sstatus, stvec};
 
 /// Supervisor start function
 pub fn sstart() {
-    let hart_id: usize;
-    let dtb_addr: usize;
-    unsafe {
-        // get hart id
-        asm!("mv {}, a0", out(reg) hart_id);
-        asm!("mv {}, a1", out(reg) dtb_addr);
-    }
-
     // init stack pointer
     let stack_pointer = STACK_BASE + PA2VA_OFFSET;
     unsafe {
         asm!("mv sp, {}", in(reg) stack_pointer);
+    }
+
+    let hart_id: usize;
+    let dtb_addr: usize;
+    unsafe {
+        // get an arguments
+        asm!("mv {}, a0", out(reg) hart_id);
+        asm!("mv {}, a1", out(reg) dtb_addr);
     }
 
     // init page tables
@@ -48,4 +48,21 @@ pub fn sstart() {
 }
 
 /// Jump to start
-pub fn trampoline(hart_id: usize, dtb_addr: usize) {}
+#[inline(never)]
+fn trampoline(hart_id: usize, dtb_addr: usize) {
+    smode_setup(hart_id, dtb_addr);
+}
+
+fn smode_setup(hart_id: usize, dtb_addr: usize) {
+    unsafe {
+        sstatus::clear_sie();
+        stvec::write(
+            panic_handler as *const fn() as usize,
+            stvec::TrapMode::Direct,
+        );
+    }
+}
+
+fn panic_handler() {
+    panic!("trap from panic macro")
+}
