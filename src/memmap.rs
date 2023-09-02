@@ -23,7 +23,7 @@ impl Memmap {
             .unwrap()
             .starting_address as u64;
         let initrd_addr = device_tree
-            .find_node("/soc/chosen")
+            .find_node("/chosen")
             .unwrap()
             .property("linux,initrd-start")
             .unwrap()
