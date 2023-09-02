@@ -7,7 +7,7 @@ mod memmap;
 use core::arch::{asm, global_asm};
 use memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use riscv::asm::sfence_vma_all;
-use riscv::register::{medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, satp, stvec};
+use riscv::register::{medeleg, mepc, mideleg, mie, mscratch, mstatus, satp};
 use riscv_rt::entry;
 
 global_asm!(include_str!("trap.S"));
@@ -17,31 +17,29 @@ global_asm!(include_str!("trap.S"));
 /// - init mtvec and stvec
 /// - jump to mstart
 #[entry]
-fn _start(mut hart_id: usize, mut dtb_addr: usize) -> ! {
+fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // set stack pointer
         asm!(
             "
-            mv a0, {}
-            mv a1, {}
-            mv t1, {}
+            mv a0, {hart_id}
+            mv a1, {dtb_addr}
+            mv t1, {stack_size_per_hart}
             mul t0, a0, t1
-            mv sp, {}
-            add sp, sp, t0",
-            in(reg) hart_id,
-            in(reg) dtb_addr,
-            in(reg) STACK_SIZE_PER_HART,
-            in(reg) STACK_BASE,
+            mv sp, {stack_base}
+            add sp, sp, t0
+            csrw mtvec, {DRAM_BASE}
+            csrw stvec, {DRAM_BASE}
+            j {mstart}
+            ",
+            hart_id = in(reg) hart_id,
+            dtb_addr = in(reg) dtb_addr,
+            stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
+            stack_base = in(reg) STACK_BASE,
+            DRAM_BASE = in(reg) DRAM_BASE,
+            mstart = sym mstart,
         );
-
-        asm!("mv {}, a0", out(reg) hart_id);
-        asm!("mv {}, a1", out(reg) dtb_addr);
-
-        mtvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
-        stvec::write(DRAM_BASE as usize, mtvec::TrapMode::Direct);
     }
-
-    mstart(hart_id, dtb_addr);
 
     unreachable!();
 }
