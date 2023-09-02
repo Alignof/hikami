@@ -46,14 +46,6 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
 
 /// Machine start function
 fn mstart(hart_id: usize, dtb_addr: usize) {
-    let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
-            Ok(fdt) => fdt,
-            Err(e) => panic!("{}", e),
-        }
-    };
-    let mmap = memmap::Memmap::new(device_tree);
-
     unsafe {
         // mideleg = 0x0222
         mideleg::set_sext();
@@ -80,7 +72,7 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
         satp::set(satp::Mode::Bare, 0, 0);
 
-        mepc::write(mmap.initrd_addr);
+        mepc::write(sstart as *const fn() as usize);
 
         // set trap_vector in trap.S to mtvec
         asm!("lla t0, trap_vector");
@@ -97,5 +89,12 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
 fn enter_supervisor_mode(_hart_id: usize, _dtb_addr: usize) {
     unsafe {
         asm!("mret");
+    }
+}
+
+/// Supervisor start function
+fn sstart() {
+    unsafe {
+        asm!("");
     }
 }
