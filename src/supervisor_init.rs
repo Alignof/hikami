@@ -1,3 +1,4 @@
+use crate::memmap::Memmap;
 use crate::memmap::{DRAM_BASE, PA2VA_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_SIZE, STACK_BASE};
 use core::arch::asm;
 use riscv::asm::sfence_vma;
@@ -61,6 +62,14 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
             stvec::TrapMode::Direct,
         );
     }
+
+    let device_tree = unsafe {
+        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+            Ok(fdt) => fdt,
+            Err(e) => panic!("{}", e),
+        }
+    };
+    let mmap = Memmap::new(device_tree);
 }
 
 fn panic_handler() {
