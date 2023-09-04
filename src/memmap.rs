@@ -48,18 +48,20 @@ impl Device {
 pub struct Memmap {
     pub uart: Device,
     pub initrd: Device,
+    pub plic: Device,
 }
 
 impl Memmap {
     pub fn new(device_tree: Fdt) -> Self {
-        let uart = Device::new(&device_tree, "/soc/serial");
-        let initrd = Device::new_by_property(
-            &device_tree,
-            "/chosen",
-            "linux,initrd-start",
-            "linux,initrd-end",
-        );
-
-        Memmap { uart, initrd }
+        Memmap {
+            uart: Device::new(&device_tree, "/soc/serial"),
+            initrd: Device::new_by_property(
+                &device_tree,
+                "/chosen",
+                "linux,initrd-start",
+                "linux,initrd-end",
+            ),
+            plic: Device::new(&device_tree, "/soc/plic"),
+        }
     }
 }
