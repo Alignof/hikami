@@ -53,11 +53,11 @@ machine_timer_interrupt:
     csrs mip, t0 // mip.stip = 1
 
     csrr t0, mhartid
-    slli t0, t0, 2
-    li t1, 0x2004000
+    slli t0, t0, 3
+    li t1, 0x2004000 // mtimecmp
     add t1, t1, t0
     li t0, 0xffffffffffff
-    sd zero, 0(t1) // mtimecmp[hart_id] = 0
+    sd t0, 0(t1) // mtimecmp[hart_id] = 0
 
     j return
 
