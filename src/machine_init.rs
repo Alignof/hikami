@@ -8,7 +8,9 @@ mod supervisor_init;
 use crate::memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::{asm, global_asm};
 use riscv::asm::sfence_vma_all;
-use riscv::register::{medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, satp};
+use riscv::register::{
+    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpcfg0, satp,
+};
 use riscv_rt::entry;
 
 global_asm!(include_str!("trap.S"));
@@ -72,8 +74,43 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mie::set_msoft();
         mie::set_mtimer();
 
+        // mcounteren = 0xffff_ffff
+        mcounteren::set_cy();
+        mcounteren::set_tm();
+        mcounteren::set_ir();
+        mcounteren::set_hpm(3);
+        mcounteren::set_hpm(4);
+        mcounteren::set_hpm(5);
+        mcounteren::set_hpm(6);
+        mcounteren::set_hpm(7);
+        mcounteren::set_hpm(8);
+        mcounteren::set_hpm(9);
+        mcounteren::set_hpm(10);
+        mcounteren::set_hpm(11);
+        mcounteren::set_hpm(12);
+        mcounteren::set_hpm(13);
+        mcounteren::set_hpm(14);
+        mcounteren::set_hpm(15);
+        mcounteren::set_hpm(16);
+        mcounteren::set_hpm(17);
+        mcounteren::set_hpm(18);
+        mcounteren::set_hpm(19);
+        mcounteren::set_hpm(20);
+        mcounteren::set_hpm(21);
+        mcounteren::set_hpm(22);
+        mcounteren::set_hpm(23);
+        mcounteren::set_hpm(24);
+        mcounteren::set_hpm(25);
+        mcounteren::set_hpm(26);
+        mcounteren::set_hpm(27);
+        mcounteren::set_hpm(28);
+        mcounteren::set_hpm(29);
+        mcounteren::set_hpm(30);
+        mcounteren::set_hpm(31);
         mstatus::set_mpp(mstatus::MPP::Supervisor);
         mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
+        pmpaddr0::write(0xffff_ffff_ffff_ffff);
+        pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
         satp::set(satp::Mode::Bare, 0, 0);
 
         mepc::write(supervisor_init::sstart as *const fn() as usize);
