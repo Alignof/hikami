@@ -1,4 +1,5 @@
 .equ SYSCALL_NUM_ECALL, 9
+.globl trap_vector
 
 trap_vector:
     addi sp, sp, -128

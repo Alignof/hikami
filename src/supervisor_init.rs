@@ -3,13 +3,10 @@ use crate::memmap::{
     DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_SIZE, STACK_BASE,
     STACK_SIZE_PER_HART,
 };
+use crate::trap_vector;
 use core::arch::asm;
 use riscv::asm::sfence_vma;
 use riscv::register::{mtvec, satp, sie, sstatus, stvec};
-
-extern "C" {
-    fn trap_vector();
-}
 
 /// Supervisor start function
 pub fn sstart() {
