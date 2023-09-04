@@ -8,10 +8,13 @@ mod supervisor_init;
 use crate::memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::{asm, global_asm};
 use riscv::asm::sfence_vma_all;
-use riscv::register::{medeleg, mepc, mideleg, mie, mscratch, mstatus, satp};
+use riscv::register::{medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, satp};
 use riscv_rt::entry;
 
 global_asm!(include_str!("trap.S"));
+extern "C" {
+    fn trap_vector();
+}
 
 /// Start function
 /// - set stack pointer
@@ -76,8 +79,7 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mepc::write(supervisor_init::sstart as *const fn() as usize);
 
         // set trap_vector in trap.S to mtvec
-        asm!("lla t0, trap_vector");
-        asm!("csrw mtvec, t0");
+        mtvec::write(trap_vector as *const fn() as usize, mtvec::TrapMode::Direct);
 
         sfence_vma_all();
     }
