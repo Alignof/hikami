@@ -9,7 +9,8 @@ use crate::memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::{asm, global_asm};
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
-    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpcfg0, satp,
+    mcause, mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtval, mtvec, pmpaddr0,
+    pmpcfg0, satp, scause, sepc, stval, stvec,
 };
 use riscv_rt::entry;
 
@@ -122,6 +123,32 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
     }
 
     enter_supervisor_mode(hart_id, dtb_addr);
+}
+
+#[no_mangle]
+/// Delegate exception to supervisor mode
+fn forward_exception() {
+    unsafe {
+        sepc::write(mepc::read());
+        scause::write(mcause::read().bits());
+        stval::write(mtval::read());
+        mepc::write(stvec::read().bits() & !0x3);
+
+        if mstatus::read().sie() {
+            mstatus::set_spie();
+        } else {
+            // clear?
+        }
+
+        if mstatus::read().mpp() == mstatus::MPP::Supervisor {
+            mstatus::set_spp(mstatus::SPP::Supervisor);
+        } else {
+            mstatus::set_spp(mstatus::SPP::User);
+        }
+
+        mstatus::clear_sie();
+        mstatus::set_mpp(mstatus::MPP::Supervisor);
+    }
 }
 
 /// Enter supervisor (just exec mret)

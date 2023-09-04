@@ -69,14 +69,7 @@ exception:
     beq t0, t1, ecall_exception
 
     // other exception
-    csrw sepc, a2
-    csrw scause, a1
-    li t0, 0x80
-    csrs sstatus, t0 // sstatus.SPP = 1
-    csrr t0, stvec
-    li t1, 0xfffffffffffffffb
-    and t0, t0, t1
-    csrw stvec, t0
+    call forward_exception
 
     j return
 
