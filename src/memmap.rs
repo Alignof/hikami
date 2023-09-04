@@ -1,6 +1,7 @@
 use fdt::Fdt;
 
 pub const DRAM_BASE: usize = 0x8000_0000;
+pub const DRAM_SIZE_PAR_HART: usize = 0x1000_0000;
 pub const PAGE_TABLE_BASE: usize = 0x8020_0000;
 pub const PAGE_TABLE_SIZE: usize = 1024;
 pub const STACK_BASE: usize = 0x8030_0000;
@@ -42,6 +43,14 @@ impl Device {
             addr: start,
             size: end - start,
         }
+    }
+
+    fn paddr(&self) -> usize {
+        self.addr
+    }
+
+    pub fn vaddr(&self) -> usize {
+        self.addr + PA2VA_OFFSET
     }
 }
 
