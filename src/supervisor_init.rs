@@ -5,17 +5,10 @@ use crate::memmap::{
 };
 use crate::trap_vector;
 use core::arch::asm;
-use riscv::asm::sfence_vma;
 use riscv::register::{mtvec, satp, sie, sstatus, stvec};
 
 /// Supervisor start function
 pub fn sstart() {
-    // init stack pointer
-    let stack_pointer = STACK_BASE + PA2VA_OFFSET;
-    unsafe {
-        asm!("mv sp, {}", in(reg) stack_pointer);
-    }
-
     let hart_id: usize;
     let dtb_addr: usize;
     unsafe {
@@ -31,7 +24,7 @@ pub fn sstart() {
     for pt_index in 511..1024 {
         let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
         unsafe {
-            pt_offset.write_volatile(pt_offset.read_volatile() + offset_from_dram_base_masked);
+            pt_offset.write_volatile(offset_from_dram_base_masked + pt_offset.read_volatile());
         }
     }
 
@@ -39,15 +32,25 @@ pub fn sstart() {
         // init trap vector
         stvec::write(trampoline as *const fn() as usize, mtvec::TrapMode::Direct);
 
-        // set satp(Supervisor Address Translation and Protection) register
-        satp::set(satp::Mode::Sv39, 0, (page_table_start >> 12) as usize);
-
-        // sfence.vma
-        sfence_vma(0, 0);
+        // init stack pointer
+        let stack_pointer = STACK_BASE + PA2VA_OFFSET;
+        let satp_config = (0b1000 << 60) | (page_table_start >> 12);
+        asm!(
+            "
+            mv a0, {hart_id}
+            mv a1, {dtb_addr}
+            mv sp, {stack_pointer}
+            csrw satp, {satp_config}
+            sfence.vma
+            j {trampoline}
+            ",
+            hart_id = in(reg) hart_id,
+            dtb_addr = in(reg) dtb_addr,
+            stack_pointer = in(reg) stack_pointer,
+            satp_config = in(reg) satp_config,
+            trampoline = sym trampoline
+        );
     }
-
-    // jump to trampoline
-    trampoline(hart_id, dtb_addr);
 
     unreachable!()
 }
