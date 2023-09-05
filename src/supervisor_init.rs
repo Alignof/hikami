@@ -1,7 +1,7 @@
 use crate::memmap::Memmap;
 use crate::memmap::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_SIZE, STACK_BASE,
-    STACK_SIZE_PER_HART,
+    DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE,
+    PAGE_TABLE_OFFSET_PER_HART, STACK_BASE, STACK_SIZE_PER_HART,
 };
 use crate::trap_vector;
 use core::arch::asm;
@@ -18,13 +18,15 @@ pub fn sstart() {
     }
 
     // init page tables
-    let offset_from_dram_base = sstart as *const fn() as usize - DRAM_BASE;
-    let offset_from_dram_base_masked = (offset_from_dram_base >> 21) << 19;
-    let page_table_start = PAGE_TABLE_BASE + offset_from_dram_base + hart_id * PAGE_TABLE_SIZE;
+    let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     for pt_index in 511..1024 {
         let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
         unsafe {
-            pt_offset.write_volatile(offset_from_dram_base_masked + pt_offset.read_volatile());
+            pt_offset.write_volatile(match pt_index {
+                511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
+                512 => 0x2000_0000 | 0xcb,                        // d, a, x, r, v
+                513 | _ => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
+            });
         }
     }
 
