@@ -5,7 +5,7 @@ use crate::memmap::{
 };
 use crate::trap_vector;
 use core::arch::asm;
-use riscv::register::{mtvec, satp, sie, sstatus, stvec};
+use riscv::register::{satp, sie, sstatus, stvec};
 
 /// Supervisor start function
 pub fn sstart() {
@@ -30,7 +30,11 @@ pub fn sstart() {
 
     unsafe {
         // init trap vector
-        stvec::write(trampoline as *const fn() as usize, mtvec::TrapMode::Direct);
+        stvec::write(
+            // stvec address must be 4byte aligned.
+            trampoline as *const fn() as usize + PA2VA_OFFSET & !0b11,
+            stvec::TrapMode::Direct,
+        );
 
         // init stack pointer
         let stack_pointer = STACK_BASE + PA2VA_OFFSET;
