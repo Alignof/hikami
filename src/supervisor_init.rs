@@ -19,13 +19,15 @@ pub fn sstart() {
 
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    for pt_index in 511..1024 {
+    for pt_index in 0..1024 {
         let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
         unsafe {
+            // 2 and 511 point to 512 PTE
             pt_offset.write_volatile(match pt_index {
-                511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
-                512 => 0x2000_0000 | 0xcb,                        // d, a, x, r, v
-                513 | _ => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
+                2 | 511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
+                512 => 0x2000_0000 | 0xcb,                            // d, a, x, r, v
+                513..=1023 => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
+                _ => 0,
             });
         }
     }
@@ -34,7 +36,8 @@ pub fn sstart() {
         // init trap vector
         stvec::write(
             // stvec address must be 4byte aligned.
-            trampoline as *const fn() as usize + PA2VA_OFFSET & !0b11,
+            trampoline as *const fn() as usize & !0b11,
+            //trampoline as *const fn() as usize + PA2VA_OFFSET & !0b11,
             stvec::TrapMode::Direct,
         );
 
