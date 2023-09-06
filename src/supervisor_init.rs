@@ -1,6 +1,6 @@
 use crate::memmap::Memmap;
 use crate::memmap::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE,
+    DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE,
     PAGE_TABLE_OFFSET_PER_HART, STACK_BASE, STACK_SIZE_PER_HART,
 };
 use crate::trap_vector;
@@ -22,10 +22,12 @@ pub fn sstart() {
     for pt_index in 0..1024 {
         let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
         unsafe {
-            // 2 and 511 point to 512 PTE
             pt_offset.write_volatile(match pt_index {
+                // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
                 2 | 511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
-                512 => 0x2000_0000 | 0xcb,                            // d, a, x, r, v
+                // 2 and 511 point to 512 PTE
+                512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
+                // 2nd level
                 513..=1023 => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
                 _ => 0,
             });
@@ -37,12 +39,12 @@ pub fn sstart() {
         stvec::write(
             // stvec address must be 4byte aligned.
             trampoline as *const fn() as usize & !0b11,
-            //trampoline as *const fn() as usize + PA2VA_OFFSET & !0b11,
+            //trampoline as *const fn() as usize + PA2VA_DRAM_OFFSET & !0b11,
             stvec::TrapMode::Direct,
         );
 
         // init stack pointer
-        let stack_pointer = STACK_BASE + PA2VA_OFFSET;
+        let stack_pointer = STACK_BASE + PA2VA_DRAM_OFFSET;
         let satp_config = (0b1000 << 60) | (page_table_start >> 12);
         asm!(
             "
@@ -74,14 +76,14 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
     unsafe {
         sstatus::clear_sie();
         stvec::write(
-            panic_handler as *const fn() as usize + PA2VA_OFFSET,
+            panic_handler as *const fn() as usize + PA2VA_DRAM_OFFSET,
             stvec::TrapMode::Direct,
         );
     }
 
     // parse device tree
     let device_tree = unsafe {
-        match fdt::Fdt::from_ptr((dtb_addr + PA2VA_OFFSET) as *const u8) {
+        match fdt::Fdt::from_ptr((dtb_addr + PA2VA_DRAM_OFFSET) as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
         }
@@ -108,7 +110,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
             (DRAM_BASE + DRAM_SIZE_PAR_HART * hart_id) >> 12,
         );
 
-        let stack_pointer = STACK_BASE + STACK_SIZE_PER_HART * hart_id + PA2VA_OFFSET;
+        let stack_pointer = STACK_BASE + STACK_SIZE_PER_HART * hart_id + PA2VA_DRAM_OFFSET;
         asm!("mv a0, {dtb_addr}", dtb_addr = in(reg) dtb_addr);
         asm!("mv sp, {stack_pointer_in_umode}", stack_pointer_in_umode = in(reg) stack_pointer);
         asm!("j {enter_user_mode}", enter_user_mode = sym enter_user_mode);

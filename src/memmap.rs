@@ -7,7 +7,7 @@ pub const PAGE_SIZE: usize = 4096;
 pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
 pub const STACK_BASE: usize = 0x8030_0000;
 pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
-pub const PA2VA_OFFSET: usize = 0xffff_ffff_4000_0000;
+pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
 
 pub struct Device {
     addr: usize,
