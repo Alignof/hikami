@@ -1,13 +1,16 @@
 use fdt::Fdt;
 
-pub const DRAM_BASE: usize = 0x8000_0000;
-pub const DRAM_SIZE_PAR_HART: usize = 0x1000_0000;
-pub const PAGE_TABLE_BASE: usize = 0x8020_0000;
-pub const PAGE_SIZE: usize = 4096;
-pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
-pub const STACK_BASE: usize = 0x8030_0000;
-pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
-pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
+pub mod constant {
+    pub const DRAM_BASE: usize = 0x8000_0000;
+    pub const DRAM_SIZE_PAR_HART: usize = 0x1000_0000;
+    pub const PAGE_TABLE_BASE: usize = 0x8020_0000;
+    pub const PAGE_SIZE: usize = 4096;
+    pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
+    pub const STACK_BASE: usize = 0x8030_0000;
+    pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
+    pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
+    pub const PA2VA_DEVICE_OFFSET: usize = 0xffff_fffc_0000_0000;
+}
 
 pub struct Device {
     addr: usize,
@@ -51,7 +54,7 @@ impl Device {
     }
 
     pub fn vaddr(&self) -> usize {
-        self.addr + PA2VA_OFFSET
+        self.addr + constant::PA2VA_DEVICE_OFFSET
     }
 }
 

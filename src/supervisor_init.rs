@@ -1,8 +1,8 @@
-use crate::memmap::Memmap;
-use crate::memmap::{
+use crate::memmap::constant::{
     DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE,
     PAGE_TABLE_OFFSET_PER_HART, STACK_BASE, STACK_SIZE_PER_HART,
 };
+use crate::memmap::Memmap;
 use crate::trap_vector;
 use core::arch::asm;
 use riscv::register::{satp, sie, sstatus, stvec};

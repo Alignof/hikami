@@ -5,7 +5,7 @@ extern crate panic_halt;
 mod memmap;
 mod supervisor_init;
 
-use crate::memmap::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::{asm, global_asm};
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
