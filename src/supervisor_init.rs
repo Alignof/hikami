@@ -23,6 +23,8 @@ pub fn sstart() {
         let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
         unsafe {
             pt_offset.write_volatile(match pt_index {
+                // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
+                496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
                 // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
                 2 | 511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
                 // 2 and 511 point to 512 PTE
@@ -39,7 +41,6 @@ pub fn sstart() {
         stvec::write(
             // stvec address must be 4byte aligned.
             trampoline as *const fn() as usize & !0b11,
-            //trampoline as *const fn() as usize + PA2VA_DRAM_OFFSET & !0b11,
             stvec::TrapMode::Direct,
         );
 
