@@ -71,14 +71,14 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
     unsafe {
         sstatus::clear_sie();
         stvec::write(
-            panic_handler as *const fn() as usize,
+            panic_handler as *const fn() as usize + PA2VA_OFFSET,
             stvec::TrapMode::Direct,
         );
     }
 
     // parse device tree
     let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+        match fdt::Fdt::from_ptr((dtb_addr + PA2VA_OFFSET) as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
         }
