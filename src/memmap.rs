@@ -3,6 +3,8 @@ pub mod device;
 use device::{initrd, plic, uart, virtio, Device};
 use fdt::Fdt;
 
+/// Memmap has memory region data of each devices.  
+/// Each devices **must** be implemented Device trait.
 pub struct Memmap {
     pub uart: uart::Uart,
     pub virtio: virtio::VirtIO,

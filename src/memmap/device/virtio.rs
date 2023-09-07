@@ -2,6 +2,8 @@ use super::Device;
 use crate::memmap::constant;
 use fdt::Fdt;
 
+/// A virtualization standard for network and disk device drivers.
+/// Since more than one may be found, we will temporarily use the first one.
 pub struct VirtIO {
     base_addr: usize,
     size: usize,

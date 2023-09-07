@@ -2,6 +2,8 @@ use super::Device;
 use crate::memmap::constant;
 use fdt::Fdt;
 
+/// A scheme for loading a temporary root file system into memory,
+/// to be used as part of the Linux startup process.
 pub struct Initrd {
     base_addr: usize,
     size: usize,

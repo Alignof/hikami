@@ -2,6 +2,8 @@ use super::Device;
 use crate::memmap::constant;
 use fdt::Fdt;
 
+/// PLIC: Platform-Level Interrupt Controller  
+/// Interrupt controller for global interrupts.
 pub struct Plic {
     base_addr: usize,
     size: usize,

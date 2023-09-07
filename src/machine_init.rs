@@ -16,13 +16,14 @@ use riscv_rt::entry;
 
 global_asm!(include_str!("trap.S"));
 extern "C" {
+    /// Trap vector for M-mode. This function is in `trap.S`.
     fn trap_vector();
 }
 
-/// Start function
-/// - set stack pointer
-/// - init mtvec and stvec
-/// - jump to mstart
+/// Entry function. '__risc_v_rt__main' is alias of `__init` function in machine_init.rs.
+/// * set stack pointer
+/// * init mtvec and stvec
+/// * jump to mstart
 #[entry]
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
@@ -151,8 +152,8 @@ fn forward_exception() {
     }
 }
 
-/// Enter supervisor (just exec mret)
-/// Jump to sstart
+/// Enter supervisor. (just exec mret)
+/// Jump to sstart via mret.
 #[inline(never)]
 fn enter_supervisor_mode(_hart_id: usize, _dtb_addr: usize) {
     unsafe {

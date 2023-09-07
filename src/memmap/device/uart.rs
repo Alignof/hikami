@@ -2,6 +2,7 @@ use super::Device;
 use crate::memmap::constant;
 use fdt::Fdt;
 
+/// UART: Universal asynchronous receiver-transmitter
 pub struct Uart {
     base_addr: usize,
     size: usize,

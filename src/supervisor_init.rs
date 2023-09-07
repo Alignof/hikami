@@ -9,6 +9,9 @@ use core::arch::asm;
 use riscv::register::{satp, sie, sstatus, stvec};
 
 /// Supervisor start function
+/// * Init page tables
+/// * Init trap vector
+/// * Init stack pointer
 pub fn sstart() {
     let hart_id: usize;
     let dtb_addr: usize;
@@ -68,12 +71,19 @@ pub fn sstart() {
     unreachable!()
 }
 
-/// Jump to start
+/// Jump to smode_setup
 #[inline(never)]
 fn trampoline(hart_id: usize, dtb_addr: usize) {
     smode_setup(hart_id, dtb_addr);
 }
 
+/// Setup for S-mode
+/// * parse device tree
+/// * Init plic priorities
+/// * Set trap vector
+/// * Set ppn via setp
+/// * Set stack pointer
+/// * Jump to enter_user_mode via asm j instruction
 fn smode_setup(hart_id: usize, dtb_addr: usize) {
     unsafe {
         sstatus::clear_sie();
@@ -119,6 +129,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
     }
 }
 
+/// Prepare to enter U-mode and jump to linux kernel
 fn enter_user_mode(dtb_addr: usize) {
     unsafe {
         // set sie = 0x222
@@ -174,6 +185,7 @@ fn enter_user_mode(dtb_addr: usize) {
     unreachable!();
 }
 
+/// Panic handler for S-mode
 fn panic_handler() {
     panic!("trap from panic macro")
 }
