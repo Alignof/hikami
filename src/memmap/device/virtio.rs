@@ -15,7 +15,7 @@ impl Device for VirtIO {
             .unwrap()
             .reg()
             .unwrap()
-            .nth(0)
+            .next()
             .unwrap();
 
         VirtIO {

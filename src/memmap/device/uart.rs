@@ -14,7 +14,7 @@ impl Device for Uart {
             .unwrap()
             .reg()
             .unwrap()
-            .nth(0)
+            .next()
             .unwrap();
 
         Uart {

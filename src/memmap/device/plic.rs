@@ -14,7 +14,7 @@ impl Device for Plic {
             .unwrap()
             .reg()
             .unwrap()
-            .nth(0)
+            .next()
             .unwrap();
 
         Plic {
