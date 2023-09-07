@@ -20,7 +20,7 @@ extern "C" {
     fn trap_vector();
 }
 
-/// Entry function. '__risc_v_rt__main' is alias of `__init` function in machine_init.rs.
+/// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
 /// * init mtvec and stvec
 /// * jump to mstart
@@ -126,8 +126,8 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
     enter_supervisor_mode(hart_id, dtb_addr);
 }
 
-#[no_mangle]
 /// Delegate exception to supervisor mode
+#[no_mangle]
 fn forward_exception() {
     unsafe {
         sepc::write(mepc::read());

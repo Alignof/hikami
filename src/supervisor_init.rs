@@ -71,7 +71,7 @@ pub fn sstart() {
     unreachable!()
 }
 
-/// Jump to smode_setup
+/// Jump to `smode_setup`
 #[inline(never)]
 fn trampoline(hart_id: usize, dtb_addr: usize) {
     smode_setup(hart_id, dtb_addr);
@@ -83,7 +83,7 @@ fn trampoline(hart_id: usize, dtb_addr: usize) {
 /// * Set trap vector
 /// * Set ppn via setp
 /// * Set stack pointer
-/// * Jump to enter_user_mode via asm j instruction
+/// * Jump to `enter_user_mode` via asm j instruction
 fn smode_setup(hart_id: usize, dtb_addr: usize) {
     unsafe {
         sstatus::clear_sie();

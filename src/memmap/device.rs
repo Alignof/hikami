@@ -8,7 +8,7 @@ pub mod virtio;
 
 use fdt::Fdt;
 
-/// A struct that implement Device trait **must** has base_addr and size member.
+/// A struct that implement Device trait **must** has `base_addr` and size member.
 pub trait Device {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
