@@ -7,7 +7,7 @@ edition = "2021"
 
 [[bin]]
 name = "hikami"
-path = "src/init.rs"
+path = "src/machine_init.rs"
 
 [dependencies]
 fdt = "0.1.5"

@@ -1,6 +1,6 @@
 [target.riscv64imac-unknown-none-elf]
-#runner = "qemu-system-riscv64 -S -gdb tcp::10000 -machine virt -bios none -nographic -m 2G -initrd fedora-vmlinux -kernel"
-runner = "qemu-system-riscv64 -machine virt -bios none -nographic -m 2G -initrd fedora-vmlinux -kernel"
+runner = "qemu-system-riscv64 -S -gdb tcp::10000 -d int -machine virt -bios none -nographic -m 2G -initrd fedora-vmlinux -kernel"
+#runner = "qemu-system-riscv64 -machine virt -bios none -nographic -m 2G -initrd fedora-vmlinux -kernel"
 
 rustflags = [
   "-C", "link-arg=-Tmemory.x",
