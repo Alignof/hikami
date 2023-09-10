@@ -1,6 +1,7 @@
 #![no_main]
 #![no_std]
 
+extern crate alloc;
 extern crate panic_halt;
 mod memmap;
 mod supervisor_init;

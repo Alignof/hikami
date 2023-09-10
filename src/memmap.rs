@@ -1,5 +1,7 @@
 pub mod constant;
 pub mod device;
+
+use alloc::vec::Vec;
 use device::{initrd, plic, uart, virtio, Device};
 use fdt::Fdt;
 

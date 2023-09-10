@@ -109,6 +109,8 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         }
     }
 
+    let irq_mask = mmap.virtio.;
+
     unsafe {
         // set sie = 0x222
         sie::set_ssoft();

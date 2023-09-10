@@ -1,5 +1,6 @@
 use super::Device;
 use crate::memmap::constant;
+use alloc::vec::Vec;
 use fdt::Fdt;
 
 /// A virtualization standard for network and disk device drivers.
