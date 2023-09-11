@@ -12,6 +12,7 @@ pub struct Memmap {
     pub virtio: Vec<virtio::VirtIO>,
     pub initrd: initrd::Initrd,
     pub plic: plic::Plic,
+    pub plic_context: usize,
 }
 
 impl Memmap {
@@ -21,6 +22,12 @@ impl Memmap {
             virtio: virtio::VirtIO::new_all(&device_tree, "/soc/virtio_mmio"),
             initrd: initrd::Initrd::new(&device_tree, "/chosen"),
             plic: plic::Plic::new(&device_tree, "/soc/plic"),
+            plic_context: device_tree
+                .find_node("/cpus/cpu/interrupt-controller")
+                .unwrap()
+                .property("phandle")
+                .unwrap()
+                .value[0] as usize,
         }
     }
 }
