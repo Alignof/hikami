@@ -2,6 +2,9 @@ use crate::memmap::constant::{
     DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE,
     PAGE_TABLE_OFFSET_PER_HART, STACK_BASE, STACK_SIZE_PER_HART,
 };
+use crate::memmap::device::plic::{
+    CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
+};
 use crate::memmap::device::Device;
 use crate::memmap::Memmap;
 use crate::trap_vector;
@@ -109,7 +112,21 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         }
     }
 
-    let irq_mask = mmap.virtio.;
+    let mut irq_mask = 0;
+    for vio in mmap.virtio.iter().take(4) {
+        irq_mask |= 1 << vio.irq();
+    }
+
+    // set plic
+    unsafe {
+        ((mmap.plic.vaddr() + CONTEXT_BASE + CONTEXT_PER_HART * mmap.plic_context) as *mut u32)
+            .write_volatile(0);
+        ((mmap.plic.vaddr() + ENABLE_BASE + ENABLE_PER_HART * mmap.plic_context) as *mut u32)
+            .write_volatile(irq_mask);
+        ((mmap.plic.vaddr() + ENABLE_BASE + ENABLE_PER_HART * mmap.plic_context + CONTEXT_CLAIM)
+            as *mut u32)
+            .write_volatile(0);
+    }
 
     unsafe {
         // set sie = 0x222
