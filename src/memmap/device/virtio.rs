@@ -8,6 +8,7 @@ use fdt::Fdt;
 pub struct VirtIO {
     base_addr: usize,
     size: usize,
+    irq: u8,
 }
 
 impl VirtIO {
@@ -16,29 +17,31 @@ impl VirtIO {
             .find_all_nodes(node_path)
             .map(|node| {
                 let region = node.reg().unwrap().next().unwrap();
+                let irq = node.property("interrupts").unwrap().value[0];
                 VirtIO {
                     base_addr: region.starting_address as usize,
                     size: region.size.unwrap(),
+                    irq,
                 }
             })
             .collect()
+    }
+
+    pub fn irq(&self) -> u8 {
+        self.irq
     }
 }
 
 impl Device for VirtIO {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        let region = device_tree
-            .find_all_nodes(node_path)
-            .next()
-            .unwrap()
-            .reg()
-            .unwrap()
-            .next()
-            .unwrap();
+        let node = device_tree.find_all_nodes(node_path).next().unwrap();
+        let region = node.reg().unwrap().next().unwrap();
+        let irq = node.property("interrupts").unwrap().value[0];
 
         VirtIO {
             base_addr: region.starting_address as usize,
             size: region.size.unwrap(),
+            irq,
         }
     }
 
