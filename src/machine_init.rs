@@ -6,7 +6,7 @@ extern crate panic_halt;
 mod memmap;
 mod supervisor_init;
 
-use crate::memmap::constant::{DRAM_BASE, STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::{asm, global_asm};
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
@@ -14,6 +14,10 @@ use riscv::register::{
     pmpcfg0, satp, scause, sepc, stval, stvec,
 };
 use riscv_rt::entry;
+use wild_screen_alloc::WildScreenAlloc;
+
+#[global_allocator]
+static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
 global_asm!(include_str!("trap.S"));
 extern "C" {
@@ -27,6 +31,11 @@ extern "C" {
 /// * jump to mstart
 #[entry]
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
+    // Initialize global allocator
+    unsafe {
+        ALLOCATOR.init(HEAP_BASE, HEAP_SIZE);
+    }
+
     unsafe {
         // set stack pointer
         asm!(

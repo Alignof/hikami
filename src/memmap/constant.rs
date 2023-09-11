@@ -14,6 +14,10 @@ pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
 pub const STACK_BASE: usize = 0x8030_0000;
 /// Stack size for each HART.
 pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
+/// Base address of heap.
+pub const HEAP_BASE: usize = 0x8040_0000;
+/// Heap size.
+pub const HEAP_SIZE: usize = 0x10_0000;
 /// Offset for converting physical address on dram to virtual address.
 pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
 /// Offset for converting physical device address to virtual address.
