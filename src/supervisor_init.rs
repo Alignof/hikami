@@ -1,6 +1,6 @@
 use crate::memmap::constant::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, PA2VA_DEVICE_OFFSET, PA2VA_DRAM_OFFSET, PAGE_SIZE,
-    PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
+    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_HEAP_OFFSET, PA2VA_DEVICE_OFFSET, PA2VA_DRAM_OFFSET,
+    PAGE_SIZE, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
 };
 use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
@@ -140,10 +140,9 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         );
 
         // copy initrd to guest space
-        let heap_offset = 0x40_0000;
         core::ptr::copy(
             mmap.initrd.vaddr() as *const u8,
-            (guest_base_addr + heap_offset + PA2VA_DEVICE_OFFSET) as *mut u8,
+            (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DEVICE_OFFSET) as *mut u8,
             device_tree.total_size(),
         );
 

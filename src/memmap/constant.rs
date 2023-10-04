@@ -22,3 +22,6 @@ pub const HEAP_SIZE: usize = 0x10_0000;
 pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
 /// Offset for converting physical device address to virtual address.
 pub const PA2VA_DEVICE_OFFSET: usize = 0xffff_fffc_0000_0000;
+
+/// Heap offset of guest space
+pub const GUEST_HEAP_OFFSET: usize = 0x40_0000;
