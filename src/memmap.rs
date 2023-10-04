@@ -23,11 +23,22 @@ impl Memmap {
             initrd: initrd::Initrd::new(&device_tree, "/chosen"),
             plic: plic::Plic::new(&device_tree, "/soc/plic"),
             plic_context: device_tree
+                .find_node("/cpus/cpu")
+                .unwrap()
+                .children()
+                .next() // interrupt-controller
+                .unwrap()
+                .property("phandle")
+                .unwrap()
+                .value[0] as usize,
+            /*
+            plic_context: device_tree
                 .find_node("/cpus/cpu/interrupt-controller")
                 .unwrap()
                 .property("phandle")
                 .unwrap()
                 .value[0] as usize,
+            */
         }
     }
 }
