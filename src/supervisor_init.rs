@@ -9,7 +9,9 @@ use crate::memmap::device::Device;
 use crate::memmap::Memmap;
 use crate::trap_vector;
 use core::arch::asm;
-use riscv::register::{satp, sie, sstatus, stvec};
+use elf::endian::AnyEndian;
+use elf::ElfBytes;
+use riscv::register::{satp, sepc, sie, sstatus, stvec};
 
 /// Supervisor start function
 /// * Init page tables
@@ -143,7 +145,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         core::ptr::copy(
             mmap.initrd.vaddr() as *const u8,
             (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DEVICE_OFFSET) as *mut u8,
-            device_tree.total_size(),
+            mmap.initrd.size(),
         );
 
         // set sie = 0x222
@@ -172,14 +174,35 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         satp::set(satp::Mode::Sv39, 0, guest_base_addr >> 12);
 
         let stack_pointer = guest_base_addr + 0x20_0000 + PA2VA_DEVICE_OFFSET;
-        asm!("mv a0, {dtb_addr}", dtb_addr = in(reg) guest_dtb_addr);
-        asm!("mv sp, {stack_pointer_in_umode}", stack_pointer_in_umode = in(reg) stack_pointer);
-        asm!("j {enter_user_mode}", enter_user_mode = sym enter_user_mode);
+        asm!(
+            "
+            mv a0, {hart_id}
+            mv a1, {dtb_addr}
+            mv a2, {guest_base_addr}
+            mv a3, {guest_id}
+            mv a4, {guest_initrd_size}
+            mv sp, {stack_pointer_in_umode}
+            j {enter_user_mode}
+            ",
+            hart_id = in(reg) hart_id,
+            dtb_addr = in(reg) guest_dtb_addr,
+            guest_base_addr = in(reg) guest_base_addr,
+            guest_id = in(reg) guest_id,
+            guest_initrd_size = in(reg) mmap.initrd.size(),
+            stack_pointer_in_umode = in(reg) stack_pointer ,
+            enter_user_mode = sym enter_user_mode
+        );
     }
 }
 
 /// Prepare to enter U-mode and jump to linux kernel
-fn enter_user_mode(dtb_addr: usize) {
+fn enter_user_mode(
+    _hart_id: usize,
+    dtb_addr: usize,
+    guest_base_addr: usize,
+    _guest_id: usize,
+    guest_initrd_size: usize,
+) {
     unsafe {
         // set sie = 0x222
         sie::set_ssoft();
@@ -190,6 +213,16 @@ fn enter_user_mode(dtb_addr: usize) {
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::User);
 
+        // set initrd entry point to sepc
+        let guest_elf = ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
+            (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DEVICE_OFFSET) as *mut u8,
+            guest_initrd_size,
+        ))
+        .unwrap();
+        let entry_point = guest_elf.ehdr.e_entry as usize;
+        sepc::write(entry_point);
+
+        // stvec = trap_vector
         stvec::write(trap_vector as *const fn() as usize, stvec::TrapMode::Direct);
 
         asm!(
