@@ -128,17 +128,31 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
             .write_volatile(0);
     }
 
-    // copy fdt to 0x9000_0000
-
+    let guest_id = hart_id + 1;
+    let guest_base_addr = DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART;
     unsafe {
+        // copy dtb to guest space
+        let guest_dtb_addr = guest_base_addr + 0x2000 + PA2VA_DEVICE_OFFSET;
+        core::ptr::copy(
+            (dtb_addr + PA2VA_DEVICE_OFFSET) as *const u8,
+            guest_dtb_addr as *mut u8,
+            device_tree.total_size(),
+        );
+
+        // copy initrd to guest space
+        let heap_offset = 0x40_0000;
+        core::ptr::copy(
+            mmap.initrd.vaddr() as *const u8,
+            (guest_base_addr + heap_offset + PA2VA_DEVICE_OFFSET) as *mut u8,
+            device_tree.total_size(),
+        );
+
         // set sie = 0x222
         sie::set_ssoft();
         sie::set_stimer();
         sie::set_sext();
 
         // boot page tables
-        let guest_id = hart_id + 1;
-        let guest_base_addr = DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART;
         let page_table_start = guest_base_addr;
         for pt_index in 0..1024 {
             let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
@@ -159,7 +173,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         satp::set(satp::Mode::Sv39, 0, guest_base_addr >> 12);
 
         let stack_pointer = guest_base_addr + 0x20_0000 + PA2VA_DEVICE_OFFSET;
-        asm!("mv a0, {dtb_addr}", dtb_addr = in(reg) dtb_addr);
+        asm!("mv a0, {dtb_addr}", dtb_addr = in(reg) guest_dtb_addr);
         asm!("mv sp, {stack_pointer_in_umode}", stack_pointer_in_umode = in(reg) stack_pointer);
         asm!("j {enter_user_mode}", enter_user_mode = sym enter_user_mode);
     }
