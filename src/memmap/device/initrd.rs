@@ -14,8 +14,10 @@ impl Device for Initrd {
         let start_prop = "linux,initrd-start";
         let end_prop = "linux,initrd-end";
         let node = device_tree.find_node(node_path).unwrap();
-        let start = node.property(start_prop).unwrap().value[0] as usize;
-        let end = node.property(end_prop).unwrap().value[0] as usize;
+        let start = node.property(start_prop).unwrap().value;
+        let start = u32::from_be_bytes(start.try_into().unwrap()) as usize;
+        let end = node.property(end_prop).unwrap().value;
+        let end = u32::from_be_bytes(end.try_into().unwrap()) as usize;
 
         Initrd {
             base_addr: start,
