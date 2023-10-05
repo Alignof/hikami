@@ -1,6 +1,6 @@
 use crate::memmap::constant::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_HEAP_OFFSET, PA2VA_DEVICE_OFFSET, PA2VA_DRAM_OFFSET,
-    PAGE_SIZE, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
+    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_HEAP_OFFSET, GUEST_STACK_OFFSET, PA2VA_DEVICE_OFFSET,
+    PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
 };
 use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
@@ -173,7 +173,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         // satp = Sv39 | 0x9000_0000 >> 12
         satp::set(satp::Mode::Sv39, 0, guest_base_addr >> 12);
 
-        let stack_pointer = guest_base_addr + 0x20_0000 + PA2VA_DEVICE_OFFSET;
+        let stack_pointer = guest_base_addr + GUEST_STACK_OFFSET + PA2VA_DEVICE_OFFSET;
         asm!(
             "
             mv a0, {hart_id}
