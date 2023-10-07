@@ -219,7 +219,8 @@ fn enter_user_mode(
             guest_initrd_size,
         ))
         .unwrap();
-        let entry_point = guest_elf.ehdr.e_entry as usize;
+        let entry_point =
+            usize::try_from(guest_elf.ehdr.e_entry).expect("casting u64 to usize failed.");
         sepc::write(entry_point);
 
         // stvec = trap_vector
