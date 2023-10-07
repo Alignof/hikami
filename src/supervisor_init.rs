@@ -195,6 +195,38 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
     }
 }
 
+/// Load elf to guest memory.
+///
+/// It only load PT_LOAD type segments.
+/// Entry address is determined by ... .
+///
+/// # Arguments
+/// * guest_elf - Elf loading guest space.
+/// * guest_base_addr - Base address of loading memory space.
+fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: usize) -> usize {
+    for prog_header in guest_elf
+        .segments()
+        .expect("failed to get segments from elf")
+        .iter()
+    {
+        const PT_LOAD: u32 = 1;
+        if prog_header.p_type == PT_LOAD {
+            if prog_header.p_filesz > 0 {
+                unsafe {
+                    core::ptr::copy(
+                        (guest_base_addr + prog_header.p_offset as usize) as *const u8,
+                        elf_addr.wrapping_add(prog_header.p_offset as usize),
+                        prog_header.p_filesz as usize,
+                    );
+                }
+            }
+        }
+    }
+
+    let _debug = guest_elf.ehdr.e_entry;
+    guest_base_addr
+}
+
 /// Prepare to enter U-mode and jump to linux kernel
 fn enter_user_mode(
     _hart_id: usize,
@@ -213,14 +245,14 @@ fn enter_user_mode(
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::User);
 
-        // set initrd entry point to sepc
+        // copy initrd to guest text space(0x9000_0000-) and set initrd entry point to sepc
+        let elf_addr = (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DEVICE_OFFSET) as *mut u8;
         let guest_elf = ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DEVICE_OFFSET) as *mut u8,
+            elf_addr,
             guest_initrd_size,
         ))
         .unwrap();
-        let entry_point =
-            usize::try_from(guest_elf.ehdr.e_entry).expect("casting u64 to usize failed.");
+        let entry_point = load_elf(guest_elf, elf_addr, guest_base_addr);
         sepc::write(entry_point);
 
         // stvec = trap_vector
