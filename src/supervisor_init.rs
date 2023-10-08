@@ -214,7 +214,7 @@ fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: 
             if prog_header.p_filesz > 0 {
                 unsafe {
                     core::ptr::copy(
-                        (guest_base_addr + prog_header.p_offset as usize) as *const u8,
+                        (guest_base_addr + prog_header.p_paddr as usize) as *const u8,
                         elf_addr.wrapping_add(prog_header.p_offset as usize),
                         prog_header.p_filesz as usize,
                     );
