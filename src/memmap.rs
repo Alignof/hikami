@@ -1,3 +1,5 @@
+//! See `memmap/constant` module for specefic memmory map.
+
 pub mod constant;
 pub mod device;
 

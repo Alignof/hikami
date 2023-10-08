@@ -1,6 +1,7 @@
 use crate::memmap::constant::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_HEAP_OFFSET, GUEST_STACK_OFFSET, PA2VA_DEVICE_OFFSET,
-    PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
+    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_DEVICE_TREE_OFFSET, GUEST_HEAP_OFFSET, GUEST_STACK_OFFSET,
+    GUEST_TEXT_OFFSET, PA2VA_DEVICE_OFFSET, PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE,
+    PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
 };
 use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
@@ -134,7 +135,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
     let guest_base_addr = DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART;
     unsafe {
         // copy dtb to guest space
-        let guest_dtb_addr = guest_base_addr + 0x2000 + PA2VA_DEVICE_OFFSET;
+        let guest_dtb_addr = guest_base_addr + GUEST_DEVICE_TREE_OFFSET + PA2VA_DEVICE_OFFSET;
         core::ptr::copy(
             (dtb_addr + PA2VA_DEVICE_OFFSET) as *const u8,
             guest_dtb_addr as *mut u8,
@@ -164,14 +165,16 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
                 2 | 511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
                 // 2 and 511 point to 512 PTE
                 512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
+                // 2 point to 512 PTE(for 0x0000_0000_9xxx_xxxx)
+                640 => 0x2000_0000 | 0xcb, // d, a, x, r, v
                 // 2nd level
                 513..=1023 => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
                 _ => 0,
             });
         }
 
-        // satp = Sv39 | 0x9000_0000 >> 12
-        satp::set(satp::Mode::Sv39, 0, guest_base_addr >> 12);
+        // satp = Sv39 | 0x9020_0000 >> 12
+        satp::set(satp::Mode::Sv39, 0, page_table_start >> 12);
 
         let stack_pointer = guest_base_addr + GUEST_STACK_OFFSET + PA2VA_DEVICE_OFFSET;
         asm!(
@@ -214,8 +217,8 @@ fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: 
             if prog_header.p_filesz > 0 {
                 unsafe {
                     core::ptr::copy(
-                        (guest_base_addr + prog_header.p_paddr as usize) as *const u8,
                         elf_addr.wrapping_add(prog_header.p_offset as usize),
+                        (guest_base_addr + prog_header.p_paddr as usize) as *mut u8,
                         prog_header.p_filesz as usize,
                     );
                 }
@@ -252,7 +255,11 @@ fn enter_user_mode(
             guest_initrd_size,
         ))
         .unwrap();
-        let entry_point = load_elf(guest_elf, elf_addr, guest_base_addr);
+        let entry_point = load_elf(
+            guest_elf,
+            elf_addr,
+            guest_base_addr + GUEST_TEXT_OFFSET + PA2VA_DEVICE_OFFSET,
+        );
         sepc::write(entry_point);
 
         // stvec = trap_vector
