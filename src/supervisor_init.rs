@@ -1,7 +1,7 @@
 use crate::memmap::constant::{
     DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_DEVICE_TREE_OFFSET, GUEST_HEAP_OFFSET, GUEST_STACK_OFFSET,
-    GUEST_TEXT_OFFSET, PA2VA_DEVICE_OFFSET, PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE,
-    PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
+    GUEST_TEXT_OFFSET, PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART,
+    STACK_BASE,
 };
 use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
@@ -36,7 +36,7 @@ pub fn sstart() {
                 // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
                 496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
                 // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
-                2 | 511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
+                2 | 511 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
                 // 2 and 511 point to 512 PTE
                 512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
                 // 2nd level
@@ -135,9 +135,9 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
     let guest_base_addr = DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART;
     unsafe {
         // copy dtb to guest space
-        let guest_dtb_addr = guest_base_addr + GUEST_DEVICE_TREE_OFFSET + PA2VA_DEVICE_OFFSET;
+        let guest_dtb_addr = guest_base_addr + GUEST_DEVICE_TREE_OFFSET + PA2VA_DRAM_OFFSET;
         core::ptr::copy(
-            (dtb_addr + PA2VA_DEVICE_OFFSET) as *const u8,
+            (dtb_addr + PA2VA_DRAM_OFFSET) as *const u8,
             guest_dtb_addr as *mut u8,
             device_tree.total_size(),
         );
@@ -145,7 +145,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         // copy initrd to guest space
         core::ptr::copy(
             mmap.initrd.vaddr() as *const u8,
-            (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DEVICE_OFFSET) as *mut u8,
+            (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DRAM_OFFSET) as *mut u8,
             mmap.initrd.size(),
         );
 
@@ -162,7 +162,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
                 // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
                 496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
                 // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
-                2 | 511 => (PAGE_TABLE_BASE + PAGE_SIZE) >> 2 | 0x01, // v
+                2 | 511 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
                 // 2 and 511 point to 512 PTE
                 512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
                 // 2 point to 512 PTE(for 0x0000_0000_9xxx_xxxx)
@@ -173,10 +173,10 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
             });
         }
 
-        // satp = Sv39 | 0x9020_0000 >> 12
+        // satp = Sv39 | 0x9000_0000 >> 12
         satp::set(satp::Mode::Sv39, 0, page_table_start >> 12);
 
-        let stack_pointer = guest_base_addr + GUEST_STACK_OFFSET + PA2VA_DEVICE_OFFSET;
+        let stack_pointer = guest_base_addr + GUEST_STACK_OFFSET + PA2VA_DRAM_OFFSET;
         asm!(
             "
             mv a0, {hart_id}
@@ -226,7 +226,6 @@ fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: 
         }
     }
 
-    let _debug = guest_elf.ehdr.e_entry;
     guest_base_addr
 }
 
@@ -249,7 +248,7 @@ fn enter_user_mode(
         sstatus::set_spp(sstatus::SPP::User);
 
         // copy initrd to guest text space(0x9000_0000-) and set initrd entry point to sepc
-        let elf_addr = (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DEVICE_OFFSET) as *mut u8;
+        let elf_addr = (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DRAM_OFFSET) as *mut u8;
         let guest_elf = ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
             elf_addr,
             guest_initrd_size,
@@ -258,7 +257,7 @@ fn enter_user_mode(
         let entry_point = load_elf(
             guest_elf,
             elf_addr,
-            guest_base_addr + GUEST_TEXT_OFFSET + PA2VA_DEVICE_OFFSET,
+            guest_base_addr + GUEST_TEXT_OFFSET + PA2VA_DRAM_OFFSET,
         );
         sepc::write(entry_point);
 
