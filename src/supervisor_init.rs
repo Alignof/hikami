@@ -162,11 +162,12 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
                 // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
                 496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
                 // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
+                // 0x0000_0000_9xxx_xxxx or 0xffff_ffff_dxxx_xxxx
                 2 | 511 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
-                // 2 and 511 point to 512 PTE
+                // 2 and 511 point to 512 PTE(for 0xffff_ffff_cxxx_xxxx -> 0x0000_0000_8xxx_xxxx)
                 512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
-                // 2 point to 512 PTE(for 0x0000_0000_9xxx_xxxx)
-                640 => 0x2000_0000 | 0xcb, // d, a, x, r, v
+                // 2 and 511 point to 640 PTE(for 0xffff_ffff_dxxx_xxxx -> 0x0000_0000_9xxx_xxxx)
+                640 => 0x2400_0000 | 0xcf, // d, a, x, r, v
                 // 2nd level
                 513..=1023 => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
                 _ => 0,
