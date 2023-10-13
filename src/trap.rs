@@ -1,4 +1,5 @@
 mod machine;
+mod supervisor;
 
 use crate::memmap::constant::STACK_BASE;
 use core::arch::asm;
