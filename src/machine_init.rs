@@ -5,9 +5,11 @@ extern crate alloc;
 extern crate panic_halt;
 mod memmap;
 mod supervisor_init;
+mod trap;
 
 use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
-use core::arch::{asm, global_asm};
+use crate::trap::machine::mtrap_vector;
+use core::arch::asm;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
     mcause, mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtval, mtvec, pmpaddr0,
@@ -18,12 +20,6 @@ use wild_screen_alloc::WildScreenAlloc;
 
 #[global_allocator]
 static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
-
-global_asm!(include_str!("trap.S"));
-extern "C" {
-    /// Trap vector for M-mode. This function is in `trap.S`.
-    fn trap_vector();
-}
 
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
@@ -128,7 +124,10 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mepc::write(supervisor_init::sstart as *const fn() as usize);
 
         // set trap_vector in trap.S to mtvec
-        mtvec::write(trap_vector as *const fn() as usize, mtvec::TrapMode::Direct);
+        mtvec::write(
+            mtrap_vector as *const fn() as usize,
+            mtvec::TrapMode::Direct,
+        );
 
         sfence_vma_all();
     }

@@ -5,11 +5,11 @@ use riscv::register::mcause;
 use riscv::register::mcause::Trap;
 
 #[no_mangle]
-unsafe fn mtrap_vector() {
+pub unsafe fn mtrap_vector() {
     asm!(
         ".align 4
-        csrrw mscratch, sp
-        li sp, {stack_base}
+        csrrw sp, mscratch, sp
+        mv sp, {stack_base}
 
         addi sp, sp, -240
         sd ra, 0(sp)
@@ -55,7 +55,8 @@ unsafe fn mtrap_vector() {
         Trap::Exception(exception_cause) => trap_exception(a0, a7, exception_cause),
     }
 
-    asm!("
+    asm!(
+        "
         sd ra, 0(sp)
         sd t0, 8(sp)
         sd t1, 16(sp)
@@ -87,11 +88,9 @@ unsafe fn mtrap_vector() {
         sd t5, 224(sp)
         sd t6, 232(sp)
 
-        csrrw mscratch, sp
-        li sp, {stack_base}
-
+        addi sp, sp, 240
+        csrrw sp, mscratch, sp
         mret
         ",
-        stack_base = in(reg) STACK_BASE
     );
 }

@@ -1,7 +1,6 @@
-mod machine;
-mod supervisor;
+pub mod machine;
+pub mod supervisor;
 
-use crate::memmap::constant::STACK_BASE;
 use core::arch::asm;
 use riscv::register::mcause;
 use riscv::register::mcause::{Exception, Interrupt};
@@ -20,7 +19,7 @@ unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
             sd t4, 40(sp)
             sd t5, 48(sp)
             sd t6, 56(sp)
-            sd a0, {ret_value}
+            mv a0, {ret_value}
             sd a1, 72(sp)
             sd a2, 80(sp)
             sd a3, 88(sp)
@@ -43,12 +42,10 @@ unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
             sd t5, 224(sp)
             sd t6, 232(sp)
 
-            csrrw mscratch, sp
-            li sp, {stack_base}
-
+            addi sp, sp, 240
+            csrrw sp, mscratch, sp
             mret
             ",
-            stack_base = in(reg) STACK_BASE,
             ret_value = in(reg) ret_value,
         )
     };

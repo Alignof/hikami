@@ -8,7 +8,7 @@ use crate::memmap::device::plic::{
 };
 use crate::memmap::device::Device;
 use crate::memmap::Memmap;
-use crate::trap_vector;
+use crate::trap::supervisor::strap_vector;
 use core::arch::asm;
 use elf::endian::AnyEndian;
 use elf::ElfBytes;
@@ -263,7 +263,10 @@ fn enter_user_mode(
         sepc::write(entry_point);
 
         // stvec = trap_vector
-        stvec::write(trap_vector as *const fn() as usize, stvec::TrapMode::Direct);
+        stvec::write(
+            strap_vector as *const fn() as usize,
+            stvec::TrapMode::Direct,
+        );
 
         asm!(
             "
