@@ -2,14 +2,15 @@
 #![no_std]
 
 extern crate alloc;
-extern crate panic_halt;
 mod memmap;
 mod supervisor_init;
 mod trap;
+mod util;
 
 use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
 use crate::trap::machine::mtrap_vector;
 use core::arch::asm;
+use core::panic::PanicInfo;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
     mcause, mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtval, mtvec, pmpaddr0,
@@ -17,6 +18,12 @@ use riscv::register::{
 };
 use riscv_rt::entry;
 use wild_screen_alloc::WildScreenAlloc;
+
+#[panic_handler]
+pub fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
+    loop {}
+}
 
 #[global_allocator]
 static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();

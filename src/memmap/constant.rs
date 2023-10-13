@@ -17,6 +17,9 @@
 //! | 0x9030_0000 | 0x93ff_ffff | hypervisor heap |
 //! | 0x9400_0000 |     ...     | text data of hikami |
 
+/// Uart addr
+pub const UART_ADDR: usize = 0x1000_0000;
+
 /// Base address of dram.
 pub const DRAM_BASE: usize = 0x8000_0000;
 /// Memory region on dram that be allocated each HARTs.
