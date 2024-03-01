@@ -33,6 +33,10 @@ pub fn sstart() {
         let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
         unsafe {
             pt_offset.write_volatile(match pt_index {
+                // 0x0000_0000_1xxx_xxxx or 0x0000_0000_1xxx_xxxx
+                0 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
+                // 0 point to 640 PTE(for 0x0000_0000_1000_0000 -> 0x0000_0000_1000_0000)
+                640 => 0x0400_0000 | 0xcf, // d, a, x, w, r, v
                 // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
                 496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
                 // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
@@ -159,6 +163,10 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
         for pt_index in 0..1024 {
             let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
             pt_offset.write_volatile(match pt_index {
+                // 0x0000_0000_1xxx_xxxx or 0x0000_0000_1xxx_xxxx
+                0 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
+                // 0 point to 128 PTE(for 0x0000_0000_1000_0000 -> 0x0000_0000_1000_0000)
+                128 => 0x0400_0000 | 0xc7, // d, a, w, r, v
                 // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
                 496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
                 // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
@@ -167,7 +175,7 @@ fn smode_setup(hart_id: usize, dtb_addr: usize) {
                 // 2 and 511 point to 512 PTE(for 0xffff_ffff_cxxx_xxxx -> 0x0000_0000_8xxx_xxxx)
                 512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
                 // 2 and 511 point to 640 PTE(for 0xffff_ffff_dxxx_xxxx -> 0x0000_0000_9xxx_xxxx)
-                640 => 0x2400_0000 | 0xcf, // d, a, x, r, v
+                640 => 0x2400_0000 | 0xcf, // d, a, x, w, r, v
                 // 2nd level
                 513..=1023 => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
                 _ => 0,
