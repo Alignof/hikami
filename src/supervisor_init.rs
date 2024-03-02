@@ -18,15 +18,8 @@ use riscv::register::{satp, sepc, sie, sstatus, stvec};
 /// * Init page tables
 /// * Init trap vector
 /// * Init stack pointer
-pub fn sstart() {
-    let hart_id: usize;
-    let dtb_addr: usize;
-    unsafe {
-        // get an arguments
-        asm!("mv {}, a0", out(reg) hart_id);
-        asm!("mv {}, a1", out(reg) dtb_addr);
-    }
-
+#[inline(never)]
+pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     for pt_index in 0..1024 {
@@ -83,7 +76,7 @@ pub fn sstart() {
 
 /// Jump to `smode_setup`
 #[inline(never)]
-fn trampoline(hart_id: usize, dtb_addr: usize) {
+extern "C" fn trampoline(hart_id: usize, dtb_addr: usize) {
     smode_setup(hart_id, dtb_addr);
 }
 
@@ -94,7 +87,7 @@ fn trampoline(hart_id: usize, dtb_addr: usize) {
 /// * Set ppn via setp
 /// * Set stack pointer
 /// * Jump to `enter_user_mode` via asm j instruction
-fn smode_setup(hart_id: usize, dtb_addr: usize) {
+extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
     unsafe {
         sstatus::clear_sie();
         stvec::write(
