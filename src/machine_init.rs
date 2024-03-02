@@ -22,7 +22,11 @@ use wild_screen_alloc::WildScreenAlloc;
 #[panic_handler]
 pub fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
+    loop {
+        unsafe {
+            asm!("nop");
+        }
+    }
 }
 
 #[global_allocator]
