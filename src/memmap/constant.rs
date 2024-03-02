@@ -31,7 +31,7 @@ pub const PAGE_SIZE: usize = 4096;
 /// Page table offset for each HART.
 pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
 /// Base address of stack.
-pub const STACK_BASE: usize = 0x8030_0000;
+pub const STACK_BASE: usize = 0x8030_0000; // modify trap vector immediate when change it.
 /// Stack size for each HART.
 pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 /// Base address of heap.

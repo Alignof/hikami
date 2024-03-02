@@ -1,5 +1,5 @@
 use super::{trap_exception, trap_interrupt};
-use crate::memmap::constant::STACK_BASE;
+// use crate::memmap::constant::STACK_BASE;
 use core::arch::asm;
 use riscv::register::mcause;
 use riscv::register::mcause::Trap;
@@ -9,7 +9,7 @@ pub unsafe fn mtrap_vector() {
     asm!(
         ".align 4
         csrrw sp, mscratch, sp
-        mv sp, {stack_base}
+        li sp, 0x80300000
 
         addi sp, sp, -240
         sd ra, 0(sp)
@@ -43,7 +43,7 @@ pub unsafe fn mtrap_vector() {
         sd t5, 224(sp)
         sd t6, 232(sp)
         ",
-        stack_base = in(reg) STACK_BASE
+        // stack_base = const STACK_BASE
     );
 
     let a0: u64 = 0;
