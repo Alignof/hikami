@@ -98,7 +98,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
 
     // parse device tree
     let device_tree = unsafe {
-        match fdt::Fdt::from_ptr((dtb_addr + PA2VA_DRAM_OFFSET) as *const u8) {
+        match fdt::Fdt::from_ptr(dtb_addr.wrapping_add(PA2VA_DRAM_OFFSET) as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
         }
