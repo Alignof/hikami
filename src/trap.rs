@@ -6,8 +6,10 @@ use riscv::register::mcause;
 use riscv::register::mcause::{Exception, Interrupt};
 use riscv::register::{mepc, mhartid, mip, mstatus, mtval, scause, sepc, stval, stvec};
 
+/// CLINT MTIMECMP address
 const MTIMECMP_ADDR: usize = 0x200_4000;
 
+/// Trap handler for exception
 unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
     let ret_with_value = |ret_value: u64| {
         asm!("
@@ -132,6 +134,7 @@ unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
     }
 }
 
+/// Trap handler for Interrupt
 unsafe fn trap_interrupt(interrupt_cause: Interrupt) {
     match interrupt_cause {
         Interrupt::MachineSoft => {

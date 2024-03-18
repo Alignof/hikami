@@ -12,6 +12,7 @@ pub struct VirtIO {
 }
 
 impl VirtIO {
+    /// Create each Virt IO data when device has multiple IOs.
     pub fn new_all(device_tree: &Fdt, node_path: &str) -> Vec<Self> {
         device_tree
             .find_all_nodes(node_path)

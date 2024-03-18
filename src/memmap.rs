@@ -18,6 +18,7 @@ pub struct Memmap {
 }
 
 impl Memmap {
+    /// Create Memmap from device tree blob.
     pub fn new(device_tree: Fdt) -> Self {
         Memmap {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),

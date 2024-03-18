@@ -19,6 +19,7 @@ use riscv::register::{
 use riscv_rt::entry;
 use wild_screen_alloc::WildScreenAlloc;
 
+/// Panic handler
 #[panic_handler]
 pub fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
