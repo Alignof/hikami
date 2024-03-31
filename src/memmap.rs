@@ -2,6 +2,7 @@
 
 pub mod constant;
 pub mod device;
+pub mod page_table;
 
 use alloc::vec::Vec;
 use device::{initrd, plic, uart, virtio, Device};

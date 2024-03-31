@@ -7,9 +7,11 @@ use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
 };
 use crate::memmap::device::Device;
+use crate::memmap::page_table;
 use crate::memmap::Memmap;
 use crate::trap::supervisor::strap_vector;
 use core::arch::asm;
+use core::ops::Range;
 use elf::endian::AnyEndian;
 use elf::ElfBytes;
 use riscv::register::{satp, sepc, sie, sstatus, stvec};
@@ -22,26 +24,15 @@ use riscv::register::{satp, sepc, sie, sstatus, stvec};
 pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    for pt_index in 0..1024 {
-        let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
-        unsafe {
-            pt_offset.write_volatile(match pt_index {
-                // 0x0000_0000_1xxx_xxxx or 0x0000_0000_1xxx_xxxx
-                0 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
-                // 0 point to 640 PTE(for 0x0000_0000_1000_0000 -> 0x0000_0000_1000_0000)
-                640 => 0x0400_0000 | 0xcf, // d, a, x, w, r, v
-                // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
-                496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
-                // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
-                2 | 511 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
-                // 2 and 511 point to 512 PTE
-                512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
-                // 2nd level
-                513..=1023 => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
-                _ => 0,
-            });
-        }
-    }
+    const memory_map: [(Range<u64>, Range<u64>); 2] = [
+        // (virtual_memory_range, physical_memory_range),
+        (0x8000_0000..0x9000_0000, 0x8000_0000..0x9000_0000),
+        (
+            0xffff_ffff_8000_0000..0xffff_ffff_9000_0000,
+            0x8000_0000..0x9000_0000,
+        ),
+    ];
+    page_table::generate_page_table(page_table_start, &[], None);
 
     unsafe {
         // init trap vector
