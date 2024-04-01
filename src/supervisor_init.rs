@@ -24,7 +24,7 @@ use riscv::register::{satp, sepc, sie, sstatus, stvec};
 pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    const memory_map: [(Range<u64>, Range<u64>); 2] = [
+    const memory_map: [(Range<usize>, Range<usize>); 2] = [
         // (virtual_memory_range, physical_memory_range),
         (0x8000_0000..0x9000_0000, 0x8000_0000..0x9000_0000),
         (
@@ -32,7 +32,7 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
             0x8000_0000..0x9000_0000,
         ),
     ];
-    page_table::generate_page_table(page_table_start, &[], None);
+    page_table::generate_page_table(page_table_start, &mut memory_map, None);
 
     unsafe {
         // init trap vector
