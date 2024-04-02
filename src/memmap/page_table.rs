@@ -4,6 +4,14 @@ use core::iter::zip;
 use core::ops::Range;
 use core::slice::from_raw_parts_mut;
 
+enum PteFlags {
+    Valid = 0x0,
+}
+
+fn already_created(pte: u64) -> bool {
+    (pte >> PteFlags::Valid as usize) & 0x1 == 1
+}
+
 pub fn generate_page_table(
     table_start_addr: usize,
     memmap: &mut [(Range<usize>, Range<usize>)],
