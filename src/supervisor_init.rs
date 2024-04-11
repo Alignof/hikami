@@ -7,8 +7,7 @@ use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
 };
 use crate::memmap::device::Device;
-use crate::memmap::page_table;
-use crate::memmap::Memmap;
+use crate::memmap::{page_table, page_table::PteFlag, Memmap};
 use crate::trap::supervisor::strap_vector;
 use core::arch::asm;
 use core::ops::Range;
@@ -22,14 +21,26 @@ use riscv::register::{satp, sepc, sie, sstatus, stvec};
 /// * Init stack pointer
 #[inline(never)]
 pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
+    use PteFlag::*;
+
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    const memory_map: [(Range<usize>, Range<usize>); 2] = [
-        // (virtual_memory_range, physical_memory_range),
-        (0x8000_0000..0x9000_0000, 0x8000_0000..0x9000_0000),
+    let mut memory_map: [(Range<usize>, Range<usize>, &[PteFlag]); 3] = [
+        // (virtual_memory_range, physical_memory_range, flags),
+        (
+            0x1000_0000..0x1000_0100,
+            0x1000_0000..0x1000_0100,
+            &[Dirty, Accessed, Write, Read, Valid],
+        ),
+        (
+            0x8000_0000..0x9000_0000,
+            0x8000_0000..0x9000_0000,
+            &[Dirty, Accessed, Exec, Read, Valid],
+        ),
         (
             0xffff_ffff_8000_0000..0xffff_ffff_9000_0000,
             0x8000_0000..0x9000_0000,
+            &[Dirty, Accessed, Exec, Read, Valid],
         ),
     ];
     page_table::generate_page_table(page_table_start, &mut memory_map, None);
