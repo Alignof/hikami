@@ -1,9 +1,8 @@
 use alloc::boxed::Box;
-use core::ops::Range;
 use core::slice::from_raw_parts_mut;
 
 use super::constant::PAGE_SIZE;
-use super::Memmap;
+use super::MemoryMap;
 
 /// Each flags for page tables.
 #[allow(dead_code)]
@@ -32,8 +31,8 @@ pub enum PteFlag {
 struct PageTableEntry(u64);
 
 impl PageTableEntry {
-    fn new(ppn: u64, flags: &[PteFlag]) -> Self {
-        Self(ppn << 10 | flags.iter().fold(0, |pte_f, f| (pte_f | *f as u64)))
+    fn new(ppn: u64, flags: u8) -> Self {
+        Self(ppn << 10 | flags as u64)
     }
 
     fn already_created(self) -> bool {
@@ -46,11 +45,7 @@ impl PageTableEntry {
 }
 
 /// Generate third-level page table.
-pub fn generate_page_table(
-    root_table_start_addr: usize,
-    memmap: &mut [(Range<usize>, Range<usize>, &[PteFlag])],
-    _device_memap: Option<Memmap>,
-) {
+pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
     const PTE_SIZE: usize = 8;
     const PAGE_TABLE_SIZE: usize = 512;
 
@@ -62,19 +57,21 @@ pub fn generate_page_table(
     };
 
     // zero filling page table
-    first_lv_page_table.fill(PageTableEntry(0));
+    if initialize {
+        first_lv_page_table.fill(PageTableEntry(0));
+    }
 
-    for (v_range, p_range, pte_flags) in memmap {
+    for memmap in memmaps {
         use crate::{print, println};
-        println!("{:x?}", v_range);
+        println!("{:x?}", memmap.virt);
 
-        assert!(v_range.len() == p_range.len());
-        assert!(v_range.start as usize % PAGE_SIZE == 0);
-        assert!(p_range.start as usize % PAGE_SIZE == 0);
+        assert!(memmap.virt.len() == memmap.phys.len());
+        assert!(memmap.virt.start as usize % PAGE_SIZE == 0);
+        assert!(memmap.phys.start as usize % PAGE_SIZE == 0);
 
-        for offset in (0..v_range.len()).step_by(PAGE_SIZE) {
-            let v_start = v_range.start + offset;
-            let p_start = p_range.start + offset;
+        for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
+            let v_start = memmap.virt.start + offset;
+            let p_start = memmap.phys.start + offset;
 
             // first level
             let vpn2 = (v_start >> 30) & 0x1ff;
@@ -85,7 +82,7 @@ pub fn generate_page_table(
 
                 first_lv_page_table[vpn2] = PageTableEntry::new(
                     second_pt_paddr as u64 / PAGE_SIZE as u64,
-                    &[PteFlag::Valid],
+                    PteFlag::Valid as u8,
                 );
             }
 
@@ -105,7 +102,7 @@ pub fn generate_page_table(
 
                 second_lv_page_table[vpn1] = PageTableEntry::new(
                     third_pt_paddr as u64 / PAGE_SIZE as u64,
-                    &[PteFlag::Valid],
+                    PteFlag::Valid as u8,
                 );
             }
 
@@ -119,7 +116,7 @@ pub fn generate_page_table(
                 )
             };
             third_lv_page_table[vpn0] =
-                PageTableEntry::new((p_start / PAGE_SIZE).try_into().unwrap(), pte_flags);
+                PageTableEntry::new((p_start / PAGE_SIZE).try_into().unwrap(), memmap.flags);
         }
     }
 }

@@ -7,10 +7,9 @@ use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
 };
 use crate::memmap::device::Device;
-use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap};
+use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap, MemoryMap};
 use crate::trap::supervisor::strap_vector;
 use core::arch::asm;
-use core::ops::Range;
 use elf::endian::AnyEndian;
 use elf::ElfBytes;
 use riscv::register::{satp, sepc, sie, sstatus, stvec};
@@ -25,58 +24,46 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
 
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    let mut memory_map: [(Range<usize>, Range<usize>, &[PteFlag]); 8] = [
+    let memory_map: [MemoryMap; 6] = [
         // (virtual_memory_range, physical_memory_range, flags),
-        // clint
-        (
-            0x0200_0000..0x0220_0000,
-            0x0200_0000..0x0220_0000,
-            &[Dirty, Accessed, Write, Read, Valid],
-        ),
-        // plic
-        (
-            0x0c00_0000..0x0c60_0000,
-            0x0c00_0000..0x0c60_0000,
-            &[Dirty, Accessed, Write, Read, Valid],
-        ),
         // uart
-        (
+        MemoryMap::new(
             0x1000_0000..0x1000_0100,
             0x1000_0000..0x1000_0100,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
         // TEXT (physical map)
-        (
+        MemoryMap::new(
             0x8000_0000..0x8020_0000,
             0x8000_0000..0x8020_0000,
             &[Dirty, Accessed, Exec, Read, Valid],
         ),
         // RAM
-        (
+        MemoryMap::new(
             0x8020_0000..0x8060_0000,
             0x8020_0000..0x8060_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
         // Device tree
-        (
+        MemoryMap::new(
             0xbfe0_0000..0xc000_0000,
             0xbfe0_0000..0xc000_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
         // TEXT
-        (
+        MemoryMap::new(
             0xffff_ffff_c000_0000..0xffff_ffff_c020_0000,
             0x8000_0000..0x8020_0000,
             &[Dirty, Accessed, Exec, Read, Valid],
         ),
         // RAM
-        (
+        MemoryMap::new(
             0xffff_ffff_c020_0000..0xffff_ffff_c060_0000,
             0x8020_0000..0x8060_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
     ];
-    page_table::generate_page_table(page_table_start, &mut memory_map, None);
+    page_table::generate_page_table(page_table_start, &memory_map, true);
 
     unsafe {
         // init trap vector

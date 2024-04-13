@@ -8,6 +8,22 @@ use alloc::vec::Vec;
 use device::{initrd, plic, uart, virtio, Device};
 use fdt::Fdt;
 
+pub struct MemoryMap {
+    phys: Range<usize>,
+    virt: Range<usize>,
+    flags: u8,
+}
+
+impl MemoryMap {
+    pub fn new(phys: Range<usize>, virt: Range<usize>, flags: &[PteFlag]) -> Self {
+        Self {
+            phys,
+            virt,
+            flags: flags.iter().fold(0, |pte_f, f| (pte_f | *f as u8)),
+        }
+    }
+}
+
 /// Memmap has memory region data of each devices.  
 /// Each devices **must** be implemented Device trait.
 pub struct DeviceMemmap {
