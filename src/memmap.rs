@@ -10,7 +10,7 @@ use fdt::Fdt;
 
 /// Memmap has memory region data of each devices.  
 /// Each devices **must** be implemented Device trait.
-pub struct Memmap {
+pub struct DeviceMemmap {
     pub uart: uart::Uart,
     pub virtio: Vec<virtio::VirtIO>,
     pub initrd: initrd::Initrd,
@@ -18,10 +18,10 @@ pub struct Memmap {
     pub plic_context: usize,
 }
 
-impl Memmap {
+impl DeviceMemmap {
     /// Create Memmap from device tree blob.
     pub fn new(device_tree: Fdt) -> Self {
-        Memmap {
+        DeviceMemmap {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             virtio: virtio::VirtIO::new_all(&device_tree, "/soc/virtio_mmio"),
             initrd: initrd::Initrd::new(&device_tree, "/chosen"),

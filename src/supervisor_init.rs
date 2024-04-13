@@ -7,7 +7,7 @@ use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
 };
 use crate::memmap::device::Device;
-use crate::memmap::{page_table, page_table::PteFlag, Memmap};
+use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap};
 use crate::trap::supervisor::strap_vector;
 use core::arch::asm;
 use core::ops::Range;
@@ -138,7 +138,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
             Err(e) => panic!("{}", e),
         }
     };
-    let mmap = Memmap::new(device_tree);
+    let mmap = DeviceMemmap::new(device_tree);
 
     // set plic priorities
     for plic_num in 1..127 {
