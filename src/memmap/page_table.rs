@@ -53,6 +53,8 @@ pub fn generate_page_table(
 ) {
     const PTE_SIZE: usize = 8;
     const PAGE_TABLE_SIZE: usize = 512;
+    const SECOND_LEVEL_ALIGN: usize = 0x20_0000;
+
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
             root_table_start_addr as *mut PageTableEntry,
@@ -68,12 +70,11 @@ pub fn generate_page_table(
         println!("{:x?}", v_range);
 
         assert!(v_range.len() == p_range.len());
-        assert!(v_range.start as usize % PAGE_SIZE == 0);
-        assert!(p_range.start as usize % PAGE_SIZE == 0);
+        assert!(v_range.start as usize % SECOND_LEVEL_ALIGN == 0);
+        assert!(p_range.start as usize % SECOND_LEVEL_ALIGN == 0);
 
-        const SECOND_LEVEL_STEP: usize = 0x2_0000;
         //for (v_start, p_start) in zip(v_range, p_range).step_by(PAGE_SIZE) {
-        for offset in (0..v_range.len()).step_by(SECOND_LEVEL_STEP) {
+        for offset in (0..v_range.len()).step_by(SECOND_LEVEL_ALIGN) {
             let v_start = v_range.start + offset;
             let p_start = p_range.start + offset;
 
@@ -92,6 +93,10 @@ pub fn generate_page_table(
 
             // second_level
             let vpn1 = (v_start >> 21) & 0x1ff;
+            println!(
+                "v_start: {:#x}, vpn2: {:#x}, vpn1: {:#x}",
+                v_start, vpn2, vpn1
+            );
             let second_table_start_addr = first_lv_page_table[vpn2].pte() * PAGE_SIZE as u64;
             let second_lv_page_table: &mut [PageTableEntry] = unsafe {
                 from_raw_parts_mut(

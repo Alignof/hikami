@@ -25,22 +25,55 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
 
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    let mut memory_map: [(Range<usize>, Range<usize>, &[PteFlag]); 3] = [
+    let mut memory_map: [(Range<usize>, Range<usize>, &[PteFlag]); 8] = [
         // (virtual_memory_range, physical_memory_range, flags),
+        // clint
+        (
+            0x0200_0000..0x0220_0000,
+            0x0200_0000..0x0220_0000,
+            &[Dirty, Accessed, Write, Read, Valid],
+        ),
+        // plic
+        (
+            0x0c00_0000..0x0c60_0000,
+            0x0c00_0000..0x0c60_0000,
+            &[Dirty, Accessed, Write, Read, Valid],
+        ),
+        // uart
         (
             0x1000_0000..0x1000_0100,
             0x1000_0000..0x1000_0100,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
+        // TEXT (physical map)
         (
-            0x8000_0000..0x9000_0000,
-            0x8000_0000..0x9000_0000,
+            0x8000_0000..0x8020_0000,
+            0x8000_0000..0x8020_0000,
             &[Dirty, Accessed, Exec, Read, Valid],
         ),
+        // RAM
         (
-            0xffff_ffff_8000_0000..0xffff_ffff_9000_0000,
-            0x8000_0000..0x9000_0000,
+            0x8020_0000..0x8060_0000,
+            0x8020_0000..0x8060_0000,
+            &[Dirty, Accessed, Write, Read, Valid],
+        ),
+        // Device tree
+        (
+            0xbfe0_0000..0xc000_0000,
+            0xbfe0_0000..0xc000_0000,
+            &[Dirty, Accessed, Write, Read, Valid],
+        ),
+        // TEXT
+        (
+            0xffff_ffff_c000_0000..0xffff_ffff_c020_0000,
+            0x8000_0000..0x8020_0000,
             &[Dirty, Accessed, Exec, Read, Valid],
+        ),
+        // RAM
+        (
+            0xffff_ffff_c020_0000..0xffff_ffff_c060_0000,
+            0x8020_0000..0x8060_0000,
+            &[Dirty, Accessed, Write, Read, Valid],
         ),
     ];
     page_table::generate_page_table(page_table_start, &mut memory_map, None);
@@ -100,7 +133,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
 
     // parse device tree
     let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr.wrapping_add(PA2VA_DRAM_OFFSET) as *const u8) {
+        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
         }
