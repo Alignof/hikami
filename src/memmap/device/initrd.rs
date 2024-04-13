@@ -3,6 +3,14 @@ use crate::memmap::page_table::PteFlag;
 use crate::memmap::{constant, MemoryMap};
 use fdt::Fdt;
 
+const DEVICE_FLAGS: [PteFlag; 5] = [
+    PteFlag::Dirty,
+    PteFlag::Accessed,
+    PteFlag::Write,
+    PteFlag::Read,
+    PteFlag::Valid,
+];
+
 /// A scheme for loading a temporary root file system into memory,
 /// to be used as part of the Linux startup process.
 pub struct Initrd {
@@ -39,34 +47,18 @@ impl Device for Initrd {
     }
 
     fn memmap(&self) -> MemoryMap {
-        let device_flags = &[
-            PteFlag::Dirty,
-            PteFlag::Accessed,
-            PteFlag::Write,
-            PteFlag::Read,
-            PteFlag::Valid,
-        ];
-
         MemoryMap::new(
             self.vaddr()..self.vaddr() + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            device_flags,
+            &DEVICE_FLAGS,
         )
     }
 
     fn identity_memmap(&self) -> MemoryMap {
-        let device_flags = &[
-            PteFlag::Dirty,
-            PteFlag::Accessed,
-            PteFlag::Write,
-            PteFlag::Read,
-            PteFlag::Valid,
-        ];
-
         MemoryMap::new(
             self.paddr()..self.paddr() + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            device_flags,
+            &DEVICE_FLAGS,
         )
     }
 }

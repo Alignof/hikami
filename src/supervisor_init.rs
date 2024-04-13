@@ -127,6 +127,10 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
     };
     let mmap = DeviceMemmap::new(device_tree);
 
+    // set page table for each devices
+    let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
+    mmap.device_mapping(page_table_start);
+
     // set plic priorities
     for plic_num in 1..127 {
         unsafe {

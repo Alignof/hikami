@@ -4,6 +4,14 @@ use crate::memmap::{constant, MemoryMap};
 use alloc::vec::Vec;
 use fdt::Fdt;
 
+const DEVICE_FLAGS: [PteFlag; 5] = [
+    PteFlag::Dirty,
+    PteFlag::Accessed,
+    PteFlag::Write,
+    PteFlag::Read,
+    PteFlag::Valid,
+];
+
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
 pub struct VirtIO {
@@ -60,34 +68,18 @@ impl Device for VirtIO {
     }
 
     fn memmap(&self) -> MemoryMap {
-        let device_flags = &[
-            PteFlag::Dirty,
-            PteFlag::Accessed,
-            PteFlag::Write,
-            PteFlag::Read,
-            PteFlag::Valid,
-        ];
-
         MemoryMap::new(
             self.vaddr()..self.vaddr() + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            device_flags,
+            &DEVICE_FLAGS,
         )
     }
 
     fn identity_memmap(&self) -> MemoryMap {
-        let device_flags = &[
-            PteFlag::Dirty,
-            PteFlag::Accessed,
-            PteFlag::Write,
-            PteFlag::Read,
-            PteFlag::Valid,
-        ];
-
         MemoryMap::new(
             self.paddr()..self.paddr() + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            device_flags,
+            &DEVICE_FLAGS,
         )
     }
 }

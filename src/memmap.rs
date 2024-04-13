@@ -4,10 +4,13 @@ pub mod constant;
 pub mod device;
 pub mod page_table;
 
+use crate::memmap::page_table::PteFlag;
 use alloc::vec::Vec;
+use core::ops::Range;
 use device::{initrd, plic, uart, virtio, Device};
 use fdt::Fdt;
 
+#[derive(Clone)]
 pub struct MemoryMap {
     phys: Range<usize>,
     virt: Range<usize>,
@@ -60,5 +63,30 @@ impl DeviceMemmap {
                 .value[0] as usize,
             */
         }
+    }
+
+    pub fn device_mapping(&self, page_table_start: usize) {
+        let memory_map = self.create_device_map();
+        page_table::generate_page_table(page_table_start, &memory_map, false);
+    }
+
+    fn create_device_map(&self) -> Vec<MemoryMap> {
+        let mut device_mapping: Vec<MemoryMap> = self
+            .virtio
+            .iter()
+            .map(|virt| [virt.memmap(), virt.identity_memmap()])
+            .flatten()
+            .collect();
+
+        device_mapping.extend_from_slice(&[
+            self.uart.memmap(),
+            self.uart.identity_memmap(),
+            self.initrd.memmap(),
+            self.initrd.identity_memmap(),
+            self.plic.memmap(),
+            self.plic.identity_memmap(),
+        ]);
+
+        device_mapping
     }
 }
