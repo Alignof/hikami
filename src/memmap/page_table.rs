@@ -45,7 +45,7 @@ impl PageTableEntry {
     }
 }
 
-/// Generate second-level page table for now.
+/// Generate third-level page table.
 pub fn generate_page_table(
     root_table_start_addr: usize,
     memmap: &mut [(Range<usize>, Range<usize>, &[PteFlag])],
@@ -53,7 +53,6 @@ pub fn generate_page_table(
 ) {
     const PTE_SIZE: usize = 8;
     const PAGE_TABLE_SIZE: usize = 512;
-    const SECOND_LEVEL_ALIGN: usize = 0x20_0000;
 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
@@ -70,11 +69,10 @@ pub fn generate_page_table(
         println!("{:x?}", v_range);
 
         assert!(v_range.len() == p_range.len());
-        assert!(v_range.start as usize % SECOND_LEVEL_ALIGN == 0);
-        assert!(p_range.start as usize % SECOND_LEVEL_ALIGN == 0);
+        assert!(v_range.start as usize % PAGE_SIZE == 0);
+        assert!(p_range.start as usize % PAGE_SIZE == 0);
 
-        //for (v_start, p_start) in zip(v_range, p_range).step_by(PAGE_SIZE) {
-        for offset in (0..v_range.len()).step_by(SECOND_LEVEL_ALIGN) {
+        for offset in (0..v_range.len()).step_by(PAGE_SIZE) {
             let v_start = v_range.start + offset;
             let p_start = p_range.start + offset;
 
@@ -91,12 +89,8 @@ pub fn generate_page_table(
                 );
             }
 
-            // second_level
+            // second level
             let vpn1 = (v_start >> 21) & 0x1ff;
-            println!(
-                "v_start: {:#x}, vpn2: {:#x}, vpn1: {:#x}",
-                v_start, vpn2, vpn1
-            );
             let second_table_start_addr = first_lv_page_table[vpn2].pte() * PAGE_SIZE as u64;
             let second_lv_page_table: &mut [PageTableEntry] = unsafe {
                 from_raw_parts_mut(
@@ -104,7 +98,27 @@ pub fn generate_page_table(
                     PAGE_TABLE_SIZE * PTE_SIZE,
                 )
             };
-            second_lv_page_table[vpn1] =
+            if !second_lv_page_table[vpn1].already_created() {
+                let third_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
+                let third_pt_paddr = Box::into_raw(third_pt);
+                println!("third_pt_paddr: {:x}", third_pt_paddr as u64);
+
+                second_lv_page_table[vpn1] = PageTableEntry::new(
+                    third_pt_paddr as u64 / PAGE_SIZE as u64,
+                    &[PteFlag::Valid],
+                );
+            }
+
+            // third level
+            let vpn0 = (v_start >> 12) & 0x1ff;
+            let third_table_start_addr = second_lv_page_table[vpn1].pte() * PAGE_SIZE as u64;
+            let third_lv_page_table: &mut [PageTableEntry] = unsafe {
+                from_raw_parts_mut(
+                    third_table_start_addr as *mut PageTableEntry,
+                    PAGE_TABLE_SIZE * PTE_SIZE,
+                )
+            };
+            third_lv_page_table[vpn0] =
                 PageTableEntry::new((p_start / PAGE_SIZE).try_into().unwrap(), pte_flags);
         }
     }
