@@ -6,6 +6,7 @@ pub mod plic;
 pub mod uart;
 pub mod virtio;
 
+use super::MemoryMap;
 use fdt::Fdt;
 
 /// A struct that implement Device trait **must** has `base_addr` and size member.
@@ -20,4 +21,8 @@ pub trait Device {
     fn paddr(&self) -> usize;
     /// Return address of virtual memory
     fn vaddr(&self) -> usize;
+    /// Return memory map between virtual to physical
+    fn memmap(&self) -> MemoryMap;
+    /// Return memory map between physical to physical
+    fn identity_memmap(&self) -> MemoryMap;
 }

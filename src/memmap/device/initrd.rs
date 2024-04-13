@@ -1,5 +1,6 @@
 use super::Device;
-use crate::memmap::constant;
+use crate::memmap::page_table::PteFlag;
+use crate::memmap::{constant, MemoryMap};
 use fdt::Fdt;
 
 /// A scheme for loading a temporary root file system into memory,
@@ -35,5 +36,37 @@ impl Device for Initrd {
 
     fn vaddr(&self) -> usize {
         self.base_addr + constant::PA2VA_DEVICE_OFFSET
+    }
+
+    fn memmap(&self) -> MemoryMap {
+        let device_flags = &[
+            PteFlag::Dirty,
+            PteFlag::Accessed,
+            PteFlag::Write,
+            PteFlag::Read,
+            PteFlag::Valid,
+        ];
+
+        MemoryMap::new(
+            self.vaddr()..self.vaddr() + self.size(),
+            self.paddr()..self.paddr() + self.size(),
+            device_flags,
+        )
+    }
+
+    fn identity_memmap(&self) -> MemoryMap {
+        let device_flags = &[
+            PteFlag::Dirty,
+            PteFlag::Accessed,
+            PteFlag::Write,
+            PteFlag::Read,
+            PteFlag::Valid,
+        ];
+
+        MemoryMap::new(
+            self.paddr()..self.paddr() + self.size(),
+            self.paddr()..self.paddr() + self.size(),
+            device_flags,
+        )
     }
 }

@@ -1,5 +1,6 @@
 use super::Device;
-use crate::memmap::constant;
+use crate::memmap::page_table::PteFlag;
+use crate::memmap::{constant, MemoryMap};
 use fdt::Fdt;
 
 pub const ENABLE_BASE: usize = 0x2000;
@@ -41,5 +42,37 @@ impl Device for Plic {
 
     fn vaddr(&self) -> usize {
         self.base_addr + constant::PA2VA_DEVICE_OFFSET
+    }
+
+    fn memmap(&self) -> MemoryMap {
+        let device_flags = &[
+            PteFlag::Dirty,
+            PteFlag::Accessed,
+            PteFlag::Write,
+            PteFlag::Read,
+            PteFlag::Valid,
+        ];
+
+        MemoryMap::new(
+            self.vaddr()..self.vaddr() + self.size(),
+            self.paddr()..self.paddr() + self.size(),
+            device_flags,
+        )
+    }
+
+    fn identity_memmap(&self) -> MemoryMap {
+        let device_flags = &[
+            PteFlag::Dirty,
+            PteFlag::Accessed,
+            PteFlag::Write,
+            PteFlag::Read,
+            PteFlag::Valid,
+        ];
+
+        MemoryMap::new(
+            self.paddr()..self.paddr() + self.size(),
+            self.paddr()..self.paddr() + self.size(),
+            device_flags,
+        )
     }
 }
