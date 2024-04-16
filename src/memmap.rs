@@ -12,16 +12,16 @@ use fdt::Fdt;
 
 #[derive(Clone)]
 pub struct MemoryMap {
-    phys: Range<usize>,
     virt: Range<usize>,
+    phys: Range<usize>,
     flags: u8,
 }
 
 impl MemoryMap {
-    pub fn new(phys: Range<usize>, virt: Range<usize>, flags: &[PteFlag]) -> Self {
+    pub fn new(virt: Range<usize>, phys: Range<usize>, flags: &[PteFlag]) -> Self {
         Self {
-            phys,
             virt,
+            phys,
             flags: flags.iter().fold(0, |pte_f, f| (pte_f | *f as u8)),
         }
     }
