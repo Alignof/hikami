@@ -24,12 +24,18 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
 
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    let memory_map: [MemoryMap; 6] = [
+    let memory_map: [MemoryMap; 7] = [
         // (virtual_memory_range, physical_memory_range, flags),
         // uart
         MemoryMap::new(
             0x1000_0000..0x1000_0100,
             0x1000_0000..0x1000_0100,
+            &[Dirty, Accessed, Write, Read, Valid],
+        ),
+        // Device tree
+        MemoryMap::new(
+            0xbfe0_0000..0xc000_0000,
+            0xbfe0_0000..0xc000_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
         // TEXT (physical map)
@@ -44,10 +50,10 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
             0x8020_0000..0x8060_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
-        // Device tree
+        // hypervisor RAM
         MemoryMap::new(
-            0xbfe0_0000..0xc000_0000,
-            0xbfe0_0000..0xc000_0000,
+            0x9000_0000..0x9000_4000,
+            0x9000_0000..0x9000_4000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
         // TEXT
@@ -110,6 +116,7 @@ extern "C" fn trampoline(hart_id: usize, dtb_addr: usize) {
 /// * Set stack pointer
 /// * Jump to `enter_user_mode` via asm j instruction
 extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
+    use PteFlag::*;
     unsafe {
         sstatus::clear_sie();
         stvec::write(
@@ -145,11 +152,11 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
 
     // set plic
     unsafe {
-        ((mmap.plic.vaddr() + CONTEXT_BASE + CONTEXT_PER_HART * mmap.plic_context) as *mut u32)
+        ((mmap.plic.paddr() + CONTEXT_BASE + CONTEXT_PER_HART * mmap.plic_context) as *mut u32)
             .write_volatile(0);
-        ((mmap.plic.vaddr() + ENABLE_BASE + ENABLE_PER_HART * mmap.plic_context) as *mut u32)
+        ((mmap.plic.paddr() + ENABLE_BASE + ENABLE_PER_HART * mmap.plic_context) as *mut u32)
             .write_volatile(irq_mask);
-        ((mmap.plic.vaddr() + ENABLE_BASE + ENABLE_PER_HART * mmap.plic_context + CONTEXT_CLAIM)
+        ((mmap.plic.paddr() + ENABLE_BASE + ENABLE_PER_HART * mmap.plic_context + CONTEXT_CLAIM)
             as *mut u32)
             .write_volatile(0);
     }
@@ -157,10 +164,57 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
     let guest_id = hart_id + 1;
     let guest_base_addr = DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART;
     unsafe {
+        // boot page tables
+        let page_table_start = guest_base_addr;
+        let memory_map: [MemoryMap; 6] = [
+            // (virtual_memory_range, physical_memory_range, flags),
+            // Device tree
+            MemoryMap::new(
+                0xbfe0_0000..0xc000_0000,
+                0xbfe0_0000..0xc000_0000,
+                &[Dirty, Accessed, Write, Read, Valid],
+            ),
+            // TEXT (physical map)
+            MemoryMap::new(
+                0x8000_0000..0x8020_0000,
+                0x8000_0000..0x8020_0000,
+                &[Dirty, Accessed, Exec, Read, Valid],
+            ),
+            // RAM
+            MemoryMap::new(
+                0x8020_0000..0x8060_0000,
+                0x8020_0000..0x8060_0000,
+                &[Dirty, Accessed, Write, Read, Valid],
+            ),
+            // RAM
+            MemoryMap::new(
+                0x9000_0000..0x9040_0000,
+                0x9000_0000..0x9040_0000,
+                &[Dirty, Accessed, Write, Read, Valid],
+            ),
+            // TEXT
+            MemoryMap::new(
+                0xffff_ffff_d400_0000..0xffff_ffff_d600_0000,
+                0x9400_0000..0x9060_0000,
+                &[Dirty, Accessed, Exec, Read, Valid],
+            ),
+            // RAM
+            MemoryMap::new(
+                0xffff_ffff_d000_0000..0xffff_ffff_d400_0000,
+                0x9000_0000..0x9400_0000,
+                &[Dirty, Accessed, Write, Read, Valid],
+            ),
+        ];
+        page_table::generate_page_table(page_table_start, &memory_map, true);
+        mmap.device_mapping(page_table_start);
+
+        // satp = Sv39 | 0x9000_0000 >> 12
+        satp::set(satp::Mode::Sv39, 0, page_table_start >> 12);
+
         // copy dtb to guest space
-        let guest_dtb_addr = guest_base_addr + GUEST_DEVICE_TREE_OFFSET + PA2VA_DRAM_OFFSET;
+        let guest_dtb_addr = guest_base_addr + GUEST_DEVICE_TREE_OFFSET;
         core::ptr::copy(
-            (dtb_addr + PA2VA_DRAM_OFFSET) as *const u8,
+            dtb_addr as *const u8,
             guest_dtb_addr as *mut u8,
             device_tree.total_size(),
         );
@@ -168,7 +222,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
         // copy initrd to guest space
         core::ptr::copy(
             mmap.initrd.vaddr() as *const u8,
-            (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DRAM_OFFSET) as *mut u8,
+            (guest_base_addr + GUEST_HEAP_OFFSET) as *mut u8,
             mmap.initrd.size(),
         );
 
@@ -176,33 +230,6 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
         sie::set_ssoft();
         sie::set_stimer();
         sie::set_sext();
-
-        // boot page tables
-        let page_table_start = guest_base_addr;
-        for pt_index in 0..1024 {
-            let pt_offset = (page_table_start + pt_index * 8) as *mut usize;
-            pt_offset.write_volatile(match pt_index {
-                // 0x0000_0000_1xxx_xxxx or 0x0000_0000_1xxx_xxxx
-                0 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
-                // 0 point to 128 PTE(for 0x0000_0000_1000_0000 -> 0x0000_0000_1000_0000)
-                128 => 0x0400_0000 | 0xc7, // d, a, w, r, v
-                // 0xffff_fffc_0xxx_xxxx ..= 0xffff_ffff_8xxx_xxxx
-                496..=503 => (pt_index - 496) << 28 | 0xcf, // a, d, x, w, r, v
-                // 0x0000_0000_8xxx_xxxx or 0xffff_ffff_cxxx_xxxx
-                // 0x0000_0000_9xxx_xxxx or 0xffff_ffff_dxxx_xxxx
-                2 | 511 => (page_table_start + PAGE_SIZE) >> 2 | 0x01, // v
-                // 2 and 511 point to 512 PTE(for 0xffff_ffff_cxxx_xxxx -> 0x0000_0000_8xxx_xxxx)
-                512 => 0x2000_0000 | 0xcb, // d, a, x, r, v
-                // 2 and 511 point to 640 PTE(for 0xffff_ffff_dxxx_xxxx -> 0x0000_0000_9xxx_xxxx)
-                640 => 0x2400_0000 | 0xcf, // d, a, x, w, r, v
-                // 2nd level
-                513..=1023 => (0x2000_0000 + ((pt_index - 512) << 19)) | 0xc7, // d, a, w, r, v
-                _ => 0,
-            });
-        }
-
-        // satp = Sv39 | 0x9000_0000 >> 12
-        satp::set(satp::Mode::Sv39, 0, page_table_start >> 12);
 
         let stack_pointer = guest_base_addr + GUEST_STACK_OFFSET + PA2VA_DRAM_OFFSET;
         asm!(

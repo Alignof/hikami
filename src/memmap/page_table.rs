@@ -78,7 +78,6 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             if !first_lv_page_table[vpn2].already_created() {
                 let second_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
                 let second_pt_paddr = Box::into_raw(second_pt);
-                println!("second_pt_paddr: {:x}", second_pt_paddr as u64);
 
                 first_lv_page_table[vpn2] = PageTableEntry::new(
                     second_pt_paddr as u64 / PAGE_SIZE as u64,
@@ -98,7 +97,6 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             if !second_lv_page_table[vpn1].already_created() {
                 let third_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
                 let third_pt_paddr = Box::into_raw(third_pt);
-                println!("third_pt_paddr: {:x}", third_pt_paddr as u64);
 
                 second_lv_page_table[vpn1] = PageTableEntry::new(
                     third_pt_paddr as u64 / PAGE_SIZE as u64,
