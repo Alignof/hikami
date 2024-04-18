@@ -10,8 +10,8 @@
 //! | 0x8020_0000 | 0x8030_0000 | hypervisor static |
 //! | 0x8030_0000 | 0x8030_2000 | hypervisor page table |
 //! | 0x8030_4000 | 0x8030_xxxx | hypervisor device tree blob |
-//! | 0x8040_0000 | 0x8060_0000 | hypervisor heap |
-//! | 0x8060_0000 | 0x8051_0000 | hypervisor stack |
+//! | 0x8040_0000 |     ...     | hypervisor heap |
+//! |     ...     | 0x8080_0000 | hypervisor stack |
 //! | 0x9000_0000 | 0x9000_2000 | hypervisor page table |
 //! | 0x9000_2000 | 0x9000_4000 | hypervisor device tree |
 //! | 0x9010_0000 | 0x902f_ffff | hypervisor stack |
@@ -31,14 +31,14 @@ pub const PAGE_TABLE_BASE: usize = 0x8030_0000;
 pub const PAGE_SIZE: usize = 4096;
 /// Page table offset for each HART.
 pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
-/// Base address of stack.
-pub const STACK_BASE: usize = 0x8060_0000; // modify trap vector immediate when change it.
-/// Stack size for each HART.
-pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 /// Base address of heap.
 pub const HEAP_BASE: usize = 0x8040_0000;
 /// Heap size.
-pub const HEAP_SIZE: usize = 0x20_0000;
+pub const HEAP_SIZE: usize = 0x40_0000;
+/// Base address of stack.
+pub const STACK_BASE: usize = 0x8080_0000; // modify trap vector immediate when change it.
+/// Stack size for each HART.
+pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 /// Offset for converting physical address on dram to virtual address.
 pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
 /// Offset for converting physical device address to virtual address.

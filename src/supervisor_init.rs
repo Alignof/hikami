@@ -1,7 +1,6 @@
 use crate::memmap::constant::{
     DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_DEVICE_TREE_OFFSET, GUEST_HEAP_OFFSET, GUEST_STACK_OFFSET,
-    GUEST_TEXT_OFFSET, PA2VA_DRAM_OFFSET, PAGE_SIZE, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART,
-    STACK_BASE,
+    GUEST_TEXT_OFFSET, PA2VA_DRAM_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
 };
 use crate::memmap::device::plic::{
     CONTEXT_BASE, CONTEXT_CLAIM, CONTEXT_PER_HART, ENABLE_BASE, ENABLE_PER_HART,
@@ -46,8 +45,8 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
         ),
         // RAM
         MemoryMap::new(
-            0x8020_0000..0x8060_0000,
-            0x8020_0000..0x8060_0000,
+            0x8020_0000..0x8080_0000,
+            0x8020_0000..0x8080_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
         // hypervisor RAM
@@ -64,8 +63,8 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
         ),
         // RAM
         MemoryMap::new(
-            0xffff_ffff_c020_0000..0xffff_ffff_c060_0000,
-            0x8020_0000..0x8060_0000,
+            0xffff_ffff_c020_0000..0xffff_ffff_c080_0000,
+            0x8020_0000..0x8080_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
     ];
@@ -166,7 +165,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
     unsafe {
         // boot page tables
         let page_table_start = guest_base_addr;
-        let memory_map: [MemoryMap; 6] = [
+        let memory_map: [MemoryMap; 7] = [
             // (virtual_memory_range, physical_memory_range, flags),
             // Device tree
             MemoryMap::new(
@@ -182,8 +181,8 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
             ),
             // RAM
             MemoryMap::new(
-                0x8020_0000..0x8060_0000,
-                0x8020_0000..0x8060_0000,
+                0x8020_0000..0x8080_0000,
+                0x8020_0000..0x8080_0000,
                 &[Dirty, Accessed, Write, Read, Valid],
             ),
             // RAM
@@ -192,17 +191,23 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
                 0x9000_0000..0x9040_0000,
                 &[Dirty, Accessed, Write, Read, Valid],
             ),
-            // TEXT
+            // Privious stack area
             MemoryMap::new(
-                0xffff_ffff_d400_0000..0xffff_ffff_d600_0000,
-                0x9400_0000..0x9060_0000,
-                &[Dirty, Accessed, Exec, Read, Valid],
+                0xffff_ffff_c040_0000..0xffff_ffff_c080_0000,
+                0x8040_0000..0x8080_0000,
+                &[Dirty, Accessed, Write, Read, Valid],
             ),
             // RAM
             MemoryMap::new(
                 0xffff_ffff_d000_0000..0xffff_ffff_d400_0000,
                 0x9000_0000..0x9400_0000,
                 &[Dirty, Accessed, Write, Read, Valid],
+            ),
+            // TEXT
+            MemoryMap::new(
+                0xffff_ffff_d400_0000..0xffff_ffff_d600_0000,
+                0x9400_0000..0x9600_0000,
+                &[Dirty, Accessed, Exec, Read, Valid],
             ),
         ];
         page_table::generate_page_table(page_table_start, &memory_map, true);
