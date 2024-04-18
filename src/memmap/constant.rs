@@ -14,9 +14,9 @@
 //! |     ...     | 0x8080_0000 | hypervisor stack |
 //! | 0x9000_0000 | 0x9000_2000 | hypervisor page table |
 //! | 0x9000_2000 | 0x9000_4000 | hypervisor device tree |
-//! | 0x9010_0000 | 0x902f_ffff | hypervisor stack |
-//! | 0x9030_0000 | 0x93ff_ffff | hypervisor heap |
-//! | 0x9400_0000 |     ...     | text data of hikami |
+//! | 0x9100_0000 |     ...     | hypervisor heap |
+//! |     ...     | 0x9300_0000 | hypervisor stack |
+//! | 0x9300_0000 |     ...     | text data of hikami |
 
 /// Uart addr
 pub const UART_ADDR: usize = 0x1000_0000;
@@ -46,9 +46,9 @@ pub const PA2VA_DEVICE_OFFSET: usize = 0xffff_fffc_0000_0000;
 
 /// loading device tree offset of guest space
 pub const GUEST_DEVICE_TREE_OFFSET: usize = 0x2000;
-/// Stack offset of guest space
-pub const GUEST_STACK_OFFSET: usize = 0x10_0000;
 /// Heap offset of guest space
-pub const GUEST_HEAP_OFFSET: usize = 0x30_0000;
+pub const GUEST_HEAP_OFFSET: usize = 0x100_0000;
+/// Stack offset of guest space
+pub const GUEST_STACK_OFFSET: usize = 0x300_0000;
 /// Guest Text secion offset
-pub const GUEST_TEXT_OFFSET: usize = 0x0400_0000;
+pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;

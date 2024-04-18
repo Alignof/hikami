@@ -199,15 +199,15 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
             ),
             // RAM
             MemoryMap::new(
-                0xffff_ffff_d000_0000..0xffff_ffff_d400_0000,
-                0x9000_0000..0x9400_0000,
+                0xffff_ffff_d000_0000..0xffff_ffff_d300_0000,
+                0x9000_0000..0x9300_0000,
                 &[Dirty, Accessed, Write, Read, Valid],
             ),
             // TEXT
             MemoryMap::new(
-                0xffff_ffff_d400_0000..0xffff_ffff_d600_0000,
-                0x9400_0000..0x9600_0000,
-                &[Dirty, Accessed, Exec, Read, Valid],
+                0xffff_ffff_d300_0000..0xffff_ffff_d600_0000,
+                0x9300_0000..0x9600_0000,
+                &[Dirty, Accessed, Write, Exec, Read, Valid],
             ),
         ];
         page_table::generate_page_table(page_table_start, &memory_map, true);
