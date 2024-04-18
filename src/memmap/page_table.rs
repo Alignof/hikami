@@ -46,13 +46,12 @@ impl PageTableEntry {
 
 /// Generate third-level page table.
 pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
-    const PTE_SIZE: usize = 8;
     const PAGE_TABLE_SIZE: usize = 512;
 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
             root_table_start_addr as *mut PageTableEntry,
-            PAGE_TABLE_SIZE * PTE_SIZE,
+            PAGE_TABLE_SIZE,
         )
     };
 
@@ -91,7 +90,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             let second_lv_page_table: &mut [PageTableEntry] = unsafe {
                 from_raw_parts_mut(
                     second_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE * PTE_SIZE,
+                    PAGE_TABLE_SIZE,
                 )
             };
             if !second_lv_page_table[vpn1].already_created() {
@@ -110,7 +109,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             let third_lv_page_table: &mut [PageTableEntry] = unsafe {
                 from_raw_parts_mut(
                     third_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE * PTE_SIZE,
+                    PAGE_TABLE_SIZE,
                 )
             };
             third_lv_page_table[vpn0] =
