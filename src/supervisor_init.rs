@@ -217,7 +217,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
         satp::set(satp::Mode::Sv39, 0, page_table_start >> 12);
 
         // copy dtb to guest space
-        let guest_dtb_addr = guest_base_addr + GUEST_DEVICE_TREE_OFFSET;
+        let guest_dtb_addr = guest_base_addr + GUEST_DEVICE_TREE_OFFSET + PA2VA_DRAM_OFFSET;
         core::ptr::copy(
             dtb_addr as *const u8,
             guest_dtb_addr as *mut u8,
@@ -227,7 +227,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
         // copy initrd to guest space
         core::ptr::copy(
             mmap.initrd.vaddr() as *const u8,
-            (guest_base_addr + GUEST_HEAP_OFFSET) as *mut u8,
+            (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DRAM_OFFSET) as *mut u8,
             mmap.initrd.size(),
         );
 

@@ -60,9 +60,13 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         first_lv_page_table.fill(PageTableEntry(0));
     }
 
+    use crate::{print, println};
+    println!(
+        "=========gen page table: {:x}====================",
+        root_table_start_addr
+    );
     for memmap in memmaps {
-        use crate::{print, println};
-        println!("{:x?}", memmap.virt);
+        println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
 
         assert!(memmap.virt.len() == memmap.phys.len());
         assert!(memmap.virt.start as usize % PAGE_SIZE == 0);
