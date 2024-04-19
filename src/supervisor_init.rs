@@ -201,18 +201,20 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
             MemoryMap::new(
                 0xffff_ffff_d000_0000..0xffff_ffff_d300_0000,
                 0x9000_0000..0x9300_0000,
-                &[Dirty, Accessed, Write, Read, Valid],
+                &[Dirty, Accessed, User, Write, Read, Valid],
             ),
             // TEXT
             MemoryMap::new(
                 0xffff_ffff_d300_0000..0xffff_ffff_d600_0000,
                 0x9300_0000..0x9600_0000,
-                &[Dirty, Accessed, Write, Exec, Read, Valid],
+                &[Dirty, Accessed, User, Exec, Write, Read, Valid],
             ),
         ];
         page_table::generate_page_table(page_table_start, &memory_map, true);
         mmap.device_mapping(page_table_start);
 
+        // allow access to user page to supervisor priv
+        sstatus::set_sum();
         // satp = Sv39 | 0x9000_0000 >> 12
         satp::set(satp::Mode::Sv39, 0, page_table_start >> 12);
 
