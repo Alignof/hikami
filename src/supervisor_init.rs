@@ -207,7 +207,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
             MemoryMap::new(
                 0xffff_ffff_d300_0000..0xffff_ffff_d600_0000,
                 0x9300_0000..0x9600_0000,
-                &[Dirty, Accessed, User, Exec, Write, Read, Valid],
+                &[Dirty, Accessed, Exec, Write, Read, Valid],
             ),
         ];
         page_table::generate_page_table(page_table_start, &memory_map, true);
@@ -307,7 +307,7 @@ fn enter_user_mode(
 
         // sstatus.SUM = 1, sstatus.SPP = 0
         sstatus::set_sum();
-        sstatus::set_spp(sstatus::SPP::User);
+        sstatus::set_spp(sstatus::SPP::Supervisor);
 
         // copy initrd to guest text space(0x9000_0000-) and set initrd entry point to sepc
         let elf_addr = (guest_base_addr + GUEST_HEAP_OFFSET + PA2VA_DRAM_OFFSET) as *mut u8;
