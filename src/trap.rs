@@ -49,7 +49,7 @@ unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
             mret
             ",
             ret_value = in(reg) ret_value,
-        )
+        );
     };
 
     match exception_cause {
@@ -63,7 +63,7 @@ unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
                 // sbi_set_timer
                 0 => {
                     // timer_value = a0
-                    let timer_value: u64 = a0 as u64;
+                    let timer_value: u64 = a0;
 
                     let mtimecmp_addr = (MTIMECMP_ADDR + mhartid::read() * 8) as *mut u64;
                     mtimecmp_addr.write_volatile(timer_value);

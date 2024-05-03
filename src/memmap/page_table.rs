@@ -32,7 +32,7 @@ struct PageTableEntry(u64);
 
 impl PageTableEntry {
     fn new(ppn: u64, flags: u8) -> Self {
-        Self(ppn << 10 | flags as u64)
+        Self(ppn << 10 | u64::from(flags))
     }
 
     fn already_created(self) -> bool {
@@ -69,8 +69,8 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
 
         assert!(memmap.virt.len() == memmap.phys.len());
-        assert!(memmap.virt.start as usize % PAGE_SIZE == 0);
-        assert!(memmap.phys.start as usize % PAGE_SIZE == 0);
+        assert!(memmap.virt.start % PAGE_SIZE == 0);
+        assert!(memmap.phys.start % PAGE_SIZE == 0);
 
         for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
             let v_start = memmap.virt.start + offset;

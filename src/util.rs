@@ -27,7 +27,7 @@ impl Write for UartWriter {
         for c in s.bytes() {
             unsafe {
                 while (uart_addr.read_volatile() as i32) < 0 {}
-                uart_addr.write_volatile(c as u32);
+                uart_addr.write_volatile(u32::from(c));
             }
         }
         Ok(())

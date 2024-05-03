@@ -74,8 +74,7 @@ impl DeviceMemmap {
         let mut device_mapping: Vec<MemoryMap> = self
             .virtio
             .iter()
-            .map(|virt| [virt.memmap(), virt.identity_memmap()])
-            .flatten()
+            .flat_map(|virt| [virt.memmap(), virt.identity_memmap()])
             .collect();
 
         device_mapping.extend_from_slice(&[

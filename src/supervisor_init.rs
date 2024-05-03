@@ -19,7 +19,7 @@ use riscv::register::{satp, sepc, sie, sstatus, stvec};
 /// * Init stack pointer
 #[inline(never)]
 pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
-    use PteFlag::*;
+    use PteFlag::{Accessed, Dirty, Exec, Read, Valid, Write};
 
     // init page tables
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
@@ -115,7 +115,7 @@ extern "C" fn trampoline(hart_id: usize, dtb_addr: usize) {
 /// * Set stack pointer
 /// * Jump to `enter_user_mode` via asm j instruction
 extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
-    use PteFlag::*;
+    use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
     unsafe {
         sstatus::clear_sie();
         stvec::write(
@@ -262,12 +262,12 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
 
 /// Load elf to guest memory.
 ///
-/// It only load PT_LOAD type segments.
+/// It only load `PT_LOAD` type segments.
 /// Entry address is determined by ... .
 ///
 /// # Arguments
-/// * guest_elf - Elf loading guest space.
-/// * guest_base_addr - Base address of loading memory space.
+/// * `guest_elf` - Elf loading guest space.
+/// * `guest_base_addr` - Base address of loading memory space.
 fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: usize) -> usize {
     for prog_header in guest_elf
         .segments()
@@ -275,15 +275,13 @@ fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: 
         .iter()
     {
         const PT_LOAD: u32 = 1;
-        if prog_header.p_type == PT_LOAD {
-            if prog_header.p_filesz > 0 {
-                unsafe {
-                    core::ptr::copy(
-                        elf_addr.wrapping_add(prog_header.p_offset as usize),
-                        (guest_base_addr + prog_header.p_paddr as usize) as *mut u8,
-                        prog_header.p_filesz as usize,
-                    );
-                }
+        if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
+            unsafe {
+                core::ptr::copy(
+                    elf_addr.wrapping_add(prog_header.p_offset as usize),
+                    (guest_base_addr + prog_header.p_paddr as usize) as *mut u8,
+                    prog_header.p_filesz as usize,
+                );
             }
         }
     }
