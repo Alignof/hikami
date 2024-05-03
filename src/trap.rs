@@ -148,7 +148,7 @@ unsafe fn trap_interrupt(interrupt_cause: Interrupt) {
             let mtimecmp_addr = (MTIMECMP_ADDR + mhartid::read() * 8) as *mut u64;
             mtimecmp_addr.write_volatile(u64::MAX);
         }
-        Interrupt::MachineExternal => loop {},
+        Interrupt::MachineExternal => riscv::asm::wfi(), // wait for interrupt
         _ => panic!("unknown interrupt type"),
     }
 }
