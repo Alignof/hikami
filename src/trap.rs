@@ -10,6 +10,7 @@ use riscv::register::{mepc, mhartid, mip, mstatus, mtval, scause, sepc, stval, s
 const MTIMECMP_ADDR: usize = 0x200_4000;
 
 /// Trap handler for exception
+#[allow(clippy::cast_possible_wrap)]
 unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
     let ret_with_value = |ret_value: u64| {
         asm!("
@@ -52,94 +53,91 @@ unsafe fn trap_exception(a0: u64, a7: u64, exception_cause: Exception) {
         );
     };
 
-    match exception_cause {
+    if exception_cause == Exception::UserEnvCall {
         // https://doxygen.coreboot.org/d6/dfc/sbi_8c_source.html
-        Exception::UserEnvCall => {
-            mepc::write(mepc::read() + 4);
+        mepc::write(mepc::read() + 4);
 
-            // ecall_number = a7
-            let ecall_number: i64 = a7 as i64;
-            match ecall_number {
-                // sbi_set_timer
-                0 => {
-                    // timer_value = a0
-                    let timer_value: u64 = a0;
+        // ecall_number = a7
+        let ecall_number: u64 = a7;
+        match ecall_number {
+            // sbi_set_timer
+            0 => {
+                // timer_value = a0
+                let timer_value: u64 = a0;
 
-                    let mtimecmp_addr = (MTIMECMP_ADDR + mhartid::read() * 8) as *mut u64;
-                    mtimecmp_addr.write_volatile(timer_value);
+                let mtimecmp_addr = (MTIMECMP_ADDR + mhartid::read() * 8) as *mut u64;
+                mtimecmp_addr.write_volatile(timer_value);
 
-                    ret_with_value(0);
-                    unreachable!();
-                }
-                // sbi_clear_ipi
-                3 => {
-                    mip::clear_ssoft();
+                ret_with_value(0);
+                unreachable!();
+            }
+            // sbi_clear_ipi
+            3 => {
+                mip::clear_ssoft();
 
-                    ret_with_value(0);
-                    unreachable!();
-                }
-                // sbi_send_ipi
-                4 => {
-                    // mask_addr = a0
-                    let mask_addr: *mut u64 = a0 as *mut u64;
-                    let mut mask = if mstatus::read().mprv() {
-                        mask_addr.read_volatile()
-                    } else {
-                        mstatus::set_mprv();
-                        let mask = mask_addr.read_volatile();
-                        mstatus::clear_mprv();
-                        mask
-                    };
+                ret_with_value(0);
+                unreachable!();
+            }
+            // sbi_send_ipi
+            4 => {
+                // mask_addr = a0
+                let mask_addr: *mut u64 = a0 as *mut u64;
+                let mut mask = if mstatus::read().mprv() {
+                    mask_addr.read_volatile()
+                } else {
+                    mstatus::set_mprv();
+                    let mask = mask_addr.read_volatile();
+                    mstatus::clear_mprv();
+                    mask
+                };
 
-                    let mut clint_addr: *mut u8 = 0x200_0000 as *mut u8;
-                    while mask != 0 {
-                        if mask & 1 == 1 {
-                            clint_addr.write_volatile(1);
-                        }
-                        clint_addr = clint_addr.add(4);
-                        mask >>= 1;
+                let mut clint_addr: *mut u8 = 0x200_0000 as *mut u8;
+                while mask != 0 {
+                    if mask & 1 == 1 {
+                        clint_addr.write_volatile(1);
                     }
-
-                    ret_with_value(0);
-                    unreachable!();
+                    clint_addr = clint_addr.add(4);
+                    mask >>= 1;
                 }
-                // sbi_shutdown
-                8 => panic!("sbi shutdown"),
-                // other
-                _ => panic!("unknown ecall number"),
+
+                ret_with_value(0);
+                unreachable!();
             }
+            // sbi_shutdown
+            8 => panic!("sbi shutdown"),
+            // other
+            _ => panic!("unknown ecall number"),
         }
-        // other exception
-        _ => {
-            sepc::write(mepc::read());
-            scause::write(mcause::read().bits());
-            stval::write(mtval::read());
-            mepc::write(stvec::read().bits() & !0x3);
+    } else {
+        sepc::write(mepc::read());
+        scause::write(mcause::read().bits());
+        stval::write(mtval::read());
+        mepc::write(stvec::read().bits() & !0x3);
 
-            if mstatus::read().sie() {
-                mstatus::set_spie();
-            } else {
-                // clear?
-            }
-
-            if mstatus::read().mpp() == mstatus::MPP::Supervisor {
-                mstatus::set_spp(mstatus::SPP::Supervisor);
-            } else {
-                mstatus::set_spp(mstatus::SPP::User);
-            }
-
-            mstatus::clear_sie();
-            mstatus::set_mpp(mstatus::MPP::Supervisor);
+        if mstatus::read().sie() {
+            mstatus::set_spie();
+        } else {
+            // clear?
         }
+
+        if mstatus::read().mpp() == mstatus::MPP::Supervisor {
+            mstatus::set_spp(mstatus::SPP::Supervisor);
+        } else {
+            mstatus::set_spp(mstatus::SPP::User);
+        }
+
+        mstatus::clear_sie();
+        mstatus::set_mpp(mstatus::MPP::Supervisor);
     }
 }
 
 /// Trap handler for Interrupt
 unsafe fn trap_interrupt(interrupt_cause: Interrupt) {
+    const CLINT_ADDR: usize = 0x200_0000;
+
     match interrupt_cause {
         Interrupt::MachineSoft => {
             mip::set_ssoft();
-            const CLINT_ADDR: usize = 0x200_0000;
             let interrupt_addr = (CLINT_ADDR + mhartid::read() * 4) as *mut u64;
             interrupt_addr.write_volatile(0);
         }

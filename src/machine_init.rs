@@ -149,7 +149,7 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
 
 /// Delegate exception to supervisor mode
 #[no_mangle]
-fn forward_exception() {
+extern "C" fn forward_exception() {
     unsafe {
         sepc::write(mepc::read());
         scause::write(mcause::read().bits());

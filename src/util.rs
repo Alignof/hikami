@@ -22,6 +22,7 @@ struct UartWriter;
 
 impl Write for UartWriter {
     /// Write string to tty via UART.
+    #[allow(clippy::cast_possible_wrap)]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let uart_addr = UART_ADDR as *mut u32;
         for c in s.bytes() {

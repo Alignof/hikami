@@ -114,6 +114,7 @@ extern "C" fn trampoline(hart_id: usize, dtb_addr: usize) {
 /// * Set ppn via setp
 /// * Set stack pointer
 /// * Jump to `enter_user_mode` via asm j instruction
+#[allow(clippy::too_many_lines)]
 extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
     use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
     unsafe {
@@ -268,7 +269,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
 /// # Arguments
 /// * `guest_elf` - Elf loading guest space.
 /// * `guest_base_addr` - Base address of loading memory space.
-fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: usize) -> usize {
+fn load_elf(guest_elf: &ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: usize) -> usize {
     for prog_header in guest_elf
         .segments()
         .expect("failed to get segments from elf")
@@ -278,9 +279,9 @@ fn load_elf(guest_elf: ElfBytes<AnyEndian>, elf_addr: *mut u8, guest_base_addr: 
         if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
             unsafe {
                 core::ptr::copy(
-                    elf_addr.wrapping_add(prog_header.p_offset as usize),
-                    (guest_base_addr + prog_header.p_paddr as usize) as *mut u8,
-                    prog_header.p_filesz as usize,
+                    elf_addr.wrapping_add(usize::try_from(prog_header.p_offset).unwrap()),
+                    (guest_base_addr + usize::try_from(prog_header.p_paddr).unwrap()) as *mut u8,
+                    usize::try_from(prog_header.p_filesz).unwrap(),
                 );
             }
         }
@@ -315,7 +316,7 @@ fn enter_user_mode(
         ))
         .unwrap();
         let entry_point = load_elf(
-            guest_elf,
+            &guest_elf,
             elf_addr,
             guest_base_addr + GUEST_TEXT_OFFSET + PA2VA_DRAM_OFFSET,
         );

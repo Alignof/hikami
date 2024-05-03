@@ -5,7 +5,7 @@ use riscv::register::mcause;
 use riscv::register::mcause::Trap;
 
 #[no_mangle]
-pub unsafe fn mtrap_vector() {
+pub unsafe extern "C" fn mtrap_vector() {
     asm!(
         ".align 4
         csrrw sp, mscratch, sp

@@ -45,7 +45,10 @@ impl PageTableEntry {
 }
 
 /// Generate third-level page table.
+#[allow(clippy::module_name_repetitions)]
 pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
+    use crate::{print, println};
+
     const PAGE_TABLE_SIZE: usize = 512;
 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
@@ -60,7 +63,6 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         first_lv_page_table.fill(PageTableEntry(0));
     }
 
-    use crate::{print, println};
     println!(
         "=========gen page table: {:x}====================",
         root_table_start_addr
