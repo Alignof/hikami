@@ -16,13 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+          submodules: recursive
+
       - name: install clippy
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable #Rustup toolchain specifier e.g. stable, nightly, 1.42.0, nightly-2022-01-01. 
           target: riscv64imac-unknown-none-elf #Comma-separated string of additional targets to install e.g. wasm32-unknown-unknown
           components: clippy, rustfmt
-          submodules: recursive
 
       - uses: sksat/action-clippy@v0.7.0
         if: github.event_name == 'push'
