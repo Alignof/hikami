@@ -1,0 +1,3 @@
+[submodule "wild-screen-alloc"]
+	path = wild-screen-alloc
+	url = git@github.com:Alignof/wild-screen-alloc.git
