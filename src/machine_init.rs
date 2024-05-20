@@ -1,77 +1,15 @@
-#![no_main]
-#![no_std]
-
-extern crate alloc;
-mod memmap;
-mod supervisor_init;
-mod trap;
-mod util;
-
-use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{STACK_BASE, STACK_SIZE_PER_HART};
+use crate::supervisor_init;
 use crate::trap::machine::mtrap_vector;
 use core::arch::asm;
-use core::panic::PanicInfo;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
     mcause, mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtval, mtvec, pmpaddr0,
     pmpcfg0, satp, scause, sepc, stval, stvec,
 };
-use riscv_rt::entry;
-use wild_screen_alloc::WildScreenAlloc;
-
-/// Panic handler
-#[panic_handler]
-pub fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
-    loop {
-        unsafe {
-            asm!("nop");
-        }
-    }
-}
-
-#[global_allocator]
-static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
-
-/// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
-/// * set stack pointer
-/// * init mtvec and stvec
-/// * jump to mstart
-#[entry]
-fn _start(hart_id: usize, dtb_addr: usize) -> ! {
-    // Initialize global allocator
-    unsafe {
-        ALLOCATOR.init(HEAP_BASE, HEAP_SIZE);
-    }
-
-    unsafe {
-        // set stack pointer
-        asm!(
-            "
-            mv a0, {hart_id}
-            mv a1, {dtb_addr}
-            mv t1, {stack_size_per_hart}
-            mul t0, a0, t1
-            mv sp, {stack_base}
-            add sp, sp, t0
-            csrw mtvec, {DRAM_BASE}
-            csrw stvec, {DRAM_BASE}
-            j {mstart}
-            ",
-            hart_id = in(reg) hart_id,
-            dtb_addr = in(reg) dtb_addr,
-            stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) STACK_BASE,
-            DRAM_BASE = in(reg) DRAM_BASE,
-            mstart = sym mstart,
-        );
-    }
-
-    unreachable!();
-}
 
 /// Machine start function
-fn mstart(hart_id: usize, dtb_addr: usize) {
+pub fn mstart(hart_id: usize, dtb_addr: usize) {
     unsafe {
         // mideleg = 0x0222
         mideleg::set_sext();

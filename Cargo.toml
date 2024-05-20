@@ -8,10 +8,6 @@ pedantic = "warn"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[[bin]]
-name = "hikami"
-path = "src/machine_init.rs"
-
 [dependencies]
 elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"
