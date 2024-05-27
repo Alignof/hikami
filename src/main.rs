@@ -2,6 +2,7 @@
 #![no_std]
 
 extern crate alloc;
+mod csrs;
 mod hypervisor_init;
 mod machine_init;
 mod memmap;

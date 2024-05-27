@@ -32,9 +32,10 @@ macro_rules! write_csr_as {
     };
 }
 
-mod hvip {
+pub mod hvip {
+    //! Hypervisor virtual interrupt pending.
     const HVIP: usize = 0x645;
-    struct Hvip {
+    pub struct Hvip {
         bits: usize,
     }
 
