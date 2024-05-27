@@ -2,7 +2,7 @@ use crate::csrs::{hedeleg, hedeleg::ExceptionKind, hideleg, hideleg::InterruptKi
 use riscv::register::sie;
 
 #[inline(never)]
-pub extern "C" fn init_hypervisor(hart_id: usize, _dtb_addr: usize) {
+pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
 
