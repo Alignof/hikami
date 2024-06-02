@@ -1,6 +1,6 @@
 use crate::csrs::{hedeleg, hedeleg::ExceptionKind, hideleg, hideleg::InterruptKind, hvip, vsatp};
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
-use crate::memmap::{page_table::PteFlag, MemoryMap};
+use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use riscv::register::sie;
 
 #[inline(never)]
@@ -39,12 +39,11 @@ pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
     use PteFlag::{Accessed, Dirty, Exec, Read, Valid, Write};
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     let memory_map: [MemoryMap; 7] = [
-        // (virtual_memory_range, physical_memory_range, flags),
         // uart
         MemoryMap::new(
-            0x1000_0000..0x1000_0100,
-            0x1000_0000..0x1000_0100,
-            &[Dirty, Accessed, Write, Read, Valid],
+            0x1000_0000..0x1000_0100,               // guest_physical_memory_range
+            0x1000_0000..0x1000_0100,               // physical_memory_range
+            &[Dirty, Accessed, Write, Read, Valid], // flags
         ),
         // Device tree
         MemoryMap::new(
@@ -83,4 +82,5 @@ pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
             &[Dirty, Accessed, Write, Read, Valid],
         ),
     ];
+    page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
 }

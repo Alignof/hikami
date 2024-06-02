@@ -1,4 +1,5 @@
 pub mod sv39;
+pub mod sv39x4;
 
 /// Each flags for page tables.
 #[allow(dead_code)]
