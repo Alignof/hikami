@@ -68,7 +68,7 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
             &[Dirty, Accessed, Write, Read, Valid],
         ),
     ];
-    page_table::generate_page_table(page_table_start, &memory_map, true);
+    page_table::sv39::generate_page_table(page_table_start, &memory_map, true);
 
     unsafe {
         // init trap vector
@@ -211,7 +211,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
                 &[Dirty, Accessed, Exec, Write, Read, Valid],
             ),
         ];
-        page_table::generate_page_table(page_table_start, &memory_map, true);
+        page_table::sv39::generate_page_table(page_table_start, &memory_map, true);
         mmap.device_mapping(page_table_start);
 
         // allow access to user page to supervisor priv
