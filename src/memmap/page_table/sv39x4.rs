@@ -16,12 +16,13 @@ use crate::memmap::MemoryMap;
 pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
     use crate::{print, println};
 
+    const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
     const PAGE_TABLE_SIZE: usize = 512;
 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
             root_table_start_addr as *mut PageTableEntry,
-            PAGE_TABLE_SIZE,
+            FIRST_LV_PAGE_TABLE_SIZE,
         )
     };
 
