@@ -1,4 +1,7 @@
-use crate::csrs::{hedeleg, hedeleg::ExceptionKind, hideleg, hideleg::InterruptKind, hvip, vsatp};
+use crate::csrs::{
+    hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hideleg::InterruptKind,
+    hvip, vsatp,
+};
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use riscv::register::sie;
@@ -90,4 +93,7 @@ pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
     // setup G-stage page table
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     setup_g_stage_page_table(page_table_start);
+
+    // enable two-level address translation
+    hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
 }

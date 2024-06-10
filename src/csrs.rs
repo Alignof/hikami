@@ -119,6 +119,10 @@ pub mod hgatp {
         Sv57x4 = 10,
     }
 
+    pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
+        write((mode as usize) << 60 | vmid << 44 | ppn);
+    }
+
     read_csr_as!(Hgatp, 0x680);
     write_csr_as!(0x680);
 }
