@@ -3,41 +3,11 @@ use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use riscv::register::sie;
 
-#[inline(never)]
-pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
-    // hart_id must be zero.
-    assert_eq!(hart_id, 0);
-
-    // clear all hypervisor interrupts.
-    hvip::write(0);
-
-    // disable address translation.
-    vsatp::write(0);
-
-    // set sie = 0x222
-    unsafe {
-        sie::set_ssoft();
-        sie::set_stimer();
-        sie::set_sext();
-    }
-
-    // specify delegation exception kinds.
-    hedeleg::write(
-        ExceptionKind::InstructionAddressMissaligned as usize
-            | ExceptionKind::Breakpoint as usize
-            | ExceptionKind::EnvCallFromUorVU as usize
-            | ExceptionKind::InstructionPageFault as usize
-            | ExceptionKind::LoadPageFault as usize
-            | ExceptionKind::StoreAmoPageFault as usize,
-    );
-    // specify delegation interrupt kinds.
-    hideleg::write(
-        InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
-    );
-
-    // init G-stage page tables
+/// Create page tables in G-stage address translation.
+///
+/// TODO: Automatic generation of page tables according to guest OS address translation map.
+fn setup_g_stage_page_table(page_table_start: usize) {
     use PteFlag::{Accessed, Dirty, Exec, Read, Valid, Write};
-    let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     let memory_map: [MemoryMap; 7] = [
         // uart
         MemoryMap::new(
@@ -83,4 +53,41 @@ pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
         ),
     ];
     page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
+}
+
+#[inline(never)]
+pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
+    // hart_id must be zero.
+    assert_eq!(hart_id, 0);
+
+    // clear all hypervisor interrupts.
+    hvip::write(0);
+
+    // disable address translation.
+    vsatp::write(0);
+
+    // set sie = 0x222
+    unsafe {
+        sie::set_ssoft();
+        sie::set_stimer();
+        sie::set_sext();
+    }
+
+    // specify delegation exception kinds.
+    hedeleg::write(
+        ExceptionKind::InstructionAddressMissaligned as usize
+            | ExceptionKind::Breakpoint as usize
+            | ExceptionKind::EnvCallFromUorVU as usize
+            | ExceptionKind::InstructionPageFault as usize
+            | ExceptionKind::LoadPageFault as usize
+            | ExceptionKind::StoreAmoPageFault as usize,
+    );
+    // specify delegation interrupt kinds.
+    hideleg::write(
+        InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
+    );
+
+    // setup G-stage page table
+    let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
+    setup_g_stage_page_table(page_table_start);
 }
