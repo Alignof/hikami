@@ -104,3 +104,14 @@ pub mod hvip {
     read_csr_as!(Hvip, 0x645);
     write_csr_as!(0x645);
 }
+
+pub mod hgatp {
+    //! Hypervisor guest address translation and protection.
+    const HGATP: usize = 0x680;
+    pub struct Hgatp {
+        bits: usize,
+    }
+
+    read_csr_as!(Hgatp, 0x680);
+    write_csr_as!(0x680);
+}
