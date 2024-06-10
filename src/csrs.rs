@@ -112,6 +112,13 @@ pub mod hgatp {
         bits: usize,
     }
 
+    pub enum HgatpMode {
+        Bare = 0,
+        Sv39x4 = 8,
+        Sv48x4 = 9,
+        Sv57x4 = 10,
+    }
+
     read_csr_as!(Hgatp, 0x680);
     write_csr_as!(0x680);
 }
