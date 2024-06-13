@@ -112,6 +112,7 @@ pub mod hgatp {
         bits: usize,
     }
 
+    #[allow(clippy::module_name_repetitions)]
     pub enum HgatpMode {
         Bare = 0,
         Sv39x4 = 8,
