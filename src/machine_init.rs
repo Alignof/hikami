@@ -1,5 +1,5 @@
+use crate::hypervisor_init;
 use crate::memmap::constant::{STACK_BASE, STACK_SIZE_PER_HART};
-use crate::supervisor_init;
 use crate::trap::machine::mtrap_vector;
 use core::arch::asm;
 use riscv::asm::sfence_vma_all;
@@ -71,7 +71,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) {
         pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
         satp::set(satp::Mode::Bare, 0, 0);
 
-        mepc::write(supervisor_init::sstart as *const fn() as usize);
+        mepc::write(hypervisor_init::hstart as *const fn() as usize);
 
         // set trap_vector in trap.S to mtvec
         mtvec::write(
@@ -82,7 +82,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) {
         sfence_vma_all();
     }
 
-    enter_supervisor_mode(hart_id, dtb_addr);
+    enter_hypervisor_mode(hart_id, dtb_addr);
 }
 
 /// Delegate exception to supervisor mode
@@ -111,10 +111,11 @@ extern "C" fn forward_exception() {
     }
 }
 
-/// Enter supervisor. (just exec mret)
-/// Jump to sstart via mret.
+/// Enter hypervisor. (just exec mret)
+///
+/// Jump to hstart via mret.
 #[inline(never)]
-fn enter_supervisor_mode(_hart_id: usize, _dtb_addr: usize) {
+fn enter_hypervisor_mode(_hart_id: usize, _dtb_addr: usize) {
     unsafe {
         asm!("mret");
     }

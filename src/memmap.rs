@@ -68,7 +68,7 @@ impl DeviceMemmap {
 
     pub fn device_mapping(&self, page_table_start: usize) {
         let memory_map = self.create_device_map();
-        page_table::generate_page_table(page_table_start, &memory_map, false);
+        page_table::sv39::generate_page_table(page_table_start, &memory_map, false);
     }
 
     fn create_device_map(&self) -> Vec<MemoryMap> {

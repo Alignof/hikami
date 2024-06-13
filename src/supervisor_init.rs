@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::memmap::constant::{
     DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_DEVICE_TREE_OFFSET, GUEST_HEAP_OFFSET, GUEST_STACK_OFFSET,
     GUEST_TEXT_OFFSET, PA2VA_DRAM_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE,
@@ -68,7 +69,7 @@ pub extern "C" fn sstart(hart_id: usize, dtb_addr: usize) {
             &[Dirty, Accessed, Write, Read, Valid],
         ),
     ];
-    page_table::generate_page_table(page_table_start, &memory_map, true);
+    page_table::sv39::generate_page_table(page_table_start, &memory_map, true);
 
     unsafe {
         // init trap vector
@@ -211,7 +212,7 @@ extern "C" fn smode_setup(hart_id: usize, dtb_addr: usize) {
                 &[Dirty, Accessed, Exec, Write, Read, Valid],
             ),
         ];
-        page_table::generate_page_table(page_table_start, &memory_map, true);
+        page_table::sv39::generate_page_table(page_table_start, &memory_map, true);
         mmap.device_mapping(page_table_start);
 
         // allow access to user page to supervisor priv
