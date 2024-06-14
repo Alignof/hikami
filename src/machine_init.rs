@@ -9,7 +9,7 @@ use riscv::register::{
 };
 
 /// Machine start function
-pub fn mstart(hart_id: usize, dtb_addr: usize) {
+pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // mideleg = 0x0222
         mideleg::set_sext();
@@ -115,8 +115,9 @@ extern "C" fn forward_exception() {
 ///
 /// Jump to hstart via mret.
 #[inline(never)]
-fn enter_hypervisor_mode(_hart_id: usize, _dtb_addr: usize) {
+#[no_mangle]
+fn enter_hypervisor_mode(_hart_id: usize, _dtb_addr: usize) -> ! {
     unsafe {
-        asm!("mret");
+        asm!("mret", options(noreturn));
     }
 }
