@@ -67,7 +67,7 @@ fn hfence_gvma_all() {
 }
 
 #[inline(never)]
-pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
+pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) -> ! {
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
 
@@ -105,4 +105,16 @@ pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) {
     // enable two-level address translation
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
     hfence_gvma_all();
+
+    // enter HS-mode
+    unsafe {
+        asm!(
+            "
+            fence.i
+            ...
+            sret
+            ",
+            options(noreturn)
+        );
+    }
 }
