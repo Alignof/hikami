@@ -67,7 +67,7 @@ fn hfence_gvma_all() {
 }
 
 #[inline(never)]
-pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) -> ! {
+pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
 
@@ -106,14 +106,20 @@ pub extern "C" fn hstart(hart_id: usize, _dtb_addr: usize) -> ! {
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
     hfence_gvma_all();
 
+    hart_entry(hart_id, dtb_addr);
+}
+
+/// Entry to guest mode.
+fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     // enter HS-mode
     unsafe {
         asm!(
             "
             fence.i
-            ...
+            mv a1, {dtb_addr}
             sret
             ",
+            dtb_addr = in(reg) dtb_addr,
             options(noreturn)
         );
     }
