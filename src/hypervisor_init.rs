@@ -1,4 +1,4 @@
-use crate::csrs::{
+use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hideleg::InterruptKind,
     hvip, vsatp,
 };
