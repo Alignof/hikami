@@ -13,6 +13,7 @@ mod util;
 use crate::machine_init::mstart;
 use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::asm;
+use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
 use wild_screen_alloc::WildScreenAlloc;
@@ -69,15 +70,22 @@ impl Default for Context {
 #[global_allocator]
 static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
+static mut HYPERVISOR_DATA: OnceCell<HypervisorData> = OnceCell::new();
+
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
 /// * init mtvec and stvec
 /// * jump to mstart
 #[entry]
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
-    // Initialize global allocator
     unsafe {
+        // Initialize global allocator
         ALLOCATOR.init(HEAP_BASE, HEAP_SIZE);
+
+        // Initialize global hypervisor data
+        HYPERVISOR_DATA
+            .set(HypervisorData::default())
+            .expect("hypervisor global data initialization failed");
     }
 
     unsafe {

@@ -5,6 +5,7 @@ use crate::h_extension::csrs::{
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
+use crate::HYPERVISOR_DATA;
 use core::arch::asm;
 use riscv::register::sie;
 
@@ -107,9 +108,10 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     // enter HS-mode
     unsafe {
+        asm!("fence.i");
+        HYPERVISOR_DATA.get().unwrap().context.restore();
         asm!(
             "
-            fence.i
             mv a1, {dtb_addr}
             sret
             ",
