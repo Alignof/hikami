@@ -57,6 +57,17 @@ pub struct Context {
     xstatus: usize,
 }
 
+impl Context {
+    pub unsafe fn restore(&self) {
+        unsafe {
+            asm!(
+                "
+                ",
+            );
+        }
+    }
+}
+
 impl Default for Context {
     fn default() -> Self {
         Context {
