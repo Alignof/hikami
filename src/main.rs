@@ -28,6 +28,18 @@ pub fn panic(info: &PanicInfo) -> ! {
     }
 }
 
+/// Global data for hypervisor.
+///
+/// FIXME: Rename me!
+pub struct HypervisorData {
+    context: Context,
+}
+
+#[repr(C)]
+pub struct Context {
+    register: [u32; 32],
+}
+
 #[global_allocator]
 static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
