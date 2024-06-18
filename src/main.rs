@@ -31,12 +31,22 @@ pub fn panic(info: &PanicInfo) -> ! {
 /// Global data for hypervisor.
 ///
 /// FIXME: Rename me!
+#[derive(Debug)]
 pub struct HypervisorData {
-    context: Context,
+    pub context: Context,
+}
+
+impl Default for HypervisorData {
+    fn default() -> Self {
+        HypervisorData {
+            context: Context::default(),
+        }
+    }
 }
 
 /// Guest context
 #[repr(packed)]
+#[derive(Debug)]
 pub struct Context {
     /// Registers
     registers: [u32; 32],
@@ -44,6 +54,16 @@ pub struct Context {
     pc: u32,
     /// Value of sstatus
     xstatus: usize,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Context {
+            registers: [0u32; 32],
+            pc: 0u32,
+            xstatus: 0usize,
+        }
+    }
 }
 
 #[global_allocator]
