@@ -2,6 +2,7 @@ use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hideleg::InterruptKind,
     hvip, vsatp,
 };
+use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use core::arch::asm;
@@ -57,13 +58,6 @@ fn setup_g_stage_page_table(page_table_start: usize) {
         ),
     ];
     page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
-}
-
-#[inline(always)]
-fn hfence_gvma_all() {
-    unsafe {
-        asm!("hfence.gvma x0, x0");
-    }
 }
 
 #[inline(never)]
