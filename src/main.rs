@@ -35,9 +35,15 @@ pub struct HypervisorData {
     context: Context,
 }
 
-#[repr(C)]
+/// Guest context
+#[repr(packed)]
 pub struct Context {
-    register: [u32; 32],
+    /// Registers
+    registers: [u32; 32],
+    /// Program counter
+    pc: u32,
+    /// Value of sstatus
+    xstatus: usize,
 }
 
 #[global_allocator]
