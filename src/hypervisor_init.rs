@@ -5,9 +5,10 @@ use crate::h_extension::csrs::{
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
+use crate::trap::supervisor::strap_vector;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
-use riscv::register::sie;
+use riscv::register::{sie, stvec};
 
 /// Create page tables in G-stage address translation.
 ///
@@ -100,6 +101,14 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // enable two-level address translation
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
     hfence_gvma_all();
+
+    // set trap vector
+    unsafe {
+        stvec::write(
+            strap_vector as *const fn() as usize,
+            stvec::TrapMode::Direct,
+        );
+    }
 
     hart_entry(hart_id, dtb_addr);
 }
