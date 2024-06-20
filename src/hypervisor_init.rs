@@ -4,7 +4,7 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
-use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
+use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap, MemoryMap};
 use crate::trap::supervisor::strap_vector;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
@@ -93,6 +93,23 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     hideleg::write(
         InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
     );
+
+    hsmode_setup(hart_id, dtb_addr);
+}
+
+/// Setup for HS-mode
+///
+/// * Parse DTB
+/// * Setup page table
+fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
+    // parse device tree
+    let device_tree = unsafe {
+        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+            Ok(fdt) => fdt,
+            Err(e) => panic!("{}", e),
+        }
+    };
+    let mmap = DeviceMemmap::new(device_tree);
 
     // setup G-stage page table
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
