@@ -108,8 +108,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     // enter HS-mode
     unsafe {
-        asm!("fence.i");
-        HYPERVISOR_DATA.get().unwrap().context.restore();
+        HYPERVISOR_DATA.get().unwrap().context.load();
         asm!(
             "
             mv a1, {dtb_addr}
