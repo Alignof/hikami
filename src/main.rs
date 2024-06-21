@@ -2,6 +2,7 @@
 #![no_std]
 
 extern crate alloc;
+mod guest;
 mod h_extension;
 mod hypervisor_init;
 mod machine_init;
