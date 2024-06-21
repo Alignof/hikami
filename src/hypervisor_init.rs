@@ -1,9 +1,11 @@
+use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hideleg::InterruptKind,
     hvip, vsatp,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
+use crate::memmap::device::Device;
 use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap, MemoryMap};
 use crate::trap::supervisor::strap_vector;
 use crate::HYPERVISOR_DATA;
@@ -102,6 +104,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Parse DTB
 /// * Setup page table
 fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
+    // guest data
+    let guest = Guest::new(hart_id);
+
     // parse device tree
     let device_tree = unsafe {
         match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
@@ -126,6 +131,9 @@ fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             stvec::TrapMode::Direct,
         );
     }
+
+    // load guest image
+    guest.load_guest_elf(mmap.initrd.paddr() as *mut u8, mmap.initrd.size());
 
     hart_entry(hart_id, dtb_addr);
 }

@@ -5,7 +5,7 @@ use crate::memmap::constant::{
 use elf::{endian::AnyEndian, ElfBytes};
 
 /// Guest Information
-struct Guest {
+pub struct Guest {
     /// Guest ID
     guest_id: usize,
 }
@@ -28,7 +28,7 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
-    fn load_guest_elf(&self, elf_addr: *mut u8, guest_initrd_size: usize) -> usize {
+    pub fn load_guest_elf(&self, elf_addr: *mut u8, guest_initrd_size: usize) -> usize {
         let guest_elf = unsafe {
             ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
                 elf_addr,
