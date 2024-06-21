@@ -36,7 +36,7 @@ impl Guest {
             ))
             .unwrap()
         };
-        let guest_base_addr = self.dram_base() + GUEST_TEXT_OFFSET + PA2VA_DRAM_OFFSET;
+        let guest_base_addr = self.dram_base() + GUEST_TEXT_OFFSET;
         for prog_header in guest_elf
             .segments()
             .expect("failed to get segments from elf")

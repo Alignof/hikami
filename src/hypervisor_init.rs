@@ -10,7 +10,7 @@ use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap, MemoryMap};
 use crate::trap::supervisor::strap_vector;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
-use riscv::register::{sie, stvec};
+use riscv::register::{sepc, sie, stvec};
 
 /// Create page tables in G-stage address translation.
 ///
@@ -124,16 +124,20 @@ fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
     hfence_gvma_all();
 
-    // set trap vector
+    // load guest image
+    let guest_entry_point =
+        guest.load_guest_elf(mmap.initrd.paddr() as *mut u8, mmap.initrd.size());
+
     unsafe {
+        // set trap vector
         stvec::write(
             strap_vector as *const fn() as usize,
             stvec::TrapMode::Direct,
         );
-    }
 
-    // load guest image
-    guest.load_guest_elf(mmap.initrd.paddr() as *mut u8, mmap.initrd.size());
+        // set entry point
+        sepc::write(guest_entry_point);
+    }
 
     hart_entry(hart_id, dtb_addr);
 }
