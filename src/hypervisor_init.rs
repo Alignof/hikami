@@ -142,8 +142,8 @@ fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             stvec::TrapMode::Direct,
         );
 
-        // set entry point
-        sepc::write(guest_entry_point);
+        // save current context data
+        HYPERVISOR_DATA.get_mut().unwrap().context.store();
     }
 
     hart_entry(hart_id, dtb_addr);
