@@ -116,7 +116,7 @@ extern "C" fn forward_exception() {
 /// Jump to hstart via mret.
 #[inline(never)]
 #[no_mangle]
-fn enter_hypervisor_mode(_hart_id: usize, _dtb_addr: usize) -> ! {
+extern "C" fn enter_hypervisor_mode(_hart_id: usize, _dtb_addr: usize) -> ! {
     unsafe {
         asm!("mret", options(noreturn));
     }

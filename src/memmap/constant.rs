@@ -59,5 +59,6 @@ pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;
 pub mod singleton {
     //! memory map for singleton area.
 
+    /// offset for `Context`
     pub const CONTEXT_OFFSET: usize = 0x0;
 }

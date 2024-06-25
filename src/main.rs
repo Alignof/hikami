@@ -38,13 +38,10 @@ pub fn panic(info: &PanicInfo) -> ! {
 /// Global data for hypervisor.
 ///
 /// FIXME: Rename me!
-#[derive(Debug)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct HypervisorData {
     pub context: Context,
 }
-
-
 
 /// Guest context
 #[repr(packed)]
@@ -55,7 +52,11 @@ pub struct Context {
 
 impl Context {
     /// Load context data to registers.
+    ///
+    /// # Safety
+    /// If `Context.addr` is valid address.
     #[inline(always)]
+    #[allow(clippy::inline_always)]
     pub unsafe fn load(&self) {
         unsafe {
             asm!(
@@ -111,7 +112,11 @@ impl Context {
     }
 
     /// Store context data to registers.
+    ///
+    /// # Safety
+    /// If `Context.addr` is valid address.
     #[inline(always)]
+    #[allow(clippy::inline_always)]
     pub unsafe fn store(&mut self) {
         unsafe {
             asm!(
