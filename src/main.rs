@@ -39,17 +39,12 @@ pub fn panic(info: &PanicInfo) -> ! {
 ///
 /// FIXME: Rename me!
 #[derive(Debug)]
+#[derive(Default)]
 pub struct HypervisorData {
     pub context: Context,
 }
 
-impl Default for HypervisorData {
-    fn default() -> Self {
-        HypervisorData {
-            context: Context::default(),
-        }
-    }
-}
+
 
 /// Guest context
 #[repr(packed)]
