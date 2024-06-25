@@ -1,7 +1,5 @@
 /// Handling guest OS.
-use crate::memmap::constant::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_TEXT_OFFSET, PA2VA_DRAM_OFFSET,
-};
+use crate::memmap::constant::{DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_TEXT_OFFSET};
 use elf::{endian::AnyEndian, ElfBytes};
 
 /// Guest Information

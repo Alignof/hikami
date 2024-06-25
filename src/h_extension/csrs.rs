@@ -7,6 +7,7 @@
 macro_rules! read_csr_as {
     ($register:ident, $csr_number:literal) => {
         #[inline]
+        #[allow(dead_code)]
         pub fn read() -> $register {
             $register {
                 bits: {
@@ -36,6 +37,8 @@ macro_rules! write_csr_as {
 
 pub mod vsatp {
     //! Virtual supervisor address translation and protection.
+    #![allow(dead_code)]
+
     const VSATP: usize = 0x280;
     pub struct Vsatp {
         bits: usize,
@@ -47,6 +50,8 @@ pub mod vsatp {
 
 pub mod hedeleg {
     //! Hypervisor exception delegation register.
+    #![allow(dead_code)]
+
     const HEDELEG: usize = 0x602;
     pub struct Hedeleg {
         bits: usize,
@@ -76,6 +81,8 @@ pub mod hedeleg {
 
 pub mod hideleg {
     //! Hypervisor interrupt delegation register.
+    #![allow(dead_code)]
+
     const HIDELEG: usize = 0x603;
     pub struct Hideleg {
         bits: usize,
@@ -96,6 +103,8 @@ pub mod hideleg {
 
 pub mod hvip {
     //! Hypervisor virtual interrupt pending.
+    #![allow(dead_code)]
+
     const HVIP: usize = 0x645;
     pub struct Hvip {
         bits: usize,
@@ -107,6 +116,8 @@ pub mod hvip {
 
 pub mod hgatp {
     //! Hypervisor guest address translation and protection.
+    #![allow(dead_code)]
+
     const HGATP: usize = 0x680;
     pub struct Hgatp {
         bits: usize,
