@@ -11,13 +11,16 @@ mod supervisor_init;
 mod trap;
 mod util;
 
-use crate::machine_init::mstart;
-use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
 use core::arch::asm;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
-use spin::Mutex;
 use wild_screen_alloc::WildScreenAlloc;
+
+use once_cell::unsync::Lazy;
+use spin::Mutex;
+
+use crate::machine_init::mstart;
+use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
 
 /// Panic handler
 #[panic_handler]
@@ -188,7 +191,8 @@ impl Default for Context {
 #[global_allocator]
 static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
-static mut HYPERVISOR_DATA: Mutex<HypervisorData> = OnceCell::new();
+static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
+    Lazy::new(|| Mutex::new(HypervisorData::default()));
 
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
@@ -199,10 +203,6 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
         ALLOCATOR.init(HEAP_BASE, HEAP_SIZE);
-        // Initialize global hypervisor data
-        HYPERVISOR_DATA
-            .set(Mutex::new(HypervisorData::default()))
-            .expect("hypervisor global data initialization failed");
     }
 
     unsafe {
