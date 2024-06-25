@@ -142,8 +142,13 @@ fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             stvec::TrapMode::Direct,
         );
 
+        use crate::{print, println};
+        println!("HYPERVISOR_DATA: {:?}", HYPERVISOR_DATA.get());
+
         // save current context data
-        HYPERVISOR_DATA.get_mut().unwrap().context.store();
+        HYPERVISOR_DATA.get_mut().unwrap().lock().context.store();
+
+        println!("HYPERVISOR_DATA: {:?}", HYPERVISOR_DATA.get());
     }
 
     hart_entry(hart_id, dtb_addr);
@@ -153,7 +158,7 @@ fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     // enter HS-mode
     unsafe {
-        HYPERVISOR_DATA.get().unwrap().context.load();
+        HYPERVISOR_DATA.get().unwrap().lock().context.load();
         asm!(
             "
             mv a1, {dtb_addr}
