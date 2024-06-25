@@ -20,7 +20,9 @@ use once_cell::unsync::Lazy;
 use spin::Mutex;
 
 use crate::machine_init::mstart;
-use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{
+    singleton, DRAM_BASE, HEAP_BASE, HEAP_SIZE, SINGLETON_BASE, STACK_BASE, STACK_SIZE_PER_HART,
+};
 
 /// Panic handler
 #[panic_handler]
@@ -53,12 +55,7 @@ impl Default for HypervisorData {
 #[repr(packed)]
 #[derive(Debug)]
 pub struct Context {
-    /// Registers
-    registers: [u32; 32],
-    /// Program counter
-    pc: u32,
-    /// Value of sstatus
-    xstatus: usize,
+    addr: usize,
 }
 
 impl Context {
@@ -113,7 +110,7 @@ impl Context {
                 ld t6, 31*8(sp)
                 csrr sp, sscratch
                 ",
-                context_addr = in(reg) self,
+                context_addr = in(reg) self.addr,
             );
         }
     }
@@ -172,7 +169,7 @@ impl Context {
                 csrr t0, sscratch
                 sd t0, 2*8(sp)
                 ",
-                context_addr = in(reg) self,
+                context_addr = in(reg) self.addr,
             );
         }
     }
@@ -181,9 +178,7 @@ impl Context {
 impl Default for Context {
     fn default() -> Self {
         Context {
-            registers: [0u32; 32],
-            pc: 0u32,
-            xstatus: 0usize,
+            addr: SINGLETON_BASE + singleton::CONTEXT_OFFSET,
         }
     }
 }
