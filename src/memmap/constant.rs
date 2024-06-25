@@ -10,6 +10,7 @@
 //! | 0x8020_0000 | 0x8030_0000 | hypervisor static |
 //! | 0x8030_0000 | 0x8030_2000 | hypervisor page table |
 //! | 0x8030_4000 | 0x8030_xxxx | hypervisor device tree blob |
+//! | 0x8035_0000 | 0x8040_0000 | hypervisor singleton |
 //! | 0x8040_0000 |     ...     | hypervisor heap |
 //! |     ...     | 0x8080_0000 | hypervisor stack |
 //! | 0x9000_0000 | 0x9000_2000 | hypervisor page table |
@@ -31,6 +32,8 @@ pub const PAGE_TABLE_BASE: usize = 0x8030_0000;
 pub const PAGE_SIZE: usize = 4096;
 /// Page table offset for each HART.
 pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
+/// Data region for singleton.
+pub const SINGLETON_BASE: usize = 0x8035_0000;
 /// Base address of heap.
 pub const HEAP_BASE: usize = 0x8040_0000;
 /// Heap size.
@@ -52,3 +55,9 @@ pub const GUEST_HEAP_OFFSET: usize = 0x100_0000;
 pub const GUEST_STACK_OFFSET: usize = 0x300_0000;
 /// Guest Text secion offset
 pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;
+
+pub mod singleton {
+    //! memory map for singleton area.
+
+    pub const CONTEXT_OFFSET: usize = 0x0;
+}
