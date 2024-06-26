@@ -35,6 +35,29 @@ macro_rules! write_csr_as {
     };
 }
 
+pub mod hstatus {
+    //! sstatus util functions.
+    #![allow(dead_code)]
+
+    const HSTATUS: usize = 0x600;
+    pub struct Hstatus {
+        bits: usize,
+    }
+
+    read_csr_as!(Hstatus, 0x600);
+    write_csr_as!(0x600);
+
+    /// sstatus util functions.
+    pub unsafe fn set_spv() {
+        core::arch::asm!(
+            "
+            csrs hstatus, {bits}
+            ",
+            bits = in(reg) 0b0100_0000
+        );
+    }
+}
+
 pub mod vsatp {
     //! Virtual supervisor address translation and protection.
     #![allow(dead_code)]

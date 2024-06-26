@@ -133,6 +133,9 @@ fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::Supervisor);
 
+        // hstatus.spv = 1 (enable V bit)
+        hstatus::set_spv();
+
         // set entry point
         sepc::write(guest_entry_point);
 
