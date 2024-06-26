@@ -96,14 +96,14 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
     );
 
-    hsmode_setup(hart_id, dtb_addr);
+    vsmode_setup(hart_id, dtb_addr);
 }
 
-/// Setup for HS-mode
+/// Setup for VS-mode
 ///
 /// * Parse DTB
 /// * Setup page table
-fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
+fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // guest data
     let guest = Guest::new(hart_id);
 
@@ -155,7 +155,7 @@ fn hsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 /// Entry to guest mode.
 #[inline(never)]
 fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
-    // enter HS-mode
+    // enter VS-mode
     unsafe {
         HYPERVISOR_DATA.lock().context.load();
         asm!(
