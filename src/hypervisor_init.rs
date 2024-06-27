@@ -1,7 +1,7 @@
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hideleg::InterruptKind,
-    hvip, vsatp,
+    hstatus, hvip, vsatp,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
@@ -17,7 +17,7 @@ use riscv::register::{sepc, sie, sstatus, stvec};
 /// TODO: Automatic generation of page tables according to guest OS address translation map.
 fn setup_g_stage_page_table(page_table_start: usize) {
     use PteFlag::{Accessed, Dirty, Exec, Read, Valid, Write};
-    let memory_map: [MemoryMap; 7] = [
+    let memory_map: [MemoryMap; 6] = [
         // uart
         MemoryMap::new(
             0x1000_0000..0x1000_0100,               // guest_physical_memory_range
@@ -44,21 +44,15 @@ fn setup_g_stage_page_table(page_table_start: usize) {
         ),
         // hypervisor RAM
         MemoryMap::new(
-            0x9000_0000..0x9000_4000,
-            0x9000_0000..0x9000_4000,
+            0x9000_0000..0x9040_0000,
+            0x9000_0000..0x9040_0000,
             &[Dirty, Accessed, Write, Read, Valid],
         ),
         // TEXT
         MemoryMap::new(
-            0xffff_ffff_c000_0000..0xffff_ffff_c020_0000,
-            0x8000_0000..0x8020_0000,
-            &[Dirty, Accessed, Exec, Read, Valid],
-        ),
-        // RAM
-        MemoryMap::new(
-            0xffff_ffff_c020_0000..0xffff_ffff_c080_0000,
-            0x8020_0000..0x8080_0000,
-            &[Dirty, Accessed, Write, Read, Valid],
+            0x9300_0000..0x9600_0000,
+            0x9300_0000..0x9600_0000,
+            &[Dirty, Accessed, Exec, Write, Read, Valid],
         ),
     ];
     page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
@@ -119,6 +113,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // setup G-stage page table
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     setup_g_stage_page_table(page_table_start);
+    mmap.device_mapping_g_stage(page_table_start);
 
     // enable two-level address translation
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
