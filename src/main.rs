@@ -168,6 +168,9 @@ impl Context {
                 // save stack pointer
                 csrr t0, sscratch
                 sd t0, 2*8(sp)
+
+                // restore sp
+                csrr sp, sscratch
                 ",
                 context_addr = in(reg) self.addr,
             );
