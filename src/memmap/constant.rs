@@ -32,6 +32,7 @@ pub const PAGE_TABLE_BASE: usize = 0x8030_0000;
 pub const PAGE_SIZE: usize = 4096;
 /// Page table offset for each HART.
 pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
+#[allow(dead_code)]
 /// Data region for singleton.
 pub const SINGLETON_BASE: usize = 0x8035_0000;
 /// Base address of heap.
@@ -59,6 +60,7 @@ pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;
 pub mod singleton {
     //! memory map for singleton area.
 
+    #[allow(dead_code)]
     /// offset for `Context`
     pub const CONTEXT_OFFSET: usize = 0x0;
 }
