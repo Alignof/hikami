@@ -20,9 +20,7 @@ use once_cell::unsync::Lazy;
 use spin::Mutex;
 
 use crate::machine_init::mstart;
-use crate::memmap::constant::{
-    singleton, DRAM_BASE, HEAP_BASE, HEAP_SIZE, SINGLETON_BASE, STACK_BASE, STACK_SIZE_PER_HART,
-};
+use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
 
 /// Panic handler
 #[panic_handler]
@@ -44,10 +42,16 @@ pub struct HypervisorData {
 }
 
 /// Guest context
+#[allow(dead_code)]
 #[repr(packed)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Context {
-    addr: usize,
+    /// Registers
+    xreg: [u64; 32],
+    /// Program counter
+    sstatus: u32,
+    /// Value of sstatus
+    sepc: usize,
 }
 
 impl Context {
@@ -106,7 +110,7 @@ impl Context {
                 ld t6, 31*8(sp)
                 csrr sp, sscratch
                 ",
-                context_addr = in(reg) self.addr,
+                context_addr = in(reg) self,
             );
         }
     }
@@ -172,16 +176,8 @@ impl Context {
                 // restore sp
                 csrr sp, sscratch
                 ",
-                context_addr = in(reg) self.addr,
+                context_addr = in(reg) self,
             );
-        }
-    }
-}
-
-impl Default for Context {
-    fn default() -> Self {
-        Context {
-            addr: SINGLETON_BASE + singleton::CONTEXT_OFFSET,
         }
     }
 }
