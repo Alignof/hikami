@@ -4,8 +4,7 @@ use crate::trap::machine::mtrap_vector;
 use core::arch::asm;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
-    mcause, mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtval, mtvec, pmpaddr0,
-    pmpcfg0, satp, scause, sepc, stval, stvec,
+    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpcfg0, satp,
 };
 
 /// Machine start function
@@ -83,32 +82,6 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
     }
 
     enter_hypervisor_mode(hart_id, dtb_addr);
-}
-
-/// Delegate exception to supervisor mode
-#[no_mangle]
-extern "C" fn forward_exception() {
-    unsafe {
-        sepc::write(mepc::read());
-        scause::write(mcause::read().bits());
-        stval::write(mtval::read());
-        mepc::write(stvec::read().bits() & !0x3);
-
-        if mstatus::read().sie() {
-            mstatus::set_spie();
-        } else {
-            // clear?
-        }
-
-        if mstatus::read().mpp() == mstatus::MPP::Supervisor {
-            mstatus::set_spp(mstatus::SPP::Supervisor);
-        } else {
-            mstatus::set_spp(mstatus::SPP::User);
-        }
-
-        mstatus::clear_sie();
-        mstatus::set_mpp(mstatus::MPP::Supervisor);
-    }
 }
 
 /// Enter hypervisor. (just exec mret)
