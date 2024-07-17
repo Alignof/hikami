@@ -2,6 +2,19 @@
 //!
 //! The specification referred to "The RISC-V Instruction Set Manual: Volume II Version 20240411".
 
+/// Implement bits for struct
+#[macro_export]
+macro_rules! impl_bits {
+    ($register:ident) => {
+        #[allow(dead_code)]
+        impl $register {
+            pub fn bits(&self) -> usize {
+                self.bits
+            }
+        }
+    };
+}
+
 /// Implement reading CSR method to the struct.
 #[macro_export]
 macro_rules! read_csr_as {
