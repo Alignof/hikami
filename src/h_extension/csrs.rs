@@ -48,6 +48,34 @@ macro_rules! write_csr_as {
     };
 }
 
+pub mod vstvec {
+    //! Virtual supervisor trap handler base address.
+    #![allow(dead_code)]
+
+    const VSTVEC: usize = 0x205;
+    pub struct Vstvec {
+        bits: usize,
+    }
+
+    impl_bits!(Vstvec);
+
+    read_csr_as!(Vstvec, 0x205);
+    write_csr_as!(0x205);
+}
+
+pub mod vsatp {
+    //! Virtual supervisor address translation and protection.
+    #![allow(dead_code)]
+
+    const VSATP: usize = 0x280;
+    pub struct Vsatp {
+        bits: usize,
+    }
+
+    read_csr_as!(Vsatp, 0x280);
+    write_csr_as!(0x280);
+}
+
 pub mod hstatus {
     //! sstatus util functions.
     #![allow(dead_code)]
@@ -69,19 +97,6 @@ pub mod hstatus {
             bits = in(reg) 0b0100_0000
         );
     }
-}
-
-pub mod vsatp {
-    //! Virtual supervisor address translation and protection.
-    #![allow(dead_code)]
-
-    const VSATP: usize = 0x280;
-    pub struct Vsatp {
-        bits: usize,
-    }
-
-    read_csr_as!(Vsatp, 0x280);
-    write_csr_as!(0x280);
 }
 
 pub mod hedeleg {
