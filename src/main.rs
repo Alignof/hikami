@@ -180,8 +180,12 @@ impl Context {
         }
     }
 
-    pub fn modify_xreg(&mut self, index: usize, value: u64) {
+    pub fn set_xreg(&mut self, index: usize, value: u64) {
         self.xreg[index] = value;
+    }
+
+    pub fn set_sepc(&mut self, value: usize) {
+        self.sepc = value;
     }
 }
 
