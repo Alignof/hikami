@@ -7,7 +7,7 @@ use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
 use crate::memmap::device::Device;
 use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap, MemoryMap};
-use crate::trap::supervisor::strap_vector;
+use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
 use riscv::register::{sepc, sie, sstatus, stvec};
@@ -136,7 +136,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
         // set trap vector
         stvec::write(
-            strap_vector as *const fn() as usize,
+            hstrap_vector as *const fn() as usize,
             stvec::TrapMode::Direct,
         );
 
