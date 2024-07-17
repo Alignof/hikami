@@ -179,6 +179,10 @@ impl Context {
             );
         }
     }
+
+    pub fn modify_xreg(&mut self, index: usize, value: u64) {
+        self.xreg[index] = value;
+    }
 }
 
 #[global_allocator]
