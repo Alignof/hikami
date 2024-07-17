@@ -27,7 +27,7 @@ pub fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     loop {
         unsafe {
-            asm!("nop");
+            riscv::asm::wfi();
         }
     }
 }
