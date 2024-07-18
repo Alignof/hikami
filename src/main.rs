@@ -42,7 +42,7 @@ pub struct HypervisorData {
 
 /// Guest context
 #[allow(dead_code)]
-#[repr(packed)]
+#[repr(C)]
 #[derive(Debug, Default)]
 pub struct Context {
     /// Registers
