@@ -8,6 +8,9 @@ use riscv::register::scause::Exception;
 #[no_mangle]
 pub extern "C" fn hs_forward_exception() {
     unsafe {
+        // restore context data
+        HYPERVISOR_DATA.lock().context.load();
+
         let context = &mut HYPERVISOR_DATA.lock().context;
         asm!(
             "csrw vsepc, {sepc}",
@@ -21,7 +24,6 @@ pub extern "C" fn hs_forward_exception() {
 }
 
 /// Trap handler for exception
-#[allow(clippy::cast_possible_wrap)]
-pub unsafe fn trap_exception(_a0: u64, _a7: u64, _exception_cause: Exception) {
+pub unsafe fn trap_exception(_exception_cause: Exception) {
     hs_forward_exception();
 }

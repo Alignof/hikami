@@ -1,3 +1,4 @@
+use crate::HYPERVISOR_DATA;
 use riscv::register::scause::Interrupt;
 use riscv::register::{mhartid, mip};
 
@@ -20,4 +21,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) {
         Interrupt::SupervisorExternal => riscv::asm::wfi(), // wait for interrupt
         _ => panic!("unknown interrupt type"),
     }
+
+    // restore context data
+    HYPERVISOR_DATA.lock().context.load();
 }

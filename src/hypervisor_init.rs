@@ -128,7 +128,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::Supervisor);
 
-        // hstatus.spv = 1 (enable V bit)
+        // hstatus.spv = 1 (enable V bit when sret executed)
         hstatus::set_spv();
 
         // set entry point
