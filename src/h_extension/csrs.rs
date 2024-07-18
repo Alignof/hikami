@@ -77,7 +77,7 @@ pub mod vsatp {
 }
 
 pub mod hstatus {
-    //! sstatus util functions.
+    //! hstatus util functions.
     #![allow(dead_code)]
 
     const HSTATUS: usize = 0x600;
@@ -88,13 +88,13 @@ pub mod hstatus {
     read_csr_as!(Hstatus, 0x600);
     write_csr_as!(0x600);
 
-    /// sstatus util functions.
+    /// set spv bit (Supervisor Previous Virtualization mode, 7 bit)
     pub unsafe fn set_spv() {
         core::arch::asm!(
             "
             csrs hstatus, {bits}
             ",
-            bits = in(reg) 0b0100_0000
+            bits = in(reg) 0b1000_0000
         );
     }
 }
