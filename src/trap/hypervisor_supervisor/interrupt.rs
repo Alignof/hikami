@@ -1,6 +1,6 @@
 use crate::HYPERVISOR_DATA;
 use riscv::register::scause::Interrupt;
-use riscv::register::{mhartid, mip};
+use riscv::register::{mhartid, sip};
 
 /// Trap handler for Interrupt
 pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) {
@@ -9,12 +9,12 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) {
 
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
-            mip::set_ssoft();
+            sip::set_ssoft();
             let interrupt_addr = (CLINT_ADDR + mhartid::read() * 4) as *mut u64;
             interrupt_addr.write_volatile(0);
         }
         Interrupt::SupervisorTimer => {
-            mip::set_stimer();
+            sip::set_stimer();
             let mtimecmp_addr = (MTIMECMP_ADDR + mhartid::read() * 8) as *mut u64;
             mtimecmp_addr.write_volatile(u64::MAX);
         }
