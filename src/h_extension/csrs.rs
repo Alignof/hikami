@@ -63,6 +63,39 @@ pub mod vstvec {
     write_csr_as!(0x205);
 }
 
+pub mod vsip {
+    //! Virtual supervisor interrupt pending.
+    #![allow(dead_code)]
+
+    const VSIP: usize = 0x244;
+    pub struct Vsip {
+        bits: usize,
+    }
+
+    read_csr_as!(Vsip, 0x244);
+    write_csr_as!(0x244);
+
+    /// set SSIP bit (SupervisorSoftwareInterruptPending, 1 bit)
+    pub unsafe fn set_ssoft() {
+        core::arch::asm!(
+            "
+            csrs hstatus, {bits}
+            ",
+            bits = in(reg) 0b0010
+        );
+    }
+
+    /// set STIP bit (SupervisorTimerInterruptPending, 5 bit)
+    pub unsafe fn set_stimer() {
+        core::arch::asm!(
+            "
+            csrs hstatus, {bits}
+            ",
+            bits = in(reg) 0b0010_0000
+        );
+    }
+}
+
 pub mod vsatp {
     //! Virtual supervisor address translation and protection.
     #![allow(dead_code)]
@@ -183,7 +216,7 @@ pub mod hgatp {
     }
 
     pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
-        write((mode as usize) << 60 | vmid << 44 | ppn);
+        write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
     }
 
     read_csr_as!(Hgatp, 0x680);
