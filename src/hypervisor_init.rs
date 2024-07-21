@@ -16,7 +16,7 @@ use riscv::register::{sepc, sie, sstatus, stvec};
 ///
 /// TODO: Automatic generation of page tables according to guest OS address translation map.
 fn setup_g_stage_page_table(page_table_start: usize) {
-    use PteFlag::{Accessed, Dirty, Exec, Read, Valid, Write};
+    use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
     let memory_map: [MemoryMap; 6] = [
         // uart
         MemoryMap::new(
@@ -52,7 +52,7 @@ fn setup_g_stage_page_table(page_table_start: usize) {
         MemoryMap::new(
             0x9300_0000..0x9600_0000,
             0x9300_0000..0x9600_0000,
-            &[Dirty, Accessed, Exec, Write, Read, Valid],
+            &[Dirty, Accessed, Exec, Read, User, Valid],
         ),
     ];
     page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
