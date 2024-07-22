@@ -48,6 +48,19 @@ macro_rules! write_csr_as {
     };
 }
 
+/// Set CSR bit from enum.
+#[macro_export]
+macro_rules! set_csr_from_enum {
+    ($enum: ident, $csr_number:literal) => {
+        #[inline]
+        pub fn set(field: $enum) {
+            unsafe{
+                core::arch::asm!(concat!("csrrs x0, ", stringify!($csr_number), ", {0}"), in(reg) field as usize);
+            }
+        }
+    };
+}
+
 pub enum InterruptKind {
     /// VS-level external interrupts (bit 10)
     Vsei,
@@ -188,11 +201,14 @@ pub mod hideleg {
 pub mod hvip {
     //! Hypervisor virtual interrupt pending.
     #![allow(dead_code)]
+    use super::InterruptKind;
 
     const HVIP: usize = 0x645;
     pub struct Hvip {
         bits: usize,
     }
+
+    set_csr_from_enum!(InterruptKind, 0x645);
 
     read_csr_as!(Hvip, 0x645);
     write_csr_as!(0x645);
