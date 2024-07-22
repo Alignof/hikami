@@ -19,6 +19,7 @@ pub const CONTEXT_CLAIM: usize = 0x4;
 
 /// PLIC: Platform-Level Interrupt Controller  
 /// Interrupt controller for global interrupts.
+#[derive(Debug)]
 pub struct Plic {
     base_addr: usize,
     size: usize,

@@ -12,6 +12,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 ];
 
 /// UART: Universal asynchronous receiver-transmitter
+#[derive(Debug)]
 pub struct Uart {
     base_addr: usize,
     size: usize,

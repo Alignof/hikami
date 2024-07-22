@@ -2,6 +2,7 @@
 #![no_std]
 
 extern crate alloc;
+mod device;
 mod guest;
 mod h_extension;
 mod hypervisor_init;
@@ -38,6 +39,7 @@ pub fn panic(info: &PanicInfo) -> ! {
 #[derive(Debug, Default)]
 pub struct HypervisorData {
     guest: guest::Guest,
+    devices: Option<device::Devices>,
 }
 
 #[global_allocator]

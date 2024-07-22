@@ -14,6 +14,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
+#[derive(Debug)]
 pub struct VirtIO {
     base_addr: usize,
     size: usize,

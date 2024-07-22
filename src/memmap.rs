@@ -30,6 +30,7 @@ impl MemoryMap {
 /// Memmap has memory region data of each devices.  
 /// Each devices **must** be implemented Device trait.
 #[allow(clippy::module_name_repetitions)]
+#[derive(Debug)]
 pub struct DeviceMemmap {
     pub uart: uart::Uart,
     pub virtio: Vec<virtio::VirtIO>,

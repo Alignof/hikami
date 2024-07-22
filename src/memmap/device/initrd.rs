@@ -13,6 +13,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 
 /// A scheme for loading a temporary root file system into memory,
 /// to be used as part of the Linux startup process.
+#[derive(Debug)]
 pub struct Initrd {
     base_addr: usize,
     size: usize,

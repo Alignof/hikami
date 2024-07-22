@@ -17,7 +17,7 @@
 //! | 0x9000_2000 | 0x9000_4000 | hypervisor device tree |
 //! | 0x9100_0000 |     ...     | hypervisor heap |
 //! |     ...     | 0x9300_0000 | hypervisor stack |
-//! | 0x9300_0000 |     ...     | text data of hikami |
+//! | 0x9300_0000 |     ...     | text data of guest |
 
 /// Uart addr
 pub const UART_ADDR: usize = 0x1000_0000;
