@@ -108,20 +108,32 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             Err(e) => panic!("{}", e),
         }
     };
-    let mmap = DeviceMemmap::new(device_tree);
+    let device_mmap = DeviceMemmap::new(device_tree);
 
     // setup G-stage page table
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     setup_g_stage_page_table(page_table_start);
-    mmap.device_mapping_g_stage(page_table_start);
+    device_mmap.device_mapping_g_stage(page_table_start);
 
     // enable two-level address translation
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
     hfence_gvma_all();
 
+    // copy device tree
+    let guest_dtb_addr = unsafe { guest.copy_device_tree(dtb_addr, device_tree.total_size()) };
+
     // load guest image
-    let guest_entry_point =
-        guest.load_guest_elf(mmap.initrd.paddr() as *mut u8, mmap.initrd.size());
+    let guest_entry_point = guest.load_guest_elf(
+        device_mmap.initrd.paddr() as *mut u8,
+        device_mmap.initrd.size(),
+    );
+
+    // store device data
+    unsafe {
+        HYPERVISOR_DATA
+            .lock()
+            .init_devices(dtb_addr, device_tree.total_size(), device_mmap);
+    }
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0
@@ -145,7 +157,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         HYPERVISOR_DATA.lock().guest.context.store();
     }
 
-    hart_entry(hart_id, dtb_addr);
+    hart_entry(hart_id, guest_dtb_addr);
 }
 
 /// Entry to guest mode.
