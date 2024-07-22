@@ -48,6 +48,15 @@ macro_rules! write_csr_as {
     };
 }
 
+pub enum InterruptKind {
+    /// VS-level external interrupts (bit 10)
+    Vsei,
+    /// VS-level timer interrupts (bit 6)
+    Vsti,
+    /// VS-level software interrupts (bit 2)
+    Vssi,
+}
+
 pub mod vstvec {
     //! Virtual supervisor trap handler base address.
     #![allow(dead_code)]
@@ -170,15 +179,6 @@ pub mod hideleg {
     const HIDELEG: usize = 0x603;
     pub struct Hideleg {
         bits: usize,
-    }
-
-    pub enum InterruptKind {
-        /// VS-level external interrupts (bit 10)
-        Vsei,
-        /// VS-level timer interrupts (bit 6)
-        Vsti,
-        /// VS-level software interrupts (bit 2)
-        Vssi,
     }
 
     read_csr_as!(Hideleg, 0x603);
