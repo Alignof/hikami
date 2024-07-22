@@ -37,7 +37,7 @@ pub fn panic(info: &PanicInfo) -> ! {
 /// FIXME: Rename me!
 #[derive(Debug, Default)]
 pub struct HypervisorData {
-    pub context: guest::context::Context,
+    guest: guest::Guest,
 }
 
 #[global_allocator]

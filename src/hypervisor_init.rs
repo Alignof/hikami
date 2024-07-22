@@ -142,7 +142,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         );
 
         // save current context data
-        HYPERVISOR_DATA.lock().context.store();
+        HYPERVISOR_DATA.lock().guest.context.store();
     }
 
     hart_entry(hart_id, dtb_addr);
@@ -153,7 +153,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     // enter VS-mode
     unsafe {
-        HYPERVISOR_DATA.lock().context.load();
+        HYPERVISOR_DATA.lock().guest.context.load();
         asm!(
             "
             mv a1, {dtb_addr}

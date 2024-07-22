@@ -9,9 +9,9 @@ use riscv::register::scause::Exception;
 pub extern "C" fn hs_forward_exception() {
     unsafe {
         // restore context data
-        HYPERVISOR_DATA.lock().context.load();
+        HYPERVISOR_DATA.lock().guest.context.load();
 
-        let context = &mut HYPERVISOR_DATA.lock().context;
+        let context = &mut HYPERVISOR_DATA.lock().guest.context;
         asm!(
             "csrw vsepc, {sepc}",
             "csrw vscause, {scause}",

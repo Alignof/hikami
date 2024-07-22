@@ -3,17 +3,28 @@
 pub mod context;
 
 use crate::memmap::constant::{DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_TEXT_OFFSET};
+use context::Context;
 use elf::{endian::AnyEndian, ElfBytes};
 
 /// Guest Information
+#[derive(Debug, Default)]
 pub struct Guest {
     /// Guest ID
     guest_id: usize,
+    /// Guest context data
+    pub context: Context,
 }
 
 impl Guest {
     pub fn new(hart_id: usize) -> Self {
-        Guest { guest_id: hart_id }
+        Guest {
+            guest_id: hart_id,
+            context: Context::default(),
+        }
+    }
+
+    pub fn hart_id(&self) -> usize {
+        self.guest_id
     }
 
     /// Return guest dram space start

@@ -13,7 +13,7 @@ pub unsafe extern "C" fn hstrap_vector() -> ! {
     unsafe { asm!(".align 4") }
 
     // save current context data
-    HYPERVISOR_DATA.lock().context.store();
+    HYPERVISOR_DATA.lock().guest.context.store();
 
     match scause::read().cause() {
         Trap::Interrupt(interrupt_cause) => trap_interrupt(interrupt_cause),
