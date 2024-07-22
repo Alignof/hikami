@@ -7,9 +7,9 @@ use core::arch::asm;
 pub struct Context {
     /// Registers
     pub xreg: [u64; 32],
-    /// Program counter
-    pub sstatus: u32,
     /// Value of sstatus
+    pub sstatus: usize,
+    /// Program counter
     pub sepc: usize,
 }
 
