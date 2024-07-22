@@ -52,7 +52,7 @@ fn setup_g_stage_page_table(page_table_start: usize) {
         MemoryMap::new(
             0x9300_0000..0x9600_0000,
             0x9300_0000..0x9600_0000,
-            &[Dirty, Accessed, Exec, Read, User, Valid],
+            &[Dirty, Accessed, Exec, Write, Read, User, Valid],
         ),
     ];
     page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
