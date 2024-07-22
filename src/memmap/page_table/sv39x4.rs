@@ -19,6 +19,8 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
     const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
     const PAGE_TABLE_SIZE: usize = 512;
 
+    assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
+
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
             root_table_start_addr as *mut PageTableEntry,
