@@ -1,4 +1,7 @@
-/// Handling guest OS.
+//! Guest data of each HARTs.
+
+pub mod context;
+
 use crate::memmap::constant::{DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_TEXT_OFFSET};
 use elf::{endian::AnyEndian, ElfBytes};
 
