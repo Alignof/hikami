@@ -165,14 +165,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     // enter VS-mode
     unsafe {
-        HYPERVISOR_DATA.lock().guest.context.load();
-        asm!(
-            "
-            mv a1, {dtb_addr}
-            sret
-            ",
-            dtb_addr = in(reg) dtb_addr,
-            options(noreturn)
-        );
+        let mut hypervisor_data = HYPERVISOR_DATA.lock();
+        hypervisor_data.guest.context.set_xreg(11, dtb_addr as u64); // a1 = dtb_addr
+        hypervisor_data.guest.context.load();
+        drop(hypervisor_data); // force to expire lifetime
+        asm!("sret", options(noreturn));
     }
 }
