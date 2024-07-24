@@ -1,5 +1,6 @@
 [target.riscv64imac-unknown-none-elf]
-runner = "qemu-system-riscv64 -S -gdb tcp::10000 -d int -machine virt -bios none -nographic -m 2G -initrd vmlinux -kernel"
+runner = "qemu-system-riscv64 -S -gdb tcp::10000 -d int,in_asm -machine virt -bios none -nographic -m 2G -initrd vmlinux -kernel"
+#runner = "qemu-system-riscv64 -S -gdb tcp::10000 -d int,in_asm,cpu_reset,mmu,page,guest_errors  -machine virt -bios none -nographic -m 2G -initrd vmlinux -kernel"
 #runner = "qemu-system-riscv64 -machine virt -bios none -nographic -m 2G -initrd vmlinux -kernel"
 
 rustflags = [
