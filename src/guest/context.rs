@@ -29,6 +29,7 @@ impl Default for Context {
 
 impl Context {
     /// Get `ContextData` from raw address.
+    #[allow(clippy::mut_from_ref)]
     fn get_context(&self) -> &mut ContextData {
         unsafe {
             (self.address as *mut ContextData)
