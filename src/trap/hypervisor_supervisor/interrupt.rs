@@ -9,10 +9,10 @@ use riscv::register::sie;
 pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     const CLINT_ADDR: usize = 0x200_0000;
 
-    let guest = &HYPERVISOR_DATA.lock().guest;
-
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
+            let guest = &HYPERVISOR_DATA.lock().guest;
+
             vsip::set_ssoft();
             let interrupt_addr = (CLINT_ADDR + guest.hart_id() * 4) as *mut u64;
             interrupt_addr.write_volatile(0);
