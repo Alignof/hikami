@@ -1,10 +1,10 @@
+use crate::memmap::constant::{static_data::CONTEXT_OFFSET, STATIC_BASE};
 use core::arch::asm;
 
-/// Guest context
+/// Guest context on memory
 #[allow(dead_code)]
 #[repr(C)]
-#[derive(Debug, Default)]
-pub struct Context {
+pub struct ContextData {
     /// Registers
     pub xreg: [u64; 32],
     /// Value of sstatus
@@ -13,20 +13,60 @@ pub struct Context {
     pub sepc: usize,
 }
 
+/// Guest context
+#[derive(Debug, Copy, Clone)]
+pub struct Context {
+    address: usize,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Context {
+            address: STATIC_BASE + CONTEXT_OFFSET,
+        }
+    }
+}
+
 impl Context {
-    /// Load context data to registers.
-    ///
-    /// # Safety
-    /// If `Context.addr` is valid address.
-    #[inline(always)]
-    #[allow(clippy::inline_always)]
-    pub unsafe fn load(&self) {
+    /// Get `ContextData` from raw address.
+    #[allow(clippy::mut_from_ref)]
+    fn get_context(&self) -> &mut ContextData {
         unsafe {
-            asm!(
-                "
+            (self.address as *mut ContextData)
+                .as_mut()
+                .expect("address of ContextData is invalid")
+        }
+    }
+
+    pub fn set_xreg(&mut self, index: usize, value: u64) {
+        self.get_context().xreg[index] = value;
+    }
+
+    pub fn sepc(&self) -> usize {
+        self.get_context().sepc
+    }
+
+    pub fn set_sepc(&mut self, value: usize) {
+        self.get_context().sepc = value;
+    }
+}
+
+/// Load context data to registers.
+///
+/// # Safety
+/// If `Context.addr` is valid address.
+///
+/// # TODO
+/// replace stringify macro to const when `asm_const` is stabled.
+#[inline(always)]
+#[allow(clippy::inline_always)]
+pub unsafe fn load() {
+    unsafe {
+        asm!(
+            "
                 fence.i
                 csrw sscratch, sp
-                mv sp, {context_addr}
+                li sp, 0x80200000 // STATIC_BASE + CONTEXT_OFFSET
 
                 // restore sstatus 
                 ld t0, 32*8(sp)
@@ -69,25 +109,27 @@ impl Context {
                 ld t6, 31*8(sp)
                 csrr sp, sscratch
                 ",
-                context_addr = in(reg) self,
-            );
-        }
+        );
     }
+}
 
-    /// Store context data to registers.
-    ///
-    /// # Safety
-    /// If `Context.addr` is valid address.
-    #[inline(always)]
-    #[allow(clippy::inline_always)]
-    pub unsafe fn store(&mut self) {
-        unsafe {
-            asm!(
-                "
+/// Store context data to registers.
+///
+/// # Safety
+/// If `Context.addr` is valid address.
+///
+/// # TODO
+/// replace stringify macro to const when `asm_const` is stabled.
+#[inline(always)]
+#[allow(clippy::inline_always)]
+pub unsafe fn store() {
+    unsafe {
+        asm!(
+            "
                 fence.i
                 csrw sscratch, sp
-                mv sp, {context_addr}
-
+                li sp, 0x80200000 // STATIC_BASE + CONTEXT_OFFSET
+                
                 // save sstatus
                 csrr t0, sstatus
                 sd t0, 32*8(sp)
@@ -135,16 +177,6 @@ impl Context {
                 // restore sp
                 csrr sp, sscratch
                 ",
-                context_addr = in(reg) self,
-            );
-        }
-    }
-
-    pub fn set_xreg(&mut self, index: usize, value: u64) {
-        self.xreg[index] = value;
-    }
-
-    pub fn set_sepc(&mut self, value: usize) {
-        self.sepc = value;
+        );
     }
 }

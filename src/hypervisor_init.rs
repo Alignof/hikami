@@ -1,4 +1,4 @@
-use crate::guest::Guest;
+use crate::guest::{self, Guest};
 use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hstatus, hvip, vsatp,
     InterruptKind,
@@ -17,36 +17,12 @@ use riscv::register::{sepc, sie, sstatus, stvec};
 /// TODO: Automatic generation of page tables according to guest OS address translation map.
 fn setup_g_stage_page_table(page_table_start: usize) {
     use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
-    let memory_map: [MemoryMap; 6] = [
-        // uart
-        MemoryMap::new(
-            0x1000_0000..0x1000_0100,               // guest_physical_memory_range
-            0x1000_0000..0x1000_0100,               // physical_memory_range
-            &[Dirty, Accessed, Write, Read, Valid], // flags
-        ),
-        // Device tree
-        MemoryMap::new(
-            0xbfe0_0000..0xc000_0000,
-            0xbfe0_0000..0xc000_0000,
-            &[Dirty, Accessed, Write, Read, Valid],
-        ),
-        // TEXT (physical map)
-        MemoryMap::new(
-            0x8000_0000..0x8020_0000,
-            0x8000_0000..0x8020_0000,
-            &[Dirty, Accessed, Exec, Read, Valid],
-        ),
-        // RAM
-        MemoryMap::new(
-            0x8020_0000..0x8080_0000,
-            0x8020_0000..0x8080_0000,
-            &[Dirty, Accessed, Write, Read, Valid],
-        ),
+    let memory_map: [MemoryMap; 2] = [
         // hypervisor RAM
         MemoryMap::new(
             0x9000_0000..0x9040_0000,
             0x9000_0000..0x9040_0000,
-            &[Dirty, Accessed, Write, Read, Valid],
+            &[Dirty, Accessed, Write, Read, User, Valid],
         ),
         // TEXT
         MemoryMap::new(
@@ -154,7 +130,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         );
 
         // save current context data
-        HYPERVISOR_DATA.lock().guest.context.store();
+        guest::context::store();
     }
 
     hart_entry(hart_id, guest_dtb_addr);
@@ -167,8 +143,9 @@ fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         let mut hypervisor_data = HYPERVISOR_DATA.lock();
         hypervisor_data.guest.context.set_xreg(11, dtb_addr as u64); // a1 = dtb_addr
-        hypervisor_data.guest.context.load();
-        drop(hypervisor_data); // force to expire lifetime
+        drop(hypervisor_data); // release HYPERVISOR_DATA lock
+
+        guest::context::load();
         asm!("sret", options(noreturn));
     }
 }
