@@ -9,8 +9,7 @@
 //! | 0x8000_0000 | 0x8020_0000 | text data of hikami |
 //! | 0x8020_0000 | 0x8030_0000 | hypervisor static |
 //! | 0x8030_0000 | 0x8030_2000 | hypervisor page table |
-//! | 0x8030_4000 | 0x8030_xxxx | hypervisor device tree blob |
-//! | 0x8035_0000 | 0x8040_0000 | hypervisor singleton |
+//! | 0x8030_4000 | 0x8040_0000 | hypervisor device tree blob |
 //! | 0x8040_0000 |     ...     | hypervisor heap |
 //! |     ...     | 0x8080_0000 | hypervisor stack |
 //! | 0x9000_0000 | 0x9000_2000 | hypervisor page table |
@@ -26,15 +25,14 @@ pub const UART_ADDR: usize = 0x1000_0000;
 pub const DRAM_BASE: usize = 0x8000_0000;
 /// Memory region on dram that be allocated each HARTs.
 pub const DRAM_SIZE_PAR_HART: usize = 0x1000_0000;
+/// Data region for singleton.
+pub const STATIC_BASE: usize = 0x8020_0000;
 /// Base address of page table.
 pub const PAGE_TABLE_BASE: usize = 0x8030_0000;
 /// Size of memory areathat a page can point to.
 pub const PAGE_SIZE: usize = 4096;
 /// Page table offset for each HART.
 pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
-#[allow(dead_code)]
-/// Data region for singleton.
-pub const SINGLETON_BASE: usize = 0x8035_0000;
 /// Base address of heap.
 pub const HEAP_BASE: usize = 0x8040_0000;
 /// Heap size.
@@ -57,10 +55,9 @@ pub const GUEST_STACK_OFFSET: usize = 0x300_0000;
 /// Guest Text secion offset
 pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;
 
-pub mod singleton {
+pub mod static_data {
     //! memory map for singleton area.
 
-    #[allow(dead_code)]
     /// offset for `Context`
     pub const CONTEXT_OFFSET: usize = 0x0;
 }
