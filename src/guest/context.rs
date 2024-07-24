@@ -1,10 +1,65 @@
+use crate::memmap::constant::{static_data::CONTEXT_OFFSET, STATIC_BASE};
 use core::arch::asm;
 
 /// Guest context
+#[derive(Debug, Copy, Clone)]
+pub struct Context {
+    address: usize,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Context {
+            address: STATIC_BASE + CONTEXT_OFFSET,
+        }
+    }
+}
+
+impl Context {
+    /// Get `ContextData` from raw address.
+    fn get_context(&self) -> &mut ContextData {
+        unsafe {
+            (self.address as *mut ContextData)
+                .as_mut()
+                .expect("address of ContextData is invalid")
+        }
+    }
+
+    /// Load context data to registers.
+    #[inline(always)]
+    #[allow(clippy::inline_always)]
+    pub fn load(&self) {
+        unsafe {
+            self.get_context().load();
+        }
+    }
+
+    /// Store context data to registers.
+    #[inline(always)]
+    #[allow(clippy::inline_always)]
+    pub fn store(&self) {
+        unsafe {
+            self.get_context().store();
+        }
+    }
+
+    pub fn set_xreg(&mut self, index: usize, value: u64) {
+        self.get_context().set_xreg(index, value);
+    }
+
+    pub fn sepc(&self) -> usize {
+        self.get_context().sepc
+    }
+
+    pub fn set_sepc(&mut self, value: usize) {
+        self.get_context().set_sepc(value);
+    }
+}
+
+/// Guest context on memory
 #[allow(dead_code)]
 #[repr(C)]
-#[derive(Debug, Default)]
-pub struct Context {
+pub struct ContextData {
     /// Registers
     pub xreg: [u64; 32],
     /// Value of sstatus
@@ -13,7 +68,7 @@ pub struct Context {
     pub sepc: usize,
 }
 
-impl Context {
+impl ContextData {
     /// Load context data to registers.
     ///
     /// # Safety
