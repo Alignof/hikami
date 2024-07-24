@@ -11,11 +11,11 @@ pub extern "C" fn hs_forward_exception() {
         // restore context data
         HYPERVISOR_DATA.lock().guest.context.load();
 
-        let context = &mut HYPERVISOR_DATA.lock().guest.context;
+        let mut context = HYPERVISOR_DATA.lock().guest.context;
         asm!(
             "csrw vsepc, {sepc}",
             "csrw vscause, {scause}",
-            sepc = in(reg) context.sepc,
+            sepc = in(reg) context.sepc(),
             scause = in(reg) scause::read().bits()
         );
 
@@ -24,6 +24,10 @@ pub extern "C" fn hs_forward_exception() {
 }
 
 /// Trap handler for exception
-pub unsafe fn trap_exception(_exception_cause: Exception) {
+pub unsafe fn trap_exception(_exception_cause: Exception) -> ! {
     hs_forward_exception();
+
+    unsafe {
+        asm!("sret", options(noreturn));
+    }
 }

@@ -19,8 +19,4 @@ pub unsafe extern "C" fn hstrap_vector() -> ! {
         Trap::Interrupt(interrupt_cause) => trap_interrupt(interrupt_cause),
         Trap::Exception(exception_cause) => trap_exception(exception_cause),
     }
-
-    unsafe {
-        asm!("sret", options(noreturn));
-    }
 }
