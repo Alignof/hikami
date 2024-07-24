@@ -1,3 +1,4 @@
+use crate::guest;
 use crate::h_extension::csrs::{hvip, vsip, InterruptKind};
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
@@ -9,7 +10,6 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     const CLINT_ADDR: usize = 0x200_0000;
 
     let guest = &HYPERVISOR_DATA.lock().guest;
-    let guest_context = guest.context;
 
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
@@ -26,7 +26,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     }
 
     // restore context data
-    guest_context.load();
+    guest::context::load();
 
     unsafe {
         asm!("sret", options(noreturn));

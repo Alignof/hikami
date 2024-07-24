@@ -1,3 +1,4 @@
+use crate::guest;
 use crate::h_extension::csrs::vstvec;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
@@ -8,9 +9,6 @@ use riscv::register::scause::Exception;
 #[no_mangle]
 pub extern "C" fn hs_forward_exception() {
     unsafe {
-        // restore context data
-        HYPERVISOR_DATA.lock().guest.context.load();
-
         let mut context = HYPERVISOR_DATA.lock().guest.context;
         asm!(
             "csrw vsepc, {sepc}",
@@ -20,6 +18,9 @@ pub extern "C" fn hs_forward_exception() {
         );
 
         context.set_sepc(vstvec::read().bits());
+
+        // restore context data
+        guest::context::load();
     }
 }
 

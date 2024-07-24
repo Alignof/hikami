@@ -1,4 +1,4 @@
-use crate::guest::Guest;
+use crate::guest::{self, Guest};
 use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hstatus, hvip, vsatp,
     InterruptKind,
@@ -154,7 +154,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         );
 
         // save current context data
-        HYPERVISOR_DATA.lock().guest.context.store();
+        guest::context::store();
     }
 
     hart_entry(hart_id, guest_dtb_addr);
@@ -167,8 +167,9 @@ fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         let mut hypervisor_data = HYPERVISOR_DATA.lock();
         hypervisor_data.guest.context.set_xreg(11, dtb_addr as u64); // a1 = dtb_addr
-        hypervisor_data.guest.context.load();
-        drop(hypervisor_data); // force to expire lifetime
+        drop(hypervisor_data); // release HYPERVISOR_DATA lock
+
+        guest::context::load();
         asm!("sret", options(noreturn));
     }
 }
