@@ -28,6 +28,8 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         medeleg::set_load_page_fault();
         medeleg::set_store_page_fault();
         asm!("csrs medeleg, {vsmode_ecall}", vsmode_ecall = in(reg) 1 << 10, options(nomem)); // deleg env call from VS-mode
+        medeleg::clear_supervisor_env_call();
+        medeleg::clear_machine_env_call();
 
         // mie = 0x088
         mie::set_msoft();
