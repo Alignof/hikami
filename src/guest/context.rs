@@ -38,6 +38,10 @@ impl Context {
         }
     }
 
+    pub fn xreg(&self, index: usize) -> u64 {
+        self.get_context().xreg[index]
+    }
+
     pub fn set_xreg(&mut self, index: usize, value: u64) {
         self.get_context().xreg[index] = value;
     }
