@@ -8,6 +8,7 @@ mod h_extension;
 mod hypervisor_init;
 mod machine_init;
 mod memmap;
+mod sbi;
 mod trap;
 mod util;
 
