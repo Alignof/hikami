@@ -18,6 +18,9 @@
 //! |     ...     | 0x9300_0000 | hypervisor stack |
 //! | 0x9300_0000 |     ...     | text data of guest |
 
+/// Max number of HART
+pub const MAX_HART_NUM: usize = 8;
+
 /// Uart addr
 pub const UART_ADDR: usize = 0x1000_0000;
 

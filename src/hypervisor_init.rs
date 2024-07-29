@@ -75,7 +75,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // guest data
-    let guest = Guest::new(hart_id);
+    let new_guest = Guest::new(hart_id);
 
     // parse device tree
     let device_tree = unsafe {
@@ -96,19 +96,19 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     hfence_gvma_all();
 
     // copy device tree
-    let guest_dtb_addr = unsafe { guest.copy_device_tree(dtb_addr, device_tree.total_size()) };
+    let guest_dtb_addr = unsafe { new_guest.copy_device_tree(dtb_addr, device_tree.total_size()) };
 
     // load guest image
-    let guest_entry_point = guest.load_guest_elf(
+    let guest_entry_point = new_guest.load_guest_elf(
         device_mmap.initrd.paddr() as *mut u8,
         device_mmap.initrd.size(),
     );
 
     // store device data
     unsafe {
-        HYPERVISOR_DATA
-            .lock()
-            .init_devices(dtb_addr, device_tree.total_size(), device_mmap);
+        let hypervisor_data = HYPERVISOR_DATA.lock();
+        hypervisor_data.init_devices(dtb_addr, device_tree.total_size(), device_mmap);
+        hypervisor_data.regsiter_guest(new_guest);
     }
 
     unsafe {

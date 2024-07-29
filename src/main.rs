@@ -20,8 +20,11 @@ use wild_screen_alloc::WildScreenAlloc;
 use once_cell::unsync::Lazy;
 use spin::Mutex;
 
+use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{
+    DRAM_BASE, HEAP_BASE, HEAP_SIZE, MAX_HART_NUM, STACK_BASE, STACK_SIZE_PER_HART,
+};
 
 /// Panic handler
 #[panic_handler]
@@ -39,8 +42,15 @@ pub fn panic(info: &PanicInfo) -> ! {
 /// FIXME: Rename me!
 #[derive(Debug, Default)]
 pub struct HypervisorData {
-    guest: guest::Guest,
+    guest: [Option<guest::Guest>; MAX_HART_NUM],
     devices: Option<device::Devices>,
+}
+
+impl HypervisorData {
+    pub fn regsiter_guest(&mut self, new_guest: Guest) {
+        assert!(new_guest.hart_id < MAX_HART_NUM);
+        self.guest[new_guest.hart_id] = Some(new_guest);
+    }
 }
 
 #[global_allocator]
