@@ -4,6 +4,7 @@ use super::Device;
 use crate::memmap::page_table::PteFlag;
 use crate::memmap::{constant, MemoryMap};
 use fdt::Fdt;
+use rustsbi::{HartMask, SbiRet};
 
 const DEVICE_FLAGS: [PteFlag; 5] = [
     PteFlag::Dirty,
@@ -66,6 +67,7 @@ impl Device for Clint {
     }
 }
 
+/// Ref: [https://github.com/rustsbi/rustsbi-qemu/blob/main/rustsbi-qemu/src/clint.rs](https://github.com/rustsbi/rustsbi-qemu/blob/main/rustsbi-qemu/src/clint.rs)
 impl rustsbi::Timer for Clint {
     /// Programs the clock for the next event after `stime_value` time.
     fn set_timer(&self, stime_value: u64) {
@@ -75,5 +77,22 @@ impl rustsbi::Timer for Clint {
             let mtimecmp_addr = (self.base_addr + constant::clint::MTIMECMP_OFFSET) as *mut u64;
             mtimecmp_addr.write_volatile(stime_value);
         }
+    }
+}
+
+impl rustsbi::Ipi for Clint {
+    /// Send an inter-processor interrupt to all the harts defined in `hart_mask`.
+    fn send_ipi(&self, hart_mask: HartMask) -> SbiRet {
+        for i in 0..constant::MAX_HART_NUM {
+            // TODO check hsm wheter allow_ipi enabled.
+            if hart_mask.has_bit(i) {
+                let msip_addr = (self.base_addr + constant::clint::MSIP_OFFSET) as *mut u64;
+                unsafe {
+                    let msip_value = msip_addr.read_volatile();
+                    msip_addr.write_volatile(msip_value | i as u64);
+                }
+            }
+        }
+        SbiRet::success(0)
     }
 }

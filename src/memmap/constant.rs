@@ -29,9 +29,9 @@ pub mod clint {
 
     /// | Register-Name | Offset(hex) | Size(Bits) | Reset(hex) | Description |
     /// | ------------- | ----------- | ---------- | ---------- | ----------- |
-    /// | msip | 0X0 | 32 | 0X0 | This | register generates machine mode software interrupts when set. |
-    /// | mtimecmp | 0X4000 | 64 | 0X0 | This register holds the compare value for the timer. |
-    /// | mtime | 0XBFF8 | 64 | 0X0 | Provides the current timer value. |
+    /// | msip          | 0x0         | 32         | 0x0        | This register generates machine mode software interrupts when set. |
+    /// | mtimecmp      | 0x4000      | 64         | 0x0        | This register holds the compare value for the timer. |
+    /// | mtime         | 0xBFF8      | 64         | 0x0        | Provides the current timer value. |
     pub const MSIP_OFFSET: usize = 0x0;
     pub const MTIMECMP_OFFSET: usize = 0x4000;
     pub const MTIME_OFFSET: usize = 0xbff8;
