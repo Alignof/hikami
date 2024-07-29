@@ -13,6 +13,7 @@ mod trap;
 mod util;
 
 use core::arch::asm;
+use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
 use wild_screen_alloc::WildScreenAlloc;
@@ -25,6 +26,7 @@ use crate::machine_init::mstart;
 use crate::memmap::constant::{
     DRAM_BASE, HEAP_BASE, HEAP_SIZE, MAX_HART_NUM, STACK_BASE, STACK_SIZE_PER_HART,
 };
+use crate::sbi::Sbi;
 
 /// Panic handler
 #[panic_handler]
@@ -68,8 +70,11 @@ impl HypervisorData {
 #[global_allocator]
 static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
+/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
 static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
     Lazy::new(|| Mutex::new(HypervisorData::default()));
+
+static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
