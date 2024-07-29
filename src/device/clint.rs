@@ -65,3 +65,15 @@ impl Device for Clint {
         )
     }
 }
+
+impl rustsbi::Timer for Clint {
+    /// Programs the clock for the next event after `stime_value` time.
+    fn set_timer(&self, stime_value: u64) {
+        unsafe {
+            let hart_id = riscv::register::mhartid::read();
+            assert_eq!(hart_id, 0);
+            let mtimecmp_addr = (self.base_addr + constant::clint::MTIMECMP_OFFSET) as *mut u64;
+            mtimecmp_addr.write_volatile(stime_value);
+        }
+    }
+}
