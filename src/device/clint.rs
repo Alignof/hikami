@@ -6,6 +6,19 @@ use crate::memmap::{constant, MemoryMap};
 use fdt::Fdt;
 use rustsbi::{HartMask, SbiRet};
 
+mod register {
+    //! Ref: [https://chromitem-soc.readthedocs.io/en/latest/clint.html](https://chromitem-soc.readthedocs.io/en/latest/clint.html)
+
+    /// | Register-Name | Offset(hex) | Size(Bits) | Reset(hex) | Description |
+    /// | ------------- | ----------- | ---------- | ---------- | ----------- |
+    /// | msip          | 0x0         | 32         | 0x0        | This register generates machine mode software interrupts when set. |
+    /// | mtimecmp      | 0x4000      | 64         | 0x0        | This register holds the compare value for the timer. |
+    /// | mtime         | 0xBFF8      | 64         | 0x0        | Provides the current timer value. |
+    pub const MSIP_OFFSET: usize = 0x0;
+    pub const MTIMECMP_OFFSET: usize = 0x4000;
+    pub const MTIME_OFFSET: usize = 0xbff8;
+}
+
 const DEVICE_FLAGS: [PteFlag; 5] = [
     PteFlag::Dirty,
     PteFlag::Accessed,
@@ -74,7 +87,7 @@ impl rustsbi::Timer for Clint {
         unsafe {
             let hart_id = riscv::register::mhartid::read();
             assert_eq!(hart_id, 0);
-            let mtimecmp_addr = (self.base_addr + constant::clint::MTIMECMP_OFFSET) as *mut u64;
+            let mtimecmp_addr = (self.base_addr + register::MTIMECMP_OFFSET) as *mut u64;
             mtimecmp_addr.write_volatile(stime_value);
         }
     }
@@ -86,7 +99,7 @@ impl rustsbi::Ipi for Clint {
         for i in 0..constant::MAX_HART_NUM {
             // TODO check hsm wheter allow_ipi enabled.
             if hart_mask.has_bit(i) {
-                let msip_addr = (self.base_addr + constant::clint::MSIP_OFFSET) as *mut u64;
+                let msip_addr = (self.base_addr + register::MSIP_OFFSET) as *mut u64;
                 unsafe {
                     let msip_value = msip_addr.read_volatile();
                     msip_addr.write_volatile(msip_value | i as u64);
