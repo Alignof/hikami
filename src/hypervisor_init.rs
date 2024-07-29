@@ -142,7 +142,10 @@ fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     // enter VS-mode
     unsafe {
         let mut hypervisor_data = HYPERVISOR_DATA.lock();
-        hypervisor_data.guest.context.set_xreg(11, dtb_addr as u64); // a1 = dtb_addr
+        hypervisor_data
+            .guest()
+            .context
+            .set_xreg(11, dtb_addr as u64); // a1 = dtb_addr
         drop(hypervisor_data); // release HYPERVISOR_DATA lock
 
         guest::context::load();

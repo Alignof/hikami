@@ -14,7 +14,7 @@ use sbi::sbi_base_handler;
 #[allow(clippy::inline_always)]
 pub extern "C" fn hs_forward_exception() {
     unsafe {
-        let mut context = HYPERVISOR_DATA.lock().guest.context;
+        let mut context = HYPERVISOR_DATA.lock().guest().context;
         asm!(
             "csrw vsepc, {sepc}",
             "csrw vscause, {scause}",
@@ -45,7 +45,7 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
 
 /// Trap handler for exception
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
-    let mut context = unsafe { HYPERVISOR_DATA.lock().guest.context };
+    let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
 
     match exception_cause {
         // Enum not found in `riscv` crate.

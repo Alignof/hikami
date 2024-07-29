@@ -11,7 +11,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
 
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
-            let guest = &HYPERVISOR_DATA.lock().guest;
+            let guest = &HYPERVISOR_DATA.lock().guest();
 
             vsip::set_ssoft();
             let interrupt_addr = (CLINT_ADDR + guest.hart_id() * 4) as *mut u64;

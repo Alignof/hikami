@@ -42,11 +42,16 @@ pub fn panic(info: &PanicInfo) -> ! {
 /// FIXME: Rename me!
 #[derive(Debug, Default)]
 pub struct HypervisorData {
+    current_hart: usize,
     guest: [Option<guest::Guest>; MAX_HART_NUM],
     devices: Option<device::Devices>,
 }
 
 impl HypervisorData {
+    pub fn guest(&self) -> Guest {
+        self.guest[self.current_hart]
+    }
+
     pub fn regsiter_guest(&mut self, new_guest: Guest) {
         assert!(new_guest.hart_id < MAX_HART_NUM);
         self.guest[new_guest.hart_id] = Some(new_guest);
