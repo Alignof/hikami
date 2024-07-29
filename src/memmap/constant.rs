@@ -22,6 +22,7 @@
 pub const MAX_HART_NUM: usize = 8;
 
 /// Uart addr
+/// For println macro.
 pub const UART_ADDR: usize = 0x1000_0000;
 
 /// Base address of dram.
