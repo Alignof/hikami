@@ -48,13 +48,20 @@ pub struct HypervisorData {
 }
 
 impl HypervisorData {
-    pub fn guest(&self) -> Guest {
+    pub fn devices(&self) -> &device::Devices {
+        self.devices.as_ref().expect("device data is uninitialized")
+    }
+
+    pub fn guest(&mut self) -> &mut Guest {
         self.guest[self.current_hart]
+            .as_mut()
+            .expect("guest data not found")
     }
 
     pub fn regsiter_guest(&mut self, new_guest: Guest) {
-        assert!(new_guest.hart_id < MAX_HART_NUM);
-        self.guest[new_guest.hart_id] = Some(new_guest);
+        let hart_id = new_guest.hart_id();
+        assert!(hart_id < MAX_HART_NUM);
+        self.guest[hart_id] = Some(new_guest);
     }
 }
 
