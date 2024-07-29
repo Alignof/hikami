@@ -1,8 +1,9 @@
 //! Devices data
 
+pub mod clint;
 mod initrd;
 mod plic;
-mod uart;
+pub mod uart;
 mod virtio;
 
 use crate::memmap::{page_table, MemoryMap};
