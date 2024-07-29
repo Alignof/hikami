@@ -110,7 +110,7 @@ unsafe fn mtrap_exit() -> ! {
 
 #[inline(always)]
 #[allow(clippy::inline_always)]
-unsafe fn mtrap_exit_with_ret_value(ret_value: u64) -> ! {
+unsafe fn mtrap_exit_with_ret_value(ret_value: usize) -> ! {
     asm!("
         li sp, 0x80300000
 
@@ -158,20 +158,26 @@ unsafe fn mtrap_exit_with_ret_value(ret_value: u64) -> ! {
 pub unsafe extern "C" fn mtrap_vector() -> ! {
     mtrap_entry();
 
-    let a0: u64 = 0;
-    let a6: u64 = 0;
-    let a7: u64 = 0;
+    let a0: usize = 0;
+    let a1: usize = 0;
+    let a2: usize = 0;
+    let a6: usize = 0;
+    let a7: usize = 0;
     asm!("
         ld a0, 10*8(sp)
+        ld a1, 11*8(sp)
+        ld a2, 12*8(sp)
         ld a6, 16*8(sp)
         ld a7, 17*8(sp)
         ",
         in("a0") a0,
+        in("a1") a1,
+        in("a2") a2,
         in("a6") a6,
         in("a7") a7
     );
     match mcause::read().cause() {
         Trap::Interrupt(interrupt_cause) => trap_interrupt(interrupt_cause),
-        Trap::Exception(exception_cause) => trap_exception(a0, a6, a7, exception_cause),
+        Trap::Exception(exception_cause) => trap_exception(a0, a1, a2, a6, a7, exception_cause),
     }
 }
