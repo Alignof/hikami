@@ -17,6 +17,13 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
     let sbi_data = sbi_cell.get().unwrap();
     let ret_val = sbi_data.handle_ecall(a7, a6, [a0, a1, a2, 0, 0, 0]);
 
+    // forward mepc to next instruction address.
+    match mstatus::read().mpp() {
+        mstatus::MPP::Machine => mepc::write(mepc::read() + 4),
+        mstatus::MPP::Supervisor => mepc::write(sepc::read() + 4),
+        mstatus::MPP::User => unreachable!(),
+    }
+
     if ret_val.error == 0 {
         mtrap_exit_with_ret_value(ret_val.value);
     } else {

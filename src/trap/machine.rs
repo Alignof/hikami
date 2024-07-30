@@ -1,6 +1,7 @@
 mod exception;
 mod interrupt;
 
+use crate::memmap::constant::{static_data::MACHINE_CONTEXT_OFFSET, STATIC_BASE};
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
@@ -113,6 +114,7 @@ unsafe fn mtrap_exit() -> ! {
 unsafe fn mtrap_exit_with_ret_value(ret_value: usize) -> ! {
     asm!("
         li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
+        addi sp, sp, -256
 
         ld ra, 1*8(sp)
         ld gp, 3*8(sp)
@@ -158,23 +160,25 @@ unsafe fn mtrap_exit_with_ret_value(ret_value: usize) -> ! {
 pub unsafe extern "C" fn mtrap_vector() -> ! {
     mtrap_entry();
 
-    let a0: usize = 0;
-    let a1: usize = 0;
-    let a2: usize = 0;
-    let a6: usize = 0;
-    let a7: usize = 0;
+    let mut a0;
+    let mut a1;
+    let mut a2;
+    let mut a6;
+    let mut a7;
     asm!("
-        ld a0, 10*8(sp)
-        ld a1, 11*8(sp)
-        ld a2, 12*8(sp)
-        ld a6, 16*8(sp)
-        ld a7, 17*8(sp)
+        addi t0, t0, -256
+        ld a0, 10*8(t0)
+        ld a1, 11*8(t0)
+        ld a2, 12*8(t0)
+        ld a6, 16*8(t0)
+        ld a7, 17*8(t0)
         ",
-        in("a0") a0,
-        in("a1") a1,
-        in("a2") a2,
-        in("a6") a6,
-        in("a7") a7
+        in("t0") STATIC_BASE + MACHINE_CONTEXT_OFFSET,
+        out("a0") a0,
+        out("a1") a1,
+        out("a2") a2,
+        out("a6") a6,
+        out("a7") a7
     );
     match mcause::read().cause() {
         Trap::Interrupt(interrupt_cause) => trap_interrupt(interrupt_cause),
