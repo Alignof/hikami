@@ -10,7 +10,7 @@ use rustsbi::RustSBI;
 pub struct Sbi {
     /// Core Local INTerrupt
     #[rustsbi(ipi, timer)]
-    clint: clint::Clint,
+    pub clint: clint::Clint,
 
     /// Universal Asynchronous Receiver Transmitter
     /// For debug console.

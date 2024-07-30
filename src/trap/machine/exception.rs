@@ -6,7 +6,7 @@ use riscv::register::{
     mcause::{self, Exception},
     mepc, mstatus, mtval, scause, sepc, stval, stvec,
 };
-use rustsbi::RustSBI;
+use rustsbi::{RustSBI, Timer};
 use sbi_spec::legacy;
 
 /// Trap SBI Ecall
@@ -21,9 +21,16 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
         mtrap_exit_with_ret_value(ret_val.value);
     } else {
         match a7 {
+            // Set Timer (EID #0x00)
+            legacy::LEGACY_SET_TIMER => {
+                sbi_data.clint.set_timer(a0 as u64);
+                drop(sbi_cell);
+                mtrap_exit_with_ret_value(0);
+            }
             // Console Putchar (EID #0x01)
             legacy::LEGACY_CONSOLE_PUTCHAR => {
                 print!("{}", a0 as u8 as char);
+                drop(sbi_cell);
                 mtrap_exit_with_ret_value(0);
             }
             // Console Getchar (EID #0x02)
@@ -33,6 +40,7 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
 
                 while uart_lsr_addr.read_volatile() & 0x1 == 0 {}
                 let c = uart_addr.read_volatile() as u8;
+                drop(sbi_cell);
                 mtrap_exit_with_ret_value(c.into());
             }
             _ => panic!(
