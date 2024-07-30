@@ -62,6 +62,8 @@ pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;
 pub mod static_data {
     //! memory map for singleton area.
 
-    /// offset for `Context`
-    pub const CONTEXT_OFFSET: usize = 0x0;
+    /// Offset for `guest::Context`.
+    ///
+    /// If this value changes, confirm immediate value in `context::load/store`.
+    pub const GUEST_CONTEXT_OFFSET: usize = 0x1000;
 }
