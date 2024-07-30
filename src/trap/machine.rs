@@ -14,7 +14,7 @@ unsafe fn mtrap_entry() {
         ".align 4
         fence.i
         csrw mscratch, sp
-        li sp, 0x80300000
+        li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
         addi sp, sp, -256
 
         sd ra, 1*8(sp)
@@ -65,7 +65,7 @@ unsafe fn mtrap_exit() -> ! {
         "
         fence.i
         csrw mscratch, sp
-        li sp, 0x80300000
+        li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
         addi sp, sp, -256
 
         ld ra, 1*8(sp)
@@ -112,7 +112,7 @@ unsafe fn mtrap_exit() -> ! {
 #[allow(clippy::inline_always)]
 unsafe fn mtrap_exit_with_ret_value(ret_value: usize) -> ! {
     asm!("
-        li sp, 0x80300000
+        li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
 
         ld ra, 1*8(sp)
         ld gp, 3*8(sp)
