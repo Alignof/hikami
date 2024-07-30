@@ -14,8 +14,10 @@ unsafe fn mtrap_entry() {
     asm!(
         ".align 4
         fence.i
-        csrw mscratch, sp
-        li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
+        // swap original mode sp for machine mode sp
+        csrrw sp, mscratch, sp
+
+        // alloc register context region
         addi sp, sp, -256
 
         sd ra, 1*8(sp)
@@ -48,13 +50,6 @@ unsafe fn mtrap_entry() {
         sd t4, 29*8(sp)
         sd t5, 30*8(sp)
         sd t6, 31*8(sp)
-
-        // store stack pointer
-        csrr t0, mscratch
-        sd t0, 2*8(sp)
-
-        // restore sp
-        csrr sp, mscratch
         ",
     );
 }
@@ -64,11 +59,9 @@ unsafe fn mtrap_entry() {
 unsafe fn mtrap_exit() -> ! {
     asm!(
         "
-        fence.i
-        csrw mscratch, sp
         li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
         addi sp, sp, -256
-
+        
         ld ra, 1*8(sp)
         ld gp, 3*8(sp)
         ld tp, 4*8(sp)
@@ -99,10 +92,13 @@ unsafe fn mtrap_exit() -> ! {
         ld t4, 29*8(sp)
         ld t5, 30*8(sp)
         ld t6, 31*8(sp)
-        csrr sp, mscratch
 
+        // revert stack pointer to 0x80200000
         addi sp, sp, 256
+
+        // swap current sp for stored original mode sp
         csrrw sp, mscratch, sp
+
         mret
         ",
         options(noreturn),
@@ -147,8 +143,12 @@ unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
         ld t5, 30*8(sp)
         ld t6, 31*8(sp)
 
+        // revert stack pointer to 0x80200000
         addi sp, sp, 256
+
+        // swap current sp for stored original mode sp
         csrrw sp, mscratch, sp
+
         mret
         ",
         error = in(reg) error,
