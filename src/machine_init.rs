@@ -1,6 +1,7 @@
 use crate::hypervisor_init;
 use crate::memmap::constant::{STACK_BASE, STACK_SIZE_PER_HART};
 use crate::trap::machine::mtrap_vector;
+use crate::{sbi::Sbi, SBI};
 use core::arch::asm;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
@@ -83,6 +84,18 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
 
         sfence_vma_all();
     }
+
+    SBI.lock().get_or_init(|| {
+        // parse device tree
+        let device_tree = unsafe {
+            match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+                Ok(fdt) => fdt,
+                Err(e) => panic!("{}", e),
+            }
+        };
+
+        Sbi::new(device_tree)
+    });
 
     enter_hypervisor_mode(hart_id, dtb_addr);
 }
