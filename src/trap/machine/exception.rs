@@ -1,4 +1,4 @@
-use super::{mtrap_exit, mtrap_exit_with_ret_value};
+use super::{mtrap_exit, mtrap_exit_sbi};
 use crate::device::Device;
 use crate::print;
 use crate::SBI;
@@ -17,28 +17,23 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
     let sbi_data = sbi_cell.get().unwrap();
     let ret_val = sbi_data.handle_ecall(a7, a6, [a0, a1, a2, 0, 0, 0]);
 
-    // forward mepc to next instruction address.
-    match mstatus::read().mpp() {
-        mstatus::MPP::Machine => mepc::write(mepc::read() + 4),
-        mstatus::MPP::Supervisor => mepc::write(sepc::read() + 4),
-        mstatus::MPP::User => unreachable!(),
-    }
+    mepc::write(mepc::read() + 4);
 
     if ret_val.error == 0 {
-        mtrap_exit_with_ret_value(ret_val.value);
+        mtrap_exit_sbi(ret_val.error, ret_val.value)
     } else {
         match a7 {
             // Set Timer (EID #0x00)
             legacy::LEGACY_SET_TIMER => {
                 sbi_data.clint.set_timer(a0 as u64);
                 drop(sbi_cell);
-                mtrap_exit_with_ret_value(0);
+                mtrap_exit_sbi(0, 0)
             }
             // Console Putchar (EID #0x01)
             legacy::LEGACY_CONSOLE_PUTCHAR => {
                 print!("{}", a0 as u8 as char);
                 drop(sbi_cell);
-                mtrap_exit_with_ret_value(0);
+                mtrap_exit_sbi(0, 0)
             }
             // Console Getchar (EID #0x02)
             legacy::LEGACY_CONSOLE_GETCHAR => {
@@ -48,7 +43,7 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
                 while uart_lsr_addr.read_volatile() & 0x1 == 0 {}
                 let c = uart_addr.read_volatile() as u8;
                 drop(sbi_cell);
-                mtrap_exit_with_ret_value(c.into());
+                mtrap_exit_sbi(0, c.into())
             }
             _ => panic!(
                 "SBI call failed: error:{}, eid:{a7}, fid:{a6}",
