@@ -60,7 +60,14 @@ pub const GUEST_STACK_OFFSET: usize = 0x300_0000;
 pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;
 
 pub mod static_data {
-    //! memory map for singleton area.
+    //! Memory map for singleton area.
+    //!
+    //! | start       | end         | region               |
+    //! | 0x8020_0000 | 0x8020_xxxx | machine context      |
+    //! | 0x8020_1000 | 0x8020_1100 | guest context hart 0 |
+
+    /// Offset for machine context storing.
+    pub const MACHINE_CONTEXT_OFFSET: usize = 0x0;
 
     /// Offset for `guest::Context`.
     ///
