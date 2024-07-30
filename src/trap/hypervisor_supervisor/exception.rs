@@ -40,7 +40,7 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     };
 
     context.set_xreg(10, sbiret.error as u64);
-    context.set_xreg(10, sbiret.value as u64);
+    context.set_xreg(11, sbiret.value as u64);
 }
 
 /// Trap handler for exception
