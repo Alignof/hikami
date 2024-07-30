@@ -15,7 +15,7 @@ pub struct Sbi {
     /// Universal Asynchronous Receiver Transmitter
     /// For debug console.
     #[rustsbi(console)]
-    uart: uart::Uart,
+    pub uart: uart::Uart,
 }
 
 impl Sbi {

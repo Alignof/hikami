@@ -1,26 +1,45 @@
 use super::{mtrap_exit, mtrap_exit_with_ret_value};
+use crate::device::Device;
+use crate::print;
 use crate::SBI;
-use riscv::register::mcause::Exception;
-use riscv::register::{mcause, mepc, mstatus, mtval, scause, sepc, stval, stvec};
+use riscv::register::{
+    mcause::{self, Exception},
+    mepc, mstatus, mtval, scause, sepc, stval, stvec,
+};
 use rustsbi::RustSBI;
+use sbi_spec::legacy;
 
 /// Trap SBI Ecall
 ///
 /// Handling SBI ecall is delegated to `Sbi` struct.
 pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize) -> ! {
-    let ret_val = SBI
-        .lock()
-        .get()
-        .unwrap()
-        .handle_ecall(a7, a6, [a0, a1, a2, 0, 0, 0]);
+    let sbi_cell = SBI.lock();
+    let sbi_data = sbi_cell.get().unwrap();
+    let ret_val = sbi_data.handle_ecall(a7, a6, [a0, a1, a2, 0, 0, 0]);
 
     if ret_val.error == 0 {
         mtrap_exit_with_ret_value(ret_val.value);
     } else {
-        panic!(
-            "SBI call failed: error:{}, eid:{a7}, fid:{a6}",
-            ret_val.error
-        );
+        match a7 {
+            // Console Putchar (EID #0x01)
+            legacy::LEGACY_CONSOLE_PUTCHAR => {
+                print!("{}", a0 as u8 as char);
+                mtrap_exit_with_ret_value(0);
+            }
+            // Console Getchar (EID #0x02)
+            legacy::LEGACY_CONSOLE_GETCHAR => {
+                let uart_addr = sbi_data.uart.paddr() as *mut u32;
+                let uart_lsr_addr = sbi_data.uart.lsr_addr() as *mut u32;
+
+                while uart_lsr_addr.read_volatile() & 0x1 == 0 {}
+                let c = uart_addr.read_volatile() as u8;
+                mtrap_exit_with_ret_value(c.into());
+            }
+            _ => panic!(
+                "SBI call failed: error:{}, eid:{a7}, fid:{a6}",
+                ret_val.error
+            ),
+        }
     }
 }
 
@@ -60,10 +79,13 @@ pub unsafe fn trap_exception(
     a7: usize,
     exception_cause: Exception,
 ) -> ! {
-    if exception_cause == Exception::UserEnvCall {
-        trap_envcall(a0, a1, a2, a6, a7);
-    } else {
-        forward_exception();
-        mtrap_exit();
+    match exception_cause {
+        Exception::MachineEnvCall | Exception::SupervisorEnvCall | Exception::UserEnvCall => {
+            trap_envcall(a0, a1, a2, a6, a7);
+        }
+        _ => {
+            forward_exception();
+            mtrap_exit();
+        }
     }
 }

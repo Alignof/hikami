@@ -48,6 +48,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
 
     match exception_cause {
+        Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
         // Enum not found in `riscv` crate.
         Exception::Unknown => {
             match scause::read().code() {
