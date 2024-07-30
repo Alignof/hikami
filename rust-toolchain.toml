@@ -1,0 +1,3 @@
+[toolchain]
+channel = "1.76.0-x86_64-unknown-linux-gnu"
+targets = [ "riscv64imac-unknown-none-elf" ]

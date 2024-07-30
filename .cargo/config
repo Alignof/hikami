@@ -6,7 +6,7 @@ runner = "qemu-system-riscv64 -S -gdb tcp::10000 -d int,in_asm -machine virt -bi
 rustflags = [
   "-C", "link-arg=-Tmemory.x",
   "-C", "link-arg=-Tlink.x",
-  "-C", "target-feature=+h"
+  "-C", "target-feature=+h",
 ]
 
 [build]
