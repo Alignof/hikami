@@ -26,6 +26,12 @@ pub struct Uart {
     size: usize,
 }
 
+impl Uart {
+    pub fn lsr_addr(&self) -> usize {
+        self.base_addr + register::LSR_OFFSET
+    }
+}
+
 impl Device for Uart {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree
@@ -78,7 +84,7 @@ impl rustsbi::Console for Uart {
     /// Write bytes to the debug console from input memory.
     fn write(&self, bytes: Physical<&[u8]>) -> SbiRet {
         let uart_addr = self.base_addr as *mut u32;
-        let uart_lsr_addr = (self.base_addr + register::LSR_OFFSET) as *mut u32;
+        let uart_lsr_addr = self.lsr_addr() as *mut u32;
         let byte_data = unsafe {
             core::slice::from_raw_parts(bytes.phys_addr_lo() as *const u8, bytes.num_bytes())
         };
@@ -94,7 +100,7 @@ impl rustsbi::Console for Uart {
     /// Read bytes from the debug console into an output memory.
     fn read(&self, bytes: Physical<&mut [u8]>) -> SbiRet {
         let uart_addr = self.base_addr as *mut u32;
-        let uart_lsr_addr = (self.base_addr + register::LSR_OFFSET) as *mut u32;
+        let uart_lsr_addr = self.lsr_addr() as *mut u32;
         let buffer = unsafe {
             core::slice::from_raw_parts_mut(bytes.phys_addr_lo() as *mut u8, bytes.num_bytes())
         };
@@ -116,7 +122,7 @@ impl rustsbi::Console for Uart {
     /// Write a single byte to the debug console.
     fn write_byte(&self, byte: u8) -> SbiRet {
         let uart_addr = self.base_addr as *mut u32;
-        let uart_lsr_addr = (self.base_addr + register::LSR_OFFSET) as *mut u32;
+        let uart_lsr_addr = self.lsr_addr() as *mut u32;
         unsafe {
             while (uart_lsr_addr.read_volatile() >> 5 & 0x1) == 1 {}
             uart_addr.write_volatile(u32::from(byte));
