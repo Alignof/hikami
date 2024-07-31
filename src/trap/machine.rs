@@ -1,7 +1,6 @@
 mod exception;
 mod interrupt;
 
-use crate::memmap::constant::{static_data::CONTEXT_OFFSET, MACHINE_STATIC_BASE};
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
@@ -19,6 +18,7 @@ unsafe fn mtrap_entry() {
 
         // alloc register context region
         li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
+        addi sp, sp, -256
 
         sd ra, 1*8(sp)
         sd gp, 3*8(sp)
@@ -167,14 +167,15 @@ pub unsafe extern "C" fn mtrap_vector() -> ! {
     let mut a6;
     let mut a7;
     asm!("
+        li t0, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
         addi t0, t0, -256
+
         ld a0, 10*8(t0)
         ld a1, 11*8(t0)
         ld a2, 12*8(t0)
         ld a6, 16*8(t0)
         ld a7, 17*8(t0)
         ",
-        in("t0") MACHINE_STATIC_BASE + CONTEXT_OFFSET,
         out("a0") a0,
         out("a1") a1,
         out("a2") a2,

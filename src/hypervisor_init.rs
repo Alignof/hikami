@@ -39,6 +39,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
 
+    // dtb_addr test and hint for register usage.
+    assert_ne!(dtb_addr, 0);
+
     // clear all hypervisor interrupts.
     hvip::write(0);
 
