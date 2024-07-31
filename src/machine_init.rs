@@ -11,9 +11,6 @@ use riscv::register::{
 /// Machine start function
 pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        // set stack pointer
-        asm!("mv sp {machine_sp}", machine_sp = in(reg) MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id);
-
         // mideleg = 0x0222
         mideleg::set_sext();
         mideleg::set_ssoft();
@@ -108,8 +105,14 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// Jump to hstart via mret.
 #[inline(never)]
 #[no_mangle]
-extern "C" fn enter_hypervisor_mode(_hart_id: usize, _dtb_addr: usize) -> ! {
+extern "C" fn enter_hypervisor_mode(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        asm!("mret", options(noreturn));
+        // set stack pointer
+        asm!(
+            "mv sp, {machine_sp}",
+            machine_sp = in(reg) MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id
+        );
+        // enter HS-mode.
+        asm!("mret", in("a0") hart_id, in("a1") dtb_addr, options(noreturn));
     }
 }
