@@ -110,7 +110,6 @@ pub unsafe fn load() {
                 ld t4, 29*8(sp)
                 ld t5, 30*8(sp)
                 ld t6, 31*8(sp)
-                csrrw sp, sscratch, sp
                 ",
         );
     }
@@ -130,7 +129,6 @@ pub unsafe fn store() {
         asm!(
             "
                 fence.i
-                csrrw sp, sscratch, sp
                 li sp, 0x80200000 // STATIC_BASE + CONTEXT_OFFSET
                 
                 // save sstatus
@@ -172,13 +170,6 @@ pub unsafe fn store() {
                 sd t4, 29*8(sp)
                 sd t5, 30*8(sp)
                 sd t6, 31*8(sp)
-
-                // save stack pointer
-                csrr t0, sscratch
-                sd t0, 2*8(sp)
-
-                // restore sp
-                csrr sp, sscratch
                 ",
         );
     }

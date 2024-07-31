@@ -18,7 +18,16 @@ use riscv::register::scause::{self, Trap};
 /// ```
 #[no_mangle]
 pub unsafe extern "C" fn hstrap_vector() -> ! {
-    unsafe { asm!(".align 4") }
+    unsafe {
+        asm!(
+            "
+            .align 4
+
+            // switch stack pointer for HS-mode
+            csrrw sp, sscratch, sp
+            "
+        );
+    }
 
     // save current context data
     guest::context::store();

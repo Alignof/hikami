@@ -28,6 +28,12 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     guest::context::load();
 
     unsafe {
-        asm!("sret", options(noreturn));
+        asm!(
+            "
+            csrrw sp, sscratch, sp
+            sret
+            ",
+            options(noreturn)
+        );
     }
 }

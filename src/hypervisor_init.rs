@@ -5,12 +5,12 @@ use crate::h_extension::csrs::{
     InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
-use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
+use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE};
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
-use riscv::register::{sepc, sie, sstatus, stvec};
+use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
 /// Create page tables in G-stage address translation.
 ///
@@ -135,6 +135,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             hstrap_vector as *const fn() as usize,
             stvec::TrapMode::Direct,
         );
+
+        // set stack top value to sscratch
+        sscratch::write(STACK_BASE);
 
         // save current context data
         guest::context::store();
