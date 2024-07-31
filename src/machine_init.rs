@@ -1,5 +1,5 @@
 use crate::hypervisor_init;
-use crate::memmap::constant::{STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{MACHINE_STACK_BASE, STACK_SIZE_PER_HART};
 use crate::trap::machine::mtrap_vector;
 use crate::{sbi::Sbi, SBI};
 use core::arch::asm;
@@ -11,6 +11,9 @@ use riscv::register::{
 /// Machine start function
 pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
+        // set stack pointer
+        asm!("mv sp {machine_sp}", machine_sp = in(reg) MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id);
+
         // mideleg = 0x0222
         mideleg::set_sext();
         mideleg::set_ssoft();
@@ -69,7 +72,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         mcounteren::set_hpm(30);
         mcounteren::set_hpm(31);
         mstatus::set_mpp(mstatus::MPP::Supervisor);
-        mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
+        mscratch::write(MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id);
         pmpaddr0::write(0xffff_ffff_ffff_ffff);
         pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
         satp::set(satp::Mode::Bare, 0, 0);

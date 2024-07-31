@@ -1,4 +1,4 @@
-use crate::memmap::constant::{static_data::GUEST_CONTEXT_OFFSET, STATIC_BASE};
+use crate::memmap::constant::{static_data::CONTEXT_OFFSET, STATIC_BASE};
 use core::arch::asm;
 
 /// Guest context on memory
@@ -22,7 +22,7 @@ pub struct Context {
 impl Default for Context {
     fn default() -> Self {
         Context {
-            address: STATIC_BASE + GUEST_CONTEXT_OFFSET,
+            address: STATIC_BASE + CONTEXT_OFFSET,
         }
     }
 }
@@ -69,8 +69,7 @@ pub unsafe fn load() {
         asm!(
             "
                 fence.i
-                csrw sscratch, sp
-                li sp, 0x80201000 // STATIC_BASE + GUEST_CONTEXT_OFFSET
+                li sp, 0x80200000 // STATIC_BASE + CONTEXT_OFFSET
 
                 // restore sstatus 
                 ld t0, 32*8(sp)
@@ -111,7 +110,7 @@ pub unsafe fn load() {
                 ld t4, 29*8(sp)
                 ld t5, 30*8(sp)
                 ld t6, 31*8(sp)
-                csrr sp, sscratch
+                csrrw sp, sscratch, sp
                 ",
         );
     }
@@ -131,8 +130,8 @@ pub unsafe fn store() {
         asm!(
             "
                 fence.i
-                csrw sscratch, sp
-                li sp, 0x80201000 // STATIC_BASE + GUEST_CONTEXT_OFFSET
+                csrrw sp, sscratch, sp
+                li sp, 0x80200000 // STATIC_BASE + CONTEXT_OFFSET
                 
                 // save sstatus
                 csrr t0, sstatus

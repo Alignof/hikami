@@ -1,7 +1,7 @@
 mod exception;
 mod interrupt;
 
-use crate::memmap::constant::{static_data::MACHINE_CONTEXT_OFFSET, STATIC_BASE};
+use crate::memmap::constant::{static_data::CONTEXT_OFFSET, MACHINE_STATIC_BASE};
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
@@ -18,7 +18,7 @@ unsafe fn mtrap_entry() {
         csrrw sp, mscratch, sp
 
         // alloc register context region
-        addi sp, sp, -256
+        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
 
         sd ra, 1*8(sp)
         sd gp, 3*8(sp)
@@ -59,7 +59,7 @@ unsafe fn mtrap_entry() {
 unsafe fn mtrap_exit() -> ! {
     asm!(
         "
-        li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
+        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
         addi sp, sp, -256
         
         ld ra, 1*8(sp)
@@ -109,7 +109,7 @@ unsafe fn mtrap_exit() -> ! {
 #[allow(clippy::inline_always)]
 unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
     asm!("
-        li sp, 0x80200000 // STATIC_BASE + MACHINE_CONTEXT_OFFSET
+        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
         addi sp, sp, -256
 
         ld ra, 1*8(sp)
@@ -143,7 +143,7 @@ unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
         ld t5, 30*8(sp)
         ld t6, 31*8(sp)
 
-        // revert stack pointer to 0x80200000
+        // revert stack pointer to top (0x81800000)
         addi sp, sp, 256
 
         // swap current sp for stored original mode sp
@@ -174,7 +174,7 @@ pub unsafe extern "C" fn mtrap_vector() -> ! {
         ld a6, 16*8(t0)
         ld a7, 17*8(t0)
         ",
-        in("t0") STATIC_BASE + MACHINE_CONTEXT_OFFSET,
+        in("t0") MACHINE_STATIC_BASE + CONTEXT_OFFSET,
         out("a0") a0,
         out("a1") a1,
         out("a2") a2,

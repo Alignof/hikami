@@ -12,10 +12,13 @@
 //! | 0x8030_4000 | 0x8040_0000 | hypervisor device tree blob |
 //! | 0x8040_0000 |     ...     | hypervisor heap |
 //! |     ...     | 0x8080_0000 | hypervisor stack |
+//! | 0x8120_0000 | 0x8130_0000 | machine static |
+//! | 0x8140_0000 |     ...     | machine heap |
+//! |     ...     | 0x8180_0000 | machine stack |
 //! | 0x9000_0000 | 0x9000_2000 | hypervisor page table |
 //! | 0x9000_2000 | 0x9000_4000 | hypervisor device tree |
-//! | 0x9100_0000 |     ...     | hypervisor heap |
-//! |     ...     | 0x9300_0000 | hypervisor stack |
+//! | 0x9100_0000 |     ...     | guest heap |
+//! |     ...     | 0x9300_0000 | guest stack |
 //! | 0x9300_0000 |     ...     | text data of guest |
 
 /// Max number of HART
@@ -50,6 +53,13 @@ pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
 /// Offset for converting physical device address to virtual address.
 pub const PA2VA_DEVICE_OFFSET: usize = 0xffff_fffc_0000_0000;
 
+/// Machine static
+pub const MACHINE_STATIC_BASE: usize = 0x8120_0000;
+/// Base address of machine heap.
+pub const MACHINE_HEAP_BASE: usize = 0x8140_0000;
+/// Base address of machine stack.
+pub const MACHINE_STACK_BASE: usize = 0x8180_0000;
+
 /// loading device tree offset of guest space
 pub const GUEST_DEVICE_TREE_OFFSET: usize = 0x2000;
 /// Heap offset of guest space
@@ -63,14 +73,8 @@ pub mod static_data {
     //! Memory map for singleton area.
     //!
     //! | start       | end         | region               |
-    //! | 0x8020_0000 | 0x8020_xxxx | machine context      |
-    //! | 0x8020_1000 | 0x8020_1100 | guest context hart 0 |
+    //! | 0x8x20_0000 | 0x8x20_0100 | context hart 0 |
 
-    /// Offset for machine context storing.
-    pub const MACHINE_CONTEXT_OFFSET: usize = 0x0;
-
-    /// Offset for `guest::Context`.
-    ///
-    /// If this value changes, confirm immediate value in `context::load/store`.
-    pub const GUEST_CONTEXT_OFFSET: usize = 0x1000;
+    /// Offset for context storing.
+    pub const CONTEXT_OFFSET: usize = 0x0;
 }
