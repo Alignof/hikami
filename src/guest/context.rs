@@ -1,4 +1,4 @@
-use crate::memmap::constant::{static_data::CONTEXT_OFFSET, STATIC_BASE};
+use crate::memmap::constant::STACK_BASE;
 use core::arch::asm;
 
 /// Guest context on memory
@@ -22,7 +22,7 @@ pub struct Context {
 impl Default for Context {
     fn default() -> Self {
         Context {
-            address: STATIC_BASE + CONTEXT_OFFSET,
+            address: STACK_BASE,
         }
     }
 }

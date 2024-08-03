@@ -7,7 +7,6 @@
 //! | 0x1000_0000 | 0x1000_0100 | QEMU UART |
 //! | 0x1000_1000 | 0x1000_8000 | QEMU VirtIO |
 //! | 0x8000_0000 | 0x8020_0000 | text data of hikami |
-//! | 0x8020_0000 | 0x8030_0000 | hypervisor static |
 //! | 0x8030_0000 | 0x8030_2000 | hypervisor page table |
 //! | 0x8030_4000 | 0x8040_0000 | hypervisor device tree blob |
 //! | 0x8040_0000 |     ...     | hypervisor heap |
@@ -53,8 +52,6 @@ pub const PA2VA_DRAM_OFFSET: usize = 0xffff_ffff_4000_0000;
 /// Offset for converting physical device address to virtual address.
 pub const PA2VA_DEVICE_OFFSET: usize = 0xffff_fffc_0000_0000;
 
-/// Machine static
-pub const MACHINE_STATIC_BASE: usize = 0x8120_0000;
 /// Base address of machine heap.
 pub const MACHINE_HEAP_BASE: usize = 0x8140_0000;
 /// Base address of machine stack.
@@ -68,13 +65,3 @@ pub const GUEST_HEAP_OFFSET: usize = 0x100_0000;
 pub const GUEST_STACK_OFFSET: usize = 0x300_0000;
 /// Guest Text secion offset
 pub const GUEST_TEXT_OFFSET: usize = 0x300_0000;
-
-pub mod static_data {
-    //! Memory map for singleton area.
-    //!
-    //! | start       | end         | region               |
-    //! | 0x8x20_0000 | 0x8x20_0100 | context hart 0 |
-
-    /// Offset for context storing.
-    pub const CONTEXT_OFFSET: usize = 0x0;
-}
