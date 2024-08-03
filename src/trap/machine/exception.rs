@@ -20,6 +20,7 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
     mepc::write(mepc::read() + 4);
 
     if ret_val.error == 0 {
+        drop(sbi_cell);
         mtrap_exit_sbi(ret_val.error, ret_val.value)
     } else {
         match a7 {
