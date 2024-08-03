@@ -131,14 +131,6 @@ pub unsafe fn store() {
                 fence.i
                 li sp, 0x80200000 // STATIC_BASE + CONTEXT_OFFSET
                 
-                // save sstatus
-                csrr t0, sstatus
-                sd t0, 32*8(sp)
-
-                // save pc
-                csrr t1, sepc
-                sd t1, 33*8(sp)
-
                 // save registers
                 sd ra, 1*8(sp)
                 sd gp, 3*8(sp)
@@ -170,6 +162,14 @@ pub unsafe fn store() {
                 sd t4, 29*8(sp)
                 sd t5, 30*8(sp)
                 sd t6, 31*8(sp)
+
+                // save sstatus
+                csrr t0, sstatus
+                sd t0, 32*8(sp)
+
+                // save pc
+                csrr t1, sepc
+                sd t1, 33*8(sp)
                 ",
         );
     }
