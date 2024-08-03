@@ -55,7 +55,7 @@ impl Context {
     }
 }
 
-/// Load context data to registers.
+/// Load context data from memory.
 ///
 /// # Safety
 /// If `Context.addr` is valid address.
@@ -115,7 +115,7 @@ pub unsafe fn load() {
     }
 }
 
-/// Store context data to registers.
+/// Store context data to memory.
 ///
 /// # Safety
 /// If `Context.addr` is valid address.

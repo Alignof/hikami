@@ -116,6 +116,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // set new guest data
     hypervisor_data.regsiter_guest(new_guest);
 
+    // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
     unsafe {
