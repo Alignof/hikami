@@ -20,7 +20,7 @@ unsafe fn hstrap_entry() {
 
         // swap original mode sp for HS-mode sp 
         csrrw sp, sscratch, sp
-        addi sp, sp, -260
+        addi sp, sp, -272 // Size of ContextData = 8 * 34
 
         // save registers
         sd ra, 1*8(sp)
@@ -76,6 +76,10 @@ unsafe fn hstrap_exit() -> ! {
         ".align 4
         fence.i
 
+        // set to stack top
+        li sp, 0x80800000
+        addi sp, sp, -272 // Size of ContextData = 8 * 34
+
         // restore sstatus 
         ld t0, 32*8(sp)
         csrw sstatus, t0
@@ -117,7 +121,7 @@ unsafe fn hstrap_exit() -> ! {
         ld t6, 31*8(sp)
 
         // swap HS-mode sp for original mode sp.
-        addi sp, sp, 260
+        addi sp, sp, 272
         csrrw sp, sscratch, sp
 
         sret

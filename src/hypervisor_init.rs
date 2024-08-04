@@ -156,7 +156,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // set stack top value to sscratch
-        sscratch::write(DRAM_BASE + hart_id * DRAM_SIZE_PAR_HART + GUEST_STACK_OFFSET);
+        let guest_id = hart_id + 1;
+        sscratch::write(DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART + GUEST_STACK_OFFSET);
 
         // enter VS-mode
         asm!(
@@ -164,8 +165,8 @@ fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
             fence.i
 
             // set to stack top
-            li sp, 0x8080_0000
-            addi sp, sp, -260
+            li sp, 0x80800000
+            addi sp, sp, -272 // Size of ContextData = 8 * 34
 
             // restore sstatus 
             ld t0, 32*8(sp)
@@ -185,7 +186,7 @@ fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
             ld s0, 8*8(sp)
             ld s1, 9*8(sp)
             ld a0, 10*8(sp)
-            // ld a1, 11*8(sp) -> dtb_addr
+            // a1 -> dtb_addr
             ld a2, 12*8(sp)
             ld a3, 13*8(sp)
             ld a4, 14*8(sp)
@@ -208,7 +209,7 @@ fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
             ld t6, 31*8(sp)
 
             // swap HS-mode sp for original mode sp.
-            addi sp, sp, 260
+            addi sp, sp, 272
             csrrw sp, sscratch, sp
 
             sret

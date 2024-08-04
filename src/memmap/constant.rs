@@ -31,8 +31,6 @@ pub const UART_ADDR: usize = 0x1000_0000;
 pub const DRAM_BASE: usize = 0x8000_0000;
 /// Memory region on dram that be allocated each HARTs.
 pub const DRAM_SIZE_PAR_HART: usize = 0x1000_0000;
-/// Data region for singleton.
-pub const STATIC_BASE: usize = 0x8020_0000;
 /// Base address of page table.
 pub const PAGE_TABLE_BASE: usize = 0x8030_0000;
 /// Size of memory areathat a page can point to.
