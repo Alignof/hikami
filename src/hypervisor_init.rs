@@ -1,11 +1,14 @@
 use crate::device::Device;
-use crate::guest::{self, Guest};
+use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hstatus, hvip, vsatp,
     InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
-use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART, STACK_BASE};
+use crate::memmap::constant::{
+    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_STACK_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART,
+    STACK_BASE,
+};
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::HYPERVISOR_DATA;
@@ -136,30 +139,75 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             hstrap_vector as *const fn() as usize,
             stvec::TrapMode::Direct,
         );
-
-        // set stack top value to sscratch
-        sscratch::write(STACK_BASE);
-
-        // save current context data
-        guest::context::store();
     }
 
     hart_entry(hart_id, guest_dtb_addr);
 }
 
-/// Entry to guest mode.
+/// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
-    // enter VS-mode
+fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        let mut hypervisor_data = HYPERVISOR_DATA.lock();
-        hypervisor_data
-            .guest()
-            .context
-            .set_xreg(11, dtb_addr as u64); // a1 = dtb_addr
-        drop(hypervisor_data); // release HYPERVISOR_DATA lock
+        // set stack top value to sscratch
+        sscratch::write(DRAM_BASE + hart_id * DRAM_SIZE_PAR_HART + GUEST_STACK_OFFSET);
 
-        guest::context::load();
-        asm!("sret", options(noreturn));
+        // enter VS-mode
+        asm!(
+            ".align 4
+            fence.i
+
+            // set to stack top
+            li sp, 0x8080_0000
+            addi sp, sp, -260
+
+            // restore sstatus 
+            ld t0, 32*8(sp)
+            csrw sstatus, t0
+
+            // restore pc
+            ld t1, 33*8(sp)
+            csrw sepc, t1
+
+            // restore registers
+            ld ra, 1*8(sp)
+            ld gp, 3*8(sp)
+            ld tp, 4*8(sp)
+            ld t0, 5*8(sp)
+            ld t1, 6*8(sp)
+            ld t2, 7*8(sp)
+            ld s0, 8*8(sp)
+            ld s1, 9*8(sp)
+            ld a0, 10*8(sp)
+            // ld a1, 11*8(sp) -> dtb_addr
+            ld a2, 12*8(sp)
+            ld a3, 13*8(sp)
+            ld a4, 14*8(sp)
+            ld a5, 15*8(sp)
+            ld a6, 16*8(sp)
+            ld a7, 17*8(sp)
+            ld s2, 18*8(sp)
+            ld s3, 19*8(sp)
+            ld s4, 20*8(sp)
+            ld s5, 21*8(sp)
+            ld s6, 22*8(sp)
+            ld s7, 23*8(sp)
+            ld s8, 24*8(sp)
+            ld s9, 25*8(sp)
+            ld s10, 26*8(sp)
+            ld s11, 27*8(sp)
+            ld t3, 28*8(sp)
+            ld t4, 29*8(sp)
+            ld t5, 30*8(sp)
+            ld t6, 31*8(sp)
+
+            // swap HS-mode sp for original mode sp.
+            addi sp, sp, 260
+            csrrw sp, sscratch, sp
+
+            sret
+            ",
+            in("a1") dtb_addr,
+            options(noreturn)
+        );
     }
 }
