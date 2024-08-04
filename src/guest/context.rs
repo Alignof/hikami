@@ -53,4 +53,8 @@ impl Context {
     pub fn set_sepc(&mut self, value: usize) {
         self.get_context().sepc = value;
     }
+
+    pub fn set_sstatus(&mut self, value: usize) {
+        self.get_context().sstatus = value;
+    }
 }

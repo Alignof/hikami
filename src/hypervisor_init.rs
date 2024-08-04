@@ -7,7 +7,6 @@ use crate::h_extension::csrs::{
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{
     DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_STACK_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART,
-    STACK_BASE,
 };
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
@@ -119,9 +118,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // set new guest data
     hypervisor_data.regsiter_guest(new_guest);
 
-    // release HYPERVISOR_DATA lock
-    drop(hypervisor_data);
-
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0
         sstatus::set_sum();
@@ -139,7 +135,18 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             hstrap_vector as *const fn() as usize,
             stvec::TrapMode::Direct,
         );
+
+        let mut context = hypervisor_data.guest().context;
+        context.set_sepc(sepc::read());
+
+        // set sstatus value to context
+        let mut sstatus_val;
+        asm!("csrr {}, sstatus", out(reg) sstatus_val);
+        context.set_sstatus(sstatus_val);
     }
+
+    // release HYPERVISOR_DATA lock
+    drop(hypervisor_data);
 
     hart_entry(hart_id, guest_dtb_addr);
 }
