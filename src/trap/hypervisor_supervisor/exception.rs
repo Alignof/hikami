@@ -1,5 +1,6 @@
 mod sbi;
 
+use super::hstrap_exit;
 use crate::guest;
 use crate::h_extension::csrs::vstvec;
 use crate::HYPERVISOR_DATA;
@@ -63,16 +64,5 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
         _ => hs_forward_exception(),
     }
 
-    // restore context data
-    guest::context::load();
-
-    unsafe {
-        asm!(
-            "
-            csrrw sp, sscratch, sp
-            sret
-            ",
-            options(noreturn)
-        );
-    }
+    hstrap_exit();
 }

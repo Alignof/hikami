@@ -4,7 +4,6 @@ mod interrupt;
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
-use crate::guest;
 use core::arch::asm;
 use riscv::register::scause::{self, Trap};
 
@@ -18,6 +17,7 @@ unsafe fn hstrap_entry() {
     asm!(
         ".align 4
         fence.i
+
         // swap original mode sp for HS-mode sp 
         csrrw sp, sscratch, sp
         addi sp, sp, -260
@@ -71,7 +71,7 @@ unsafe fn hstrap_entry() {
 /// replace stringify macro to const when `asm_const` is stabled.
 #[inline(always)]
 #[allow(clippy::inline_always)]
-unsafe fn hstrap_exit() {
+unsafe fn hstrap_exit() -> ! {
     asm!(
         ".align 4
         fence.i
@@ -119,7 +119,10 @@ unsafe fn hstrap_exit() {
         // swap HS-mode sp for original mode sp.
         addi sp, sp, 260
         csrrw sp, sscratch, sp
+
+        sret
         ",
+        options(noreturn)
     );
 }
 
@@ -134,18 +137,8 @@ unsafe fn hstrap_exit() {
 #[no_mangle]
 pub unsafe extern "C" fn hstrap_vector() -> ! {
     unsafe {
-        asm!(
-            "
-            .align 4
-
-            // switch stack pointer for HS-mode
-            csrrw sp, sscratch, sp
-            "
-        );
+        hstrap_entry();
     }
-
-    // save current context data
-    guest::context::store();
 
     match scause::read().cause() {
         Trap::Interrupt(interrupt_cause) => trap_interrupt(interrupt_cause),

@@ -1,7 +1,6 @@
-use crate::guest;
+use super::hstrap_exit;
 use crate::h_extension::csrs::{hvip, vsip, InterruptKind};
 use crate::HYPERVISOR_DATA;
-use core::arch::asm;
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
 
@@ -24,16 +23,5 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
         _ => panic!("unknown interrupt type"),
     }
 
-    // restore context data
-    guest::context::load();
-
-    unsafe {
-        asm!(
-            "
-            csrrw sp, sscratch, sp
-            sret
-            ",
-            options(noreturn)
-        );
-    }
+    hstrap_exit();
 }
