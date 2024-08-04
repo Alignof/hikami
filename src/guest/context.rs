@@ -1,4 +1,5 @@
 use crate::memmap::constant::STACK_BASE;
+use core::mem::size_of;
 
 /// Guest context on memory
 #[allow(dead_code)]
@@ -21,7 +22,7 @@ pub struct Context {
 impl Default for Context {
     fn default() -> Self {
         Context {
-            address: STACK_BASE,
+            address: STACK_BASE - size_of::<ContextData>(),
         }
     }
 }
