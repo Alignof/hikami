@@ -1,7 +1,7 @@
 use super::{mtrap_exit, mtrap_exit_sbi};
 use crate::device::Device;
 use crate::print;
-use crate::SBI;
+use crate::{HYPERVISOR_DATA, SBI};
 use riscv::register::{
     mcause::{self, Exception},
     mepc, mstatus, mtval, scause, sepc, stval, stvec,
@@ -82,16 +82,15 @@ pub extern "C" fn forward_exception() {
 
 /// Trap handler for exception
 #[allow(clippy::cast_possible_wrap)]
-pub unsafe fn trap_exception(
-    a0: usize,
-    a1: usize,
-    a2: usize,
-    a6: usize,
-    a7: usize,
-    exception_cause: Exception,
-) -> ! {
+pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::MachineEnvCall | Exception::SupervisorEnvCall | Exception::UserEnvCall => {
+            let context = unsafe { HYPERVISOR_DATA.lock().guest().context };
+            let a0 = context.xreg(10) as usize;
+            let a1 = context.xreg(11) as usize;
+            let a2 = context.xreg(12) as usize;
+            let a6 = context.xreg(16) as usize;
+            let a7 = context.xreg(17) as usize;
             trap_envcall(a0, a1, a2, a6, a7);
         }
         _ => {
