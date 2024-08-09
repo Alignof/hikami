@@ -1,16 +1,18 @@
-use crate::guest::{self, Guest};
+use crate::device::Device;
+use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hstatus, hvip, vsatp,
     InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
-use crate::memmap::constant::{PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART};
-use crate::memmap::device::Device;
-use crate::memmap::{page_table, page_table::PteFlag, DeviceMemmap, MemoryMap};
+use crate::memmap::constant::{
+    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_STACK_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART,
+};
+use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
-use riscv::register::{sepc, sie, sstatus, stvec};
+use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
 /// Create page tables in G-stage address translation.
 ///
@@ -38,6 +40,9 @@ fn setup_g_stage_page_table(page_table_start: usize) {
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
+
+    // dtb_addr test and hint for register usage.
+    assert_ne!(dtb_addr, 0);
 
     // clear all hypervisor interrupts.
     hvip::write(0);
@@ -74,8 +79,11 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Parse DTB
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
-    // guest data
-    let guest = Guest::new(hart_id);
+    // aquire hypervisor data
+    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+
+    // create new guest data
+    let new_guest = Guest::new(hart_id);
 
     // parse device tree
     let device_tree = unsafe {
@@ -84,32 +92,31 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             Err(e) => panic!("{}", e),
         }
     };
-    let device_mmap = DeviceMemmap::new(device_tree);
+    // copy device tree
+    let guest_dtb_addr = unsafe { new_guest.copy_device_tree(dtb_addr, device_tree.total_size()) };
+
+    // parsing and storing device data
+    hypervisor_data.init_devices(device_tree);
 
     // setup G-stage page table
     let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     setup_g_stage_page_table(page_table_start);
-    device_mmap.device_mapping_g_stage(page_table_start);
+    hypervisor_data
+        .devices()
+        .device_mapping_g_stage(page_table_start);
 
     // enable two-level address translation
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
     hfence_gvma_all();
 
-    // copy device tree
-    let guest_dtb_addr = unsafe { guest.copy_device_tree(dtb_addr, device_tree.total_size()) };
-
     // load guest image
-    let guest_entry_point = guest.load_guest_elf(
-        device_mmap.initrd.paddr() as *mut u8,
-        device_mmap.initrd.size(),
+    let guest_entry_point = new_guest.load_guest_elf(
+        hypervisor_data.devices().initrd.paddr() as *mut u8,
+        hypervisor_data.devices().initrd.size(),
     );
 
-    // store device data
-    unsafe {
-        HYPERVISOR_DATA
-            .lock()
-            .init_devices(dtb_addr, device_tree.total_size(), device_mmap);
-    }
+    // set new guest data
+    hypervisor_data.regsiter_guest(new_guest);
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0
@@ -129,23 +136,86 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             stvec::TrapMode::Direct,
         );
 
-        // save current context data
-        guest::context::store();
+        let mut context = hypervisor_data.guest().context;
+        context.set_sepc(sepc::read());
+
+        // set sstatus value to context
+        let mut sstatus_val;
+        asm!("csrr {}, sstatus", out(reg) sstatus_val);
+        context.set_sstatus(sstatus_val);
     }
+
+    // release HYPERVISOR_DATA lock
+    drop(hypervisor_data);
 
     hart_entry(hart_id, guest_dtb_addr);
 }
 
-/// Entry to guest mode.
+/// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
-    // enter VS-mode
+fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        let mut hypervisor_data = HYPERVISOR_DATA.lock();
-        hypervisor_data.guest.context.set_xreg(11, dtb_addr as u64); // a1 = dtb_addr
-        drop(hypervisor_data); // release HYPERVISOR_DATA lock
+        // set stack top value to sscratch
+        let guest_id = hart_id + 1;
+        sscratch::write(DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART + GUEST_STACK_OFFSET);
 
-        guest::context::load();
-        asm!("sret", options(noreturn));
+        // enter VS-mode
+        asm!(
+            ".align 4
+            fence.i
+
+            // set to stack top
+            li sp, 0x80800000
+            addi sp, sp, -272 // Size of ContextData = 8 * 34
+
+            // restore sstatus 
+            ld t0, 32*8(sp)
+            csrw sstatus, t0
+
+            // restore pc
+            ld t1, 33*8(sp)
+            csrw sepc, t1
+
+            // restore registers
+            ld ra, 1*8(sp)
+            ld gp, 3*8(sp)
+            ld tp, 4*8(sp)
+            ld t0, 5*8(sp)
+            ld t1, 6*8(sp)
+            ld t2, 7*8(sp)
+            ld s0, 8*8(sp)
+            ld s1, 9*8(sp)
+            ld a0, 10*8(sp)
+            // a1 -> dtb_addr
+            ld a2, 12*8(sp)
+            ld a3, 13*8(sp)
+            ld a4, 14*8(sp)
+            ld a5, 15*8(sp)
+            ld a6, 16*8(sp)
+            ld a7, 17*8(sp)
+            ld s2, 18*8(sp)
+            ld s3, 19*8(sp)
+            ld s4, 20*8(sp)
+            ld s5, 21*8(sp)
+            ld s6, 22*8(sp)
+            ld s7, 23*8(sp)
+            ld s8, 24*8(sp)
+            ld s9, 25*8(sp)
+            ld s10, 26*8(sp)
+            ld s11, 27*8(sp)
+            ld t3, 28*8(sp)
+            ld t4, 29*8(sp)
+            ld t5, 30*8(sp)
+            ld t6, 31*8(sp)
+
+            // swap HS-mode sp for original mode sp.
+            addi sp, sp, 272
+            csrrw sp, sscratch, sp
+
+            sret
+            ",
+            in("a1") dtb_addr,
+            options(noreturn)
+        );
     }
 }

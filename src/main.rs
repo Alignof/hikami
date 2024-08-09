@@ -8,10 +8,12 @@ mod h_extension;
 mod hypervisor_init;
 mod machine_init;
 mod memmap;
+mod sbi;
 mod trap;
 mod util;
 
 use core::arch::asm;
+use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
 use wild_screen_alloc::WildScreenAlloc;
@@ -19,8 +21,12 @@ use wild_screen_alloc::WildScreenAlloc;
 use once_cell::unsync::Lazy;
 use spin::Mutex;
 
+use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{
+    DRAM_BASE, HEAP_BASE, HEAP_SIZE, MAX_HART_NUM, STACK_BASE, STACK_SIZE_PER_HART,
+};
+use crate::sbi::Sbi;
 
 /// Panic handler
 #[panic_handler]
@@ -38,15 +44,37 @@ pub fn panic(info: &PanicInfo) -> ! {
 /// FIXME: Rename me!
 #[derive(Debug, Default)]
 pub struct HypervisorData {
-    guest: guest::Guest,
+    current_hart: usize,
+    guest: [Option<guest::Guest>; MAX_HART_NUM],
     devices: Option<device::Devices>,
+}
+
+impl HypervisorData {
+    pub fn devices(&self) -> &device::Devices {
+        self.devices.as_ref().expect("device data is uninitialized")
+    }
+
+    pub fn guest(&mut self) -> &mut Guest {
+        self.guest[self.current_hart]
+            .as_mut()
+            .expect("guest data not found")
+    }
+
+    pub fn regsiter_guest(&mut self, new_guest: Guest) {
+        let hart_id = new_guest.hart_id();
+        assert!(hart_id < MAX_HART_NUM);
+        self.guest[hart_id] = Some(new_guest);
+    }
 }
 
 #[global_allocator]
 static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
+/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
 static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
     Lazy::new(|| Mutex::new(HypervisorData::default()));
+
+static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer

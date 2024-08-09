@@ -1,7 +1,6 @@
-use crate::guest;
+use super::hstrap_exit;
 use crate::h_extension::csrs::{hvip, vsip, InterruptKind};
 use crate::HYPERVISOR_DATA;
-use core::arch::asm;
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
 
@@ -11,10 +10,9 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
 
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
-            let guest = &HYPERVISOR_DATA.lock().guest;
-
+            let hart_id = HYPERVISOR_DATA.lock().guest().hart_id();
             vsip::set_ssoft();
-            let interrupt_addr = (CLINT_ADDR + guest.hart_id() * 4) as *mut u64;
+            let interrupt_addr = (CLINT_ADDR + hart_id * 4) as *mut u64;
             interrupt_addr.write_volatile(0);
         }
         Interrupt::SupervisorTimer => {
@@ -25,10 +23,5 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
         _ => panic!("unknown interrupt type"),
     }
 
-    // restore context data
-    guest::context::load();
-
-    unsafe {
-        asm!("sret", options(noreturn));
-    }
+    hstrap_exit();
 }

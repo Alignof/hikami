@@ -101,7 +101,7 @@ pub mod vsip {
     pub unsafe fn set_ssoft() {
         core::arch::asm!(
             "
-            csrs hstatus, {bits}
+            csrs vsip, {bits}
             ",
             bits = in(reg) 0b0010
         );
@@ -111,7 +111,7 @@ pub mod vsip {
     pub unsafe fn set_stimer() {
         core::arch::asm!(
             "
-            csrs hstatus, {bits}
+            csrs vsip, {bits}
             ",
             bits = in(reg) 0b0010_0000
         );

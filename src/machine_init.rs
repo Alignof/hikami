@@ -1,6 +1,7 @@
 use crate::hypervisor_init;
-use crate::memmap::constant::{STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{MACHINE_STACK_BASE, STACK_SIZE_PER_HART};
 use crate::trap::machine::mtrap_vector;
+use crate::{sbi::Sbi, SBI};
 use core::arch::asm;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
@@ -29,7 +30,6 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         medeleg::set_store_page_fault();
         asm!("csrs medeleg, {vsmode_ecall}", vsmode_ecall = in(reg) 1 << 10, options(nomem)); // deleg env call from VS-mode
         medeleg::clear_supervisor_env_call();
-        medeleg::clear_machine_env_call();
 
         // mie = 0x088
         mie::set_msoft();
@@ -69,7 +69,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         mcounteren::set_hpm(30);
         mcounteren::set_hpm(31);
         mstatus::set_mpp(mstatus::MPP::Supervisor);
-        mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
+        mscratch::write(MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id);
         pmpaddr0::write(0xffff_ffff_ffff_ffff);
         pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
         satp::set(satp::Mode::Bare, 0, 0);
@@ -85,6 +85,18 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         sfence_vma_all();
     }
 
+    SBI.lock().get_or_init(|| {
+        // parse device tree
+        let device_tree = unsafe {
+            match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+                Ok(fdt) => fdt,
+                Err(e) => panic!("{}", e),
+            }
+        };
+
+        Sbi::new(device_tree)
+    });
+
     enter_hypervisor_mode(hart_id, dtb_addr);
 }
 
@@ -93,8 +105,14 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// Jump to hstart via mret.
 #[inline(never)]
 #[no_mangle]
-extern "C" fn enter_hypervisor_mode(_hart_id: usize, _dtb_addr: usize) -> ! {
+extern "C" fn enter_hypervisor_mode(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        asm!("mret", options(noreturn));
+        // set stack pointer
+        asm!(
+            "mv sp, {machine_sp}",
+            machine_sp = in(reg) MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id
+        );
+        // enter HS-mode.
+        asm!("mret", in("a0") hart_id, in("a1") dtb_addr, options(noreturn));
     }
 }
