@@ -47,6 +47,17 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     context.set_xreg(11, sbiret.value as u64);
 }
 
+fn virtual_instruction(inst_bytes: u32, context: &mut guest::context::Context) {
+    let inst = inst_bytes
+        .decode(Rv64)
+        .expect("virtual instruction decoding failed");
+
+    match inst.opc {
+        OpcodeKind::Zicntr(ZicntrOpcode::RDTIME) => todo!(),
+        _ => panic!("unsupported instruction"),
+    };
+}
+
 /// Trap handler for exception
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
@@ -62,9 +73,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     context.set_sepc(context.sepc() + 4);
                 }
                 // Virtual Instruction
-                22 => match stval::read().into().decode(Rv64) {
-                    OpcodeKind::Zicntr(ZicntrOpcode::RDTIME) => todo!(),
-                },
+                22 => virtual_instruction(stval::read() as u32, &mut context),
                 _ => unreachable!(),
             }
         }
