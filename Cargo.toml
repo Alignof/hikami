@@ -13,6 +13,7 @@ elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"
 once_cell = { version = "1.19.0", default-features = false }
 panic-halt = "0.2.0"
+raki = { version = "1.0.0-beta.3" }
 riscv = "0.11.1"
 riscv-rt = "0.11.0"
 rustsbi = { version = "0.4.0-alpha.1", features = ["machine"] }
