@@ -5,8 +5,11 @@ use crate::guest;
 use crate::h_extension::csrs::vstvec;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
-use riscv::register::scause;
-use riscv::register::scause::Exception;
+use raki::{Decode, Isa::Rv64, OpcodeKind, ZicntrOpcode};
+use riscv::register::{
+    scause::{self, Exception},
+    stval,
+};
 use sbi::sbi_base_handler;
 
 /// Delegate exception to supervisor mode from VS-mode.
@@ -58,6 +61,10 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     sbi_vs_mode_handler(&mut context);
                     context.set_sepc(context.sepc() + 4);
                 }
+                // Virtual Instruction
+                22 => match stval::read().into().decode(Rv64) {
+                    OpcodeKind::Zicntr(ZicntrOpcode::RDTIME) => todo!(),
+                },
                 _ => unreachable!(),
             }
         }
