@@ -2,9 +2,7 @@
 
 pub mod context;
 
-use crate::memmap::constant::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_DEVICE_TREE_OFFSET, GUEST_TEXT_OFFSET,
-};
+use crate::memmap::constant::{guest, hypervisor::STACK_SIZE_PER_HART, DRAM_BASE};
 use context::Context;
 use elf::{endian::AnyEndian, ElfBytes};
 
@@ -25,13 +23,14 @@ impl Guest {
         }
     }
 
+    /// Return HART(HARdware Thread) id.
     pub fn hart_id(&self) -> usize {
         self.guest_id
     }
 
     /// Return guest dram space start
     fn dram_base(&self) -> usize {
-        DRAM_BASE + DRAM_SIZE_PAR_HART * (self.guest_id + 1)
+        DRAM_BASE + STACK_SIZE_PER_HART * (self.guest_id + 1)
     }
 
     /// Copy device tree from hypervisor side.  
@@ -40,7 +39,7 @@ impl Guest {
     /// # Panics
     /// It will be panic if `dtb_addr` is invalid.
     pub unsafe fn copy_device_tree(&self, dtb_addr: usize, dtb_size: usize) -> usize {
-        let guest_dtb_addr = self.dram_base() + GUEST_DEVICE_TREE_OFFSET;
+        let guest_dtb_addr = self.dram_base() + guest::DEVICE_TREE_OFFSET;
         unsafe {
             core::ptr::copy(dtb_addr as *const u8, guest_dtb_addr as *mut u8, dtb_size);
         }
@@ -64,7 +63,7 @@ impl Guest {
             ))
             .unwrap()
         };
-        let guest_base_addr = self.dram_base() + GUEST_TEXT_OFFSET;
+        let guest_base_addr = self.dram_base() + guest::TEXT_OFFSET;
         for prog_header in guest_elf
             .segments()
             .expect("failed to get segments from elf")

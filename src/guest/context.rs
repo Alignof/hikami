@@ -1,4 +1,4 @@
-use crate::memmap::constant::STACK_BASE;
+use crate::memmap::constant::hypervisor;
 use core::mem::size_of;
 
 /// Guest context on memory
@@ -22,7 +22,7 @@ pub struct Context {
 impl Default for Context {
     fn default() -> Self {
         Context {
-            address: STACK_BASE - size_of::<ContextData>(),
+            address: (hypervisor::BASE_ADDR + hypervisor::STACK_OFFSET) - size_of::<ContextData>(),
         }
     }
 }

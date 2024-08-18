@@ -1,4 +1,4 @@
-use crate::memmap::constant::UART_ADDR;
+use crate::memmap::constant::device::UART_ADDR;
 use core::fmt::{self, Write};
 
 #[macro_export]

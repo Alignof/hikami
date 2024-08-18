@@ -24,7 +24,8 @@ use spin::Mutex;
 use crate::guest::Guest;
 use crate::machine_init::mstart;
 use crate::memmap::constant::{
-    DRAM_BASE, HEAP_BASE, HEAP_SIZE, MAX_HART_NUM, STACK_BASE, STACK_SIZE_PER_HART,
+    hypervisor::{self, STACK_SIZE_PER_HART},
+    DRAM_BASE, MAX_HART_NUM,
 };
 use crate::sbi::Sbi;
 
@@ -33,9 +34,7 @@ use crate::sbi::Sbi;
 pub fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     loop {
-        unsafe {
-            riscv::asm::wfi();
-        }
+        riscv::asm::wfi();
     }
 }
 
@@ -84,7 +83,10 @@ static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
-        ALLOCATOR.init(HEAP_BASE, HEAP_SIZE);
+        ALLOCATOR.init(
+            hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET,
+            hypervisor::HEAP_SIZE,
+        );
     }
 
     unsafe {
@@ -104,7 +106,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
             stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) STACK_BASE,
+            stack_base = in(reg) hypervisor::BASE_ADDR + hypervisor::STACK_OFFSET,
             DRAM_BASE = in(reg) DRAM_BASE,
             mstart = sym mstart,
         );
