@@ -39,6 +39,13 @@ pub mod device {
     /// Uart address
     /// For println macro.
     pub const UART_ADDR: usize = 0x1000_0000;
+
+    /// CLINT address
+    /// For trap SupervisorSoftware interrupt
+    pub const CLINT_ADDR: usize = 0x200_0000;
+
+    /// mtimecmp CSRs address
+    pub const MTIMECMP_ADDR: usize = 0x200_4000;
 }
 
 pub mod machine {
