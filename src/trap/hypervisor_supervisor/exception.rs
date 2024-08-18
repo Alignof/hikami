@@ -5,8 +5,11 @@ use crate::guest;
 use crate::h_extension::csrs::vstvec;
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
-use riscv::register::scause;
-use riscv::register::scause::Exception;
+use raki::{Decode, Isa::Rv64, OpcodeKind, ZicntrOpcode};
+use riscv::register::{
+    scause::{self, Exception},
+    stval,
+};
 use sbi::sbi_base_handler;
 
 /// Delegate exception to supervisor mode from VS-mode.
@@ -44,6 +47,27 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     context.set_xreg(11, sbiret.value as u64);
 }
 
+fn virtual_instruction_handler(inst_bytes: u32, context: &mut guest::context::Context) {
+    let inst = inst_bytes
+        .decode(Rv64)
+        .expect("virtual instruction decoding failed");
+
+    match inst.opc {
+        OpcodeKind::Zicntr(ZicntrOpcode::RDTIME) => {
+            let time_val = unsafe {
+                let time;
+                asm!("csrr {time_val}, time", time_val = out(reg) time);
+                time
+            };
+            context.set_xreg(
+                inst.rd.expect("rd register is not found in rdtime"),
+                time_val,
+            );
+        }
+        _ => panic!("unsupported instruction"),
+    };
+}
+
 /// Trap handler for exception
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
@@ -56,6 +80,11 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 // Ecall from VS-mode
                 10 => {
                     sbi_vs_mode_handler(&mut context);
+                    context.set_sepc(context.sepc() + 4);
+                }
+                // Virtual Instruction
+                22 => {
+                    virtual_instruction_handler(stval::read() as u32, &mut context);
                     context.set_sepc(context.sepc() + 4);
                 }
                 _ => unreachable!(),
