@@ -2,7 +2,7 @@
 
 pub mod context;
 
-use crate::memmap::constant::{guest, hypervisor::STACK_SIZE_PER_HART, DRAM_BASE};
+use crate::memmap::constant::{guest, DRAM_BASE};
 use context::Context;
 use elf::{endian::AnyEndian, ElfBytes};
 
@@ -30,7 +30,7 @@ impl Guest {
 
     /// Return guest dram space start
     fn dram_base(&self) -> usize {
-        DRAM_BASE + STACK_SIZE_PER_HART * (self.guest_id + 1)
+        DRAM_BASE + guest::BASE_OFFSET_PER_HART * (self.guest_id + 1)
     }
 
     /// Copy device tree from hypervisor side.  
