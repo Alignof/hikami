@@ -12,7 +12,7 @@ use riscv::register::mcause::{self, Trap};
 unsafe fn mtrap_exit() -> ! {
     asm!(
         "
-        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
+        li sp, 0x80200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
         addi sp, sp, -256
         
         ld ra, 1*8(sp)
@@ -62,7 +62,7 @@ unsafe fn mtrap_exit() -> ! {
 #[allow(clippy::inline_always)]
 unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
     asm!("
-        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
+        li sp, 0x80200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
         addi sp, sp, -256
 
         ld ra, 1*8(sp)
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn mtrap_vector() -> ! {
         csrrw sp, mscratch, sp
 
         // alloc register context region
-        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
+        li sp, 0x80200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
         addi sp, sp, -256
 
         sd ra, 1*8(sp)

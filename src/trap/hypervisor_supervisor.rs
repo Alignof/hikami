@@ -19,7 +19,7 @@ unsafe fn hstrap_exit() -> ! {
         fence.i
 
         // set to stack top
-        li sp, 0x80800000
+        li sp, 0x83000000
         addi sp, sp, -272 // Size of ContextData = 8 * 34
 
         // restore sstatus 
