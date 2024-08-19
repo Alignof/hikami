@@ -1,5 +1,5 @@
 use crate::hypervisor_init;
-use crate::memmap::constant::{MACHINE_STACK_BASE, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{hypervisor::STACK_SIZE_PER_HART, machine::MACHINE_STACK_BASE};
 use crate::trap::machine::mtrap_vector;
 use crate::{sbi::Sbi, SBI};
 use core::arch::asm;

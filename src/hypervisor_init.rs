@@ -6,7 +6,9 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{
-    DRAM_BASE, DRAM_SIZE_PAR_HART, GUEST_STACK_OFFSET, PAGE_TABLE_BASE, PAGE_TABLE_OFFSET_PER_HART,
+    guest::{self, BASE_OFFSET_PER_HART},
+    hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
+    DRAM_BASE,
 };
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
@@ -99,7 +101,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     hypervisor_data.init_devices(device_tree);
 
     // setup G-stage page table
-    let page_table_start = PAGE_TABLE_BASE + hart_id * PAGE_TABLE_OFFSET_PER_HART;
+    let page_table_start = hypervisor::BASE_ADDR
+        + hypervisor::PAGE_TABLE_OFFSET
+        + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     setup_g_stage_page_table(page_table_start);
     hypervisor_data
         .devices()
@@ -157,7 +161,7 @@ fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // set stack top value to sscratch
         let guest_id = hart_id + 1;
-        sscratch::write(DRAM_BASE + guest_id * DRAM_SIZE_PAR_HART + GUEST_STACK_OFFSET);
+        sscratch::write(DRAM_BASE + guest_id * BASE_OFFSET_PER_HART + guest::STACK_OFFSET);
 
         // enter VS-mode
         asm!(
@@ -165,7 +169,7 @@ fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
             fence.i
 
             // set to stack top
-            li sp, 0x80800000
+            li sp, 0x83000000
             addi sp, sp, -272 // Size of ContextData = 8 * 34
 
             // restore sstatus 

@@ -1,13 +1,12 @@
 use super::hstrap_exit;
 use crate::h_extension::csrs::{hvip, vsip, InterruptKind};
+use crate::memmap::constant::device::CLINT_ADDR;
 use crate::HYPERVISOR_DATA;
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
 
 /// Trap handler for Interrupt
 pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
-    const CLINT_ADDR: usize = 0x200_0000;
-
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
             let hart_id = HYPERVISOR_DATA.lock().guest().hart_id();

@@ -1,6 +1,9 @@
 pub mod sv39;
 pub mod sv39x4;
 
+/// Size of memory areathat a page can point to.
+pub const PAGE_SIZE: usize = 4096;
+
 /// Each flags for page tables.
 #[allow(dead_code)]
 #[derive(Copy, Clone)]

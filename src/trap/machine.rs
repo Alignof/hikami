@@ -12,7 +12,8 @@ use riscv::register::mcause::{self, Trap};
 unsafe fn mtrap_exit() -> ! {
     asm!(
         "
-        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
+        // set to stack top
+        li sp, 0x80800000 // MACHINE_STACK_BASE
         addi sp, sp, -256
         
         ld ra, 1*8(sp)
@@ -46,7 +47,7 @@ unsafe fn mtrap_exit() -> ! {
         ld t5, 30*8(sp)
         ld t6, 31*8(sp)
 
-        // revert stack pointer to 0x80200000
+        // revert stack pointer top
         addi sp, sp, 256
 
         // swap current sp for stored original mode sp
@@ -62,7 +63,8 @@ unsafe fn mtrap_exit() -> ! {
 #[allow(clippy::inline_always)]
 unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
     asm!("
-        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
+        // set to stack top
+        li sp, 0x80800000 // MACHINE_STACK_BASE
         addi sp, sp, -256
 
         ld ra, 1*8(sp)
@@ -96,7 +98,7 @@ unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
         ld t5, 30*8(sp)
         ld t6, 31*8(sp)
 
-        // revert stack pointer to top (0x81800000)
+        // revert stack pointer to top (0x80800000)
         addi sp, sp, 256
 
         // swap current sp for stored original mode sp
@@ -119,9 +121,6 @@ pub unsafe extern "C" fn mtrap_vector() -> ! {
         fence.i
         // swap original mode sp for machine mode sp
         csrrw sp, mscratch, sp
-
-        // alloc register context region
-        li sp, 0x81200000 // MACHINE_STATIC_BASE + CONTEXT_OFFSET
         addi sp, sp, -256
 
         sd ra, 1*8(sp)
