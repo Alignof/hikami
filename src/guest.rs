@@ -64,6 +64,7 @@ impl Guest {
             .unwrap()
         };
         let guest_base_addr = self.dram_base() + guest::TEXT_OFFSET;
+        let first_segment_addr = guest_elf.segments().unwrap().iter().nth(0).unwrap().p_paddr;
         for prog_header in guest_elf
             .segments()
             .expect("failed to get segments from elf")
@@ -74,7 +75,8 @@ impl Guest {
                 unsafe {
                     core::ptr::copy(
                         elf_addr.wrapping_add(usize::try_from(prog_header.p_offset).unwrap()),
-                        (guest_base_addr + usize::try_from(prog_header.p_paddr).unwrap())
+                        (guest_base_addr
+                            + usize::try_from(prog_header.p_paddr - first_segment_addr).unwrap())
                             as *mut u8,
                         usize::try_from(prog_header.p_filesz).unwrap(),
                     );
