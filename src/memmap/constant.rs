@@ -8,9 +8,7 @@
 //! | 0x1000_1000 | 0x1000_8000 | QEMU VirtIO                   |
 //! |             |             |                               |
 //! | 0x8000_0000 | 0x8020_0000 | text data of hikami           |
-//! | 0x8020_0000 | 0x8030_0000 | machine static                |
-//! | 0x8030_0000 | 0x8040_0000 | machine reserved              |
-//! | 0x8040_0000 |     ...     | machine heap                  |
+//! | 0x8020_0000 |     ...     | machine heap                  |
 //! |     ...     | 0x8080_0000 | machine stack                 |
 //! |             |             |                               |
 //! | 0x8100_0000 | 0x8120_0000 | hypervisor reserved 			|
@@ -52,7 +50,7 @@ pub mod machine {
     //! Machine memory region (0x8020_0000 - 0x8080_0000)
 
     /// Base address of machine heap.
-    pub const MACHINE_HEAP_BASE: usize = 0x8040_0000;
+    pub const MACHINE_HEAP_BASE: usize = 0x8020_0000;
     /// Base address of machine stack.
     pub const MACHINE_STACK_BASE: usize = 0x8080_0000;
 }
@@ -70,7 +68,7 @@ pub mod hypervisor {
     /// Base address of heap.
     pub const HEAP_OFFSET: usize = 0x100_0000;
     /// Heap size.
-    pub const HEAP_SIZE: usize = 0x50_0000;
+    pub const HEAP_SIZE: usize = 0xc0_0000;
     /// Base address of stack.
     pub const STACK_OFFSET: usize = 0x200_0000; // modify trap vector immediate when change it.
     /// Stack size for each HART.
@@ -82,9 +80,9 @@ pub mod guest {
 
     /// Memory region on dram that be allocated each HARTs.
     pub const BASE_OFFSET_PER_HART: usize = 0x1000_0000;
+
     /// loading device tree offset of guest space
     pub const DEVICE_TREE_OFFSET: usize = 0x2000;
-
     /// Heap offset of guest space
     pub const HEAP_OFFSET: usize = 0x200_0000;
     /// Stack offset of guest space
