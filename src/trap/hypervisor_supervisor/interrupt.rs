@@ -20,7 +20,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             sie::clear_stimer();
         }
         Interrupt::SupervisorExternal => riscv::asm::wfi(), // wait for interrupt
-        _ => panic!("unknown interrupt type"),
+        Interrupt::Unknown => panic!("unknown interrupt type"),
     }
 
     hstrap_exit();
