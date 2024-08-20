@@ -10,7 +10,7 @@ cp ./.config /path/to/linux
 cd /path/to/linux
 make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- defconfig
 # For debug
-# make menuconfig
+# make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- menuconfig
 # DEBUG_KERNEL [=y], DEBUG_INFO [=y], EFI [=n], RELOCATABLE [=n]
 make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- -j$(nproc)
 mv vmlinux /path/to/linux/vmlinx_debug
