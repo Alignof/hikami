@@ -16,6 +16,7 @@ mod register {
     /// | mtime         | 0xBFF8      | 64         | 0x0        | Provides the current timer value.                                  |
     pub const MSIP_OFFSET: usize = 0x0;
     pub const MTIMECMP_OFFSET: usize = 0x4000;
+    #[allow(dead_code)]
     pub const MTIME_OFFSET: usize = 0xbff8;
 }
 

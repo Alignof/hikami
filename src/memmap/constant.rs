@@ -49,6 +49,7 @@ pub mod device {
 pub mod machine {
     //! Machine memory region (`0x8020_0000` - `0x8080_0000`)
 
+    #[allow(dead_code)]
     /// Base address of machine heap.
     pub const MACHINE_HEAP_BASE: usize = 0x8020_0000;
     /// Base address of machine stack.
@@ -83,6 +84,7 @@ pub mod guest {
 
     /// loading device tree offset of guest space
     pub const DEVICE_TREE_OFFSET: usize = 0x2000;
+    #[allow(dead_code)]
     /// Heap offset of guest space
     pub const HEAP_OFFSET: usize = 0x200_0000;
     /// Stack offset of guest space
