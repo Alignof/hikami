@@ -11,11 +11,12 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
     PteFlag::Valid,
 ];
 
-pub const ENABLE_BASE: usize = 0x2000;
-pub const ENABLE_PER_HART: usize = 0x80;
-pub const CONTEXT_BASE: usize = 0x20_0000;
-pub const CONTEXT_PER_HART: usize = 0x1000;
-pub const CONTEXT_CLAIM: usize = 0x4;
+// unused constant for now
+// pub const ENABLE_BASE: usize = 0x2000;
+// pub const ENABLE_PER_HART: usize = 0x80;
+// pub const CONTEXT_BASE: usize = 0x20_0000;
+// pub const CONTEXT_PER_HART: usize = 0x1000;
+// pub const CONTEXT_CLAIM: usize = 0x4;
 
 /// PLIC: Platform-Level Interrupt Controller  
 /// Interrupt controller for global interrupts.

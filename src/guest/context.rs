@@ -2,8 +2,9 @@ use crate::memmap::constant::hypervisor;
 use core::mem::size_of;
 
 /// Guest context on memory
-#[allow(dead_code)]
 #[repr(C)]
+#[allow(dead_code)]
+#[allow(clippy::module_name_repetitions)]
 pub struct ContextData {
     /// Registers
     pub xreg: [u64; 32],
@@ -38,7 +39,7 @@ impl Context {
         }
     }
 
-    pub fn xreg(&self, index: usize) -> u64 {
+    pub fn xreg(self, index: usize) -> u64 {
         self.get_context().xreg[index]
     }
 
@@ -46,7 +47,7 @@ impl Context {
         self.get_context().xreg[index] = value;
     }
 
-    pub fn sepc(&self) -> usize {
+    pub fn sepc(self) -> usize {
         self.get_context().sepc
     }
 

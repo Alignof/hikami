@@ -49,17 +49,24 @@ pub struct HypervisorData {
 }
 
 impl HypervisorData {
+    /// # Panics
+    /// It will be panic if devices are uninitialized.
+    #[must_use]
     pub fn devices(&self) -> &device::Devices {
         self.devices.as_ref().expect("device data is uninitialized")
     }
 
+    /// # Panics
+    /// It will be panic if current HART's guest data is empty.
     pub fn guest(&mut self) -> &mut Guest {
         self.guest[self.current_hart]
             .as_mut()
             .expect("guest data not found")
     }
 
-    pub fn regsiter_guest(&mut self, new_guest: Guest) {
+    /// # Panics
+    /// It will be panic if `hart_id` is greater than `MAX_HART_NUM`.
+    pub fn register_guest(&mut self, new_guest: Guest) {
         let hart_id = new_guest.hart_id();
         assert!(hart_id < MAX_HART_NUM);
         self.guest[hart_id] = Some(new_guest);

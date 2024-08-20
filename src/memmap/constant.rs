@@ -11,18 +11,18 @@
 //! | 0x8020_0000 |     ...     | machine heap                  |
 //! |     ...     | 0x8080_0000 | machine stack                 |
 //! |             |             |                               |
-//! | 0x8100_0000 | 0x8120_0000 | hypervisor reserved 			|
+//! | 0x8100_0000 | 0x8120_0000 | hypervisor reserved           |
 //! | 0x8120_0000 | 0x8120_2000 | hypervisor page table         |
 //! | 0x8120_4000 | 0x8130_0000 | hypervisor device tree blob   |
-//! | 0x8130_0000 | 0x8140_0000 | hypervisor reserved 			|
-//! | 0x8200_0000 |     ...     | hypervisor heap 				|
-//! |     ...     | 0x8300_0000 | hypervisor stack 				|
-//! |             |             |               				|
-//! | 0x9000_0000 | 0x9000_2000 | guest page table 				|
-//! | 0x9000_2000 | 0x9000_4000 | guest device tree 			|
-//! | 0x9200_0000 |     ...     | guest heap 					|
-//! |     ...     | 0x9300_0000 | guest stack 					|
-//! | 0x9300_0000 |     ...     | text data of guest 			|
+//! | 0x8130_0000 | 0x8140_0000 | hypervisor reserved           |
+//! | 0x8200_0000 |     ...     | hypervisor heap               |
+//! |     ...     | 0x8300_0000 | hypervisor stack              |
+//! |             |             |                               |
+//! | 0x9000_0000 | 0x9000_2000 | guest page table              |
+//! | 0x9000_2000 | 0x9000_4000 | guest device tree             |
+//! | 0x9200_0000 |     ...     | guest heap                    |
+//! |     ...     | 0x9300_0000 | guest stack                   |
+//! | 0x9300_0000 |     ...     | text data of guest            |
 
 /// Max number of HART
 pub const MAX_HART_NUM: usize = 8;
@@ -39,7 +39,7 @@ pub mod device {
     pub const UART_ADDR: usize = 0x1000_0000;
 
     /// CLINT address
-    /// For trap SupervisorSoftware interrupt
+    /// For trap `SupervisorSoftware` interrupt
     pub const CLINT_ADDR: usize = 0x200_0000;
 
     /// mtimecmp CSRs address
@@ -47,8 +47,9 @@ pub mod device {
 }
 
 pub mod machine {
-    //! Machine memory region (0x8020_0000 - 0x8080_0000)
+    //! Machine memory region (`0x8020_0000` - `0x8080_0000`)
 
+    #[allow(dead_code)]
     /// Base address of machine heap.
     pub const MACHINE_HEAP_BASE: usize = 0x8020_0000;
     /// Base address of machine stack.
@@ -56,7 +57,7 @@ pub mod machine {
 }
 
 pub mod hypervisor {
-    //! Hypervisor memory region (0x8120_0000 - 0x8300_0000)
+    //! Hypervisor memory region (`0x8120_0000` - `0x8300_0000`)
 
     /// Base address of hypervisor region.
     pub const BASE_ADDR: usize = 0x8100_0000;
@@ -76,13 +77,14 @@ pub mod hypervisor {
 }
 
 pub mod guest {
-    //! Guest memory region (0x9000_0000 - )
+    //! Guest memory region (`0x9000_0000` - )
 
     /// Memory region on dram that be allocated each HARTs.
     pub const BASE_OFFSET_PER_HART: usize = 0x1000_0000;
 
     /// loading device tree offset of guest space
     pub const DEVICE_TREE_OFFSET: usize = 0x2000;
+    #[allow(dead_code)]
     /// Heap offset of guest space
     pub const HEAP_OFFSET: usize = 0x200_0000;
     /// Stack offset of guest space

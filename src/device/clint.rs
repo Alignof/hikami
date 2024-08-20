@@ -1,4 +1,4 @@
-//! CLINT: Core Local INTerrupt
+//! CLINT: Core Local `INTerrupt`
 
 use super::Device;
 use crate::memmap::page_table::PteFlag;
@@ -9,13 +9,14 @@ use rustsbi::{HartMask, SbiRet};
 mod register {
     //! Ref: [https://chromitem-soc.readthedocs.io/en/latest/clint.html](https://chromitem-soc.readthedocs.io/en/latest/clint.html)
 
-    /// | Register-Name | Offset(hex) | Size(Bits) | Reset(hex) | Description |
-    /// | ------------- | ----------- | ---------- | ---------- | ----------- |
+    /// | Register-Name | Offset(hex) | Size(Bits) | Reset(hex) | Description                                                        |
+    /// | ------------- | ----------- | ---------- | ---------- | -----------                                                        |
     /// | msip          | 0x0         | 32         | 0x0        | This register generates machine mode software interrupts when set. |
-    /// | mtimecmp      | 0x4000      | 64         | 0x0        | This register holds the compare value for the timer. |
-    /// | mtime         | 0xBFF8      | 64         | 0x0        | Provides the current timer value. |
+    /// | mtimecmp      | 0x4000      | 64         | 0x0        | This register holds the compare value for the timer.               |
+    /// | mtime         | 0xBFF8      | 64         | 0x0        | Provides the current timer value.                                  |
     pub const MSIP_OFFSET: usize = 0x0;
     pub const MTIMECMP_OFFSET: usize = 0x4000;
+    #[allow(dead_code)]
     pub const MTIME_OFFSET: usize = 0xbff8;
 }
 
@@ -27,6 +28,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
     PteFlag::Valid,
 ];
 
+#[allow(clippy::doc_markdown)]
 /// CLINT: Core Local INTerrupt
 /// Local interrupt controller
 #[derive(Debug)]

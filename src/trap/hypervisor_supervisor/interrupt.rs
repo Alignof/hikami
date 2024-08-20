@@ -6,6 +6,7 @@ use riscv::register::scause::Interrupt;
 use riscv::register::sie;
 
 /// Trap handler for Interrupt
+#[allow(clippy::module_name_repetitions)]
 pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
@@ -19,7 +20,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             sie::clear_stimer();
         }
         Interrupt::SupervisorExternal => riscv::asm::wfi(), // wait for interrupt
-        _ => panic!("unknown interrupt type"),
+        Interrupt::Unknown => panic!("unknown interrupt type"),
     }
 
     hstrap_exit();
