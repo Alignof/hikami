@@ -15,7 +15,7 @@ use sbi::sbi_base_handler;
 /// Delegate exception to supervisor mode from VS-mode.
 #[no_mangle]
 #[inline(always)]
-#[allow(clippy::inline_always)]
+#[allow(clippy::inline_always, clippy::module_name_repetitions)]
 pub extern "C" fn hs_forward_exception() {
     unsafe {
         let mut context = HYPERVISOR_DATA.lock().guest().context;
@@ -71,7 +71,7 @@ fn virtual_instruction_handler(inst_bytes: u32, context: &mut guest::context::Co
 }
 
 /// Trap handler for exception
-#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
 

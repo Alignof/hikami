@@ -4,6 +4,7 @@ use riscv::register::mcause::Interrupt;
 use riscv::register::{mhartid, mip};
 
 /// Trap handler for Interrupt
+#[allow(clippy::module_name_repetitions)]
 pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     match interrupt_cause {
         Interrupt::MachineSoft => {

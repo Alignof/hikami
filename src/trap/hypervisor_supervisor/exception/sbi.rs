@@ -7,6 +7,7 @@ use sbi_rt::SbiRet;
 ///
 /// All functions in the base extension must be supported by all SBI implementations,
 /// so there are no error returns defined. (p.13)
+#[allow(clippy::module_name_repetitions)]
 pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     use sbi_spec::base::{
         GET_MARCHID, GET_MIMPID, GET_MVENDORID, GET_SBI_IMPL_ID, GET_SBI_IMPL_VERSION,

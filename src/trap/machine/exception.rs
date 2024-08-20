@@ -57,6 +57,7 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
 
 /// Delegate exception to supervisor or user mode from machine mode.
 #[no_mangle]
+#[allow(clippy::module_name_repetitions)]
 pub extern "C" fn forward_exception() {
     unsafe {
         sepc::write(mepc::read());
@@ -82,7 +83,11 @@ pub extern "C" fn forward_exception() {
 }
 
 /// Trap handler for exception
-#[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_wrap,
+    clippy::cast_possible_truncation,
+    clippy::module_name_repetitions
+)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::MachineEnvCall | Exception::SupervisorEnvCall | Exception::UserEnvCall => {
