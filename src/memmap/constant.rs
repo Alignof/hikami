@@ -11,18 +11,18 @@
 //! | 0x8020_0000 |     ...     | machine heap                  |
 //! |     ...     | 0x8080_0000 | machine stack                 |
 //! |             |             |                               |
-//! | 0x8100_0000 | 0x8120_0000 | hypervisor reserved 			|
+//! | 0x8100_0000 | 0x8120_0000 | hypervisor reserved           |
 //! | 0x8120_0000 | 0x8120_2000 | hypervisor page table         |
 //! | 0x8120_4000 | 0x8130_0000 | hypervisor device tree blob   |
-//! | 0x8130_0000 | 0x8140_0000 | hypervisor reserved 			|
-//! | 0x8200_0000 |     ...     | hypervisor heap 				|
-//! |     ...     | 0x8300_0000 | hypervisor stack 				|
-//! |             |             |               				|
-//! | 0x9000_0000 | 0x9000_2000 | guest page table 				|
-//! | 0x9000_2000 | 0x9000_4000 | guest device tree 			|
-//! | 0x9200_0000 |     ...     | guest heap 					|
-//! |     ...     | 0x9300_0000 | guest stack 					|
-//! | 0x9300_0000 |     ...     | text data of guest 			|
+//! | 0x8130_0000 | 0x8140_0000 | hypervisor reserved           |
+//! | 0x8200_0000 |     ...     | hypervisor heap               |
+//! |     ...     | 0x8300_0000 | hypervisor stack              |
+//! |             |             |                               |
+//! | 0x9000_0000 | 0x9000_2000 | guest page table              |
+//! | 0x9000_2000 | 0x9000_4000 | guest device tree             |
+//! | 0x9200_0000 |     ...     | guest heap                    |
+//! |     ...     | 0x9300_0000 | guest stack                   |
+//! | 0x9300_0000 |     ...     | text data of guest            |
 
 /// Max number of HART
 pub const MAX_HART_NUM: usize = 8;
