@@ -93,6 +93,9 @@ impl HypervisorData {
     /// Set device data.
     ///
     /// It replace None (uninit value) to `Some(init_device)`.
+    ///
+    /// # Panics
+    /// It will be panic when parsing device tree failed.
     pub fn init_devices(&mut self, device_tree: Fdt) {
         self.devices.replace(Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
