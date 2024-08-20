@@ -31,7 +31,7 @@ pub trait Device {
 
 /// Manage devices sush as uart, plic, etc...
 ///
-/// memory_map has memory region data of each devices.  
+/// `memory_map` has memory region data of each devices.  
 /// Each devices **must** be implemented Device trait.
 #[derive(Debug)]
 pub struct Devices {
@@ -92,7 +92,7 @@ impl Devices {
 impl HypervisorData {
     /// Set device data.
     ///
-    /// It replace None (uninit value) to Some(init_device).
+    /// It replace None (uninit value) to `Some(init_device)`.
     pub fn init_devices(&mut self, device_tree: Fdt) {
         self.devices.replace(Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),

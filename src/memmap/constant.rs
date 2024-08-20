@@ -39,7 +39,7 @@ pub mod device {
     pub const UART_ADDR: usize = 0x1000_0000;
 
     /// CLINT address
-    /// For trap SupervisorSoftware interrupt
+    /// For trap `SupervisorSoftware` interrupt
     pub const CLINT_ADDR: usize = 0x200_0000;
 
     /// mtimecmp CSRs address
@@ -47,7 +47,7 @@ pub mod device {
 }
 
 pub mod machine {
-    //! Machine memory region (0x8020_0000 - 0x8080_0000)
+    //! Machine memory region (`0x8020_0000` - `0x8080_0000`)
 
     /// Base address of machine heap.
     pub const MACHINE_HEAP_BASE: usize = 0x8020_0000;
@@ -56,7 +56,7 @@ pub mod machine {
 }
 
 pub mod hypervisor {
-    //! Hypervisor memory region (0x8120_0000 - 0x8300_0000)
+    //! Hypervisor memory region (`0x8120_0000` - `0x8300_0000`)
 
     /// Base address of hypervisor region.
     pub const BASE_ADDR: usize = 0x8100_0000;
@@ -76,7 +76,7 @@ pub mod hypervisor {
 }
 
 pub mod guest {
-    //! Guest memory region (0x9000_0000 - )
+    //! Guest memory region (`0x9000_0000` - )
 
     /// Memory region on dram that be allocated each HARTs.
     pub const BASE_OFFSET_PER_HART: usize = 0x1000_0000;

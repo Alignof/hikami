@@ -8,7 +8,10 @@ use sbi_rt::SbiRet;
 /// All functions in the base extension must be supported by all SBI implementations,
 /// so there are no error returns defined. (p.13)
 pub fn sbi_base_handler(func_id: usize) -> SbiRet {
-    use sbi_spec::base::*;
+    use sbi_spec::base::{
+        GET_MARCHID, GET_MIMPID, GET_MVENDORID, GET_SBI_IMPL_ID, GET_SBI_IMPL_VERSION,
+        GET_SBI_SPEC_VERSION, PROBE_EXTENSION,
+    };
     let result_value = match func_id {
         GET_SBI_SPEC_VERSION => sbi_rt::get_sbi_impl_version(),
         GET_SBI_IMPL_ID => sbi_rt::get_sbi_impl_id(),

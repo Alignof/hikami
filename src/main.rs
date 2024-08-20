@@ -49,6 +49,7 @@ pub struct HypervisorData {
 }
 
 impl HypervisorData {
+    #[must_use]
     pub fn devices(&self) -> &device::Devices {
         self.devices.as_ref().expect("device data is uninitialized")
     }

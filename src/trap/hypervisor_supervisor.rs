@@ -76,10 +76,10 @@ unsafe fn hstrap_exit() -> ! {
 /// Switch to hypervisor stack and save contexts.
 ///
 /// # TODO
-/// ## asm_const
+/// ## `asm_const`
 /// replace stringify macro to const when `asm_const` is stabled.
 ///
-/// ## fn_align
+/// ## `fn_align`
 /// function alignment (feature `fn_align`).  
 /// See: [https://github.com/rust-lang/rust/issues/82232](https://github.com/rust-lang/rust/issues/82232).
 /// ```no_run
