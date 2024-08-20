@@ -120,7 +120,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     );
 
     // set new guest data
-    hypervisor_data.regsiter_guest(new_guest);
+    hypervisor_data.register_guest(new_guest);
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0

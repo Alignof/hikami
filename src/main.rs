@@ -60,7 +60,7 @@ impl HypervisorData {
             .expect("guest data not found")
     }
 
-    pub fn regsiter_guest(&mut self, new_guest: Guest) {
+    pub fn register_guest(&mut self, new_guest: Guest) {
         let hart_id = new_guest.hart_id();
         assert!(hart_id < MAX_HART_NUM);
         self.guest[hart_id] = Some(new_guest);
