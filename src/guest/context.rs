@@ -39,7 +39,7 @@ impl Context {
         }
     }
 
-    pub fn xreg(&self, index: usize) -> u64 {
+    pub fn xreg(self, index: usize) -> u64 {
         self.get_context().xreg[index]
     }
 
@@ -47,7 +47,7 @@ impl Context {
         self.get_context().xreg[index] = value;
     }
 
-    pub fn sepc(&self) -> usize {
+    pub fn sepc(self) -> usize {
         self.get_context().sepc
     }
 
