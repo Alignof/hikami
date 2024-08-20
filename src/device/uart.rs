@@ -98,6 +98,7 @@ impl rustsbi::Console for Uart {
     }
 
     /// Read bytes from the debug console into an output memory.
+    #[allow(clippy::cast_possible_truncation)]
     fn read(&self, bytes: Physical<&mut [u8]>) -> SbiRet {
         let uart_addr = self.base_addr as *mut u32;
         let uart_lsr_addr = self.lsr_addr() as *mut u32;

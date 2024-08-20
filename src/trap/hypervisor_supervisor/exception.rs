@@ -31,6 +31,7 @@ pub extern "C" fn hs_forward_exception() {
 }
 
 /// Handler for Ecall from VS-mode exception
+#[allow(clippy::cast_possible_truncation)]
 fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     let ext_id: usize = context.xreg(17) as usize;
     let func_id: usize = context.xreg(16) as usize;
@@ -47,6 +48,7 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     context.set_xreg(11, sbiret.value as u64);
 }
 
+/// Trap `VirtualInstruction` (cause = 22)
 fn virtual_instruction_handler(inst_bytes: u32, context: &mut guest::context::Context) {
     let inst = inst_bytes
         .decode(Rv64)
@@ -69,6 +71,7 @@ fn virtual_instruction_handler(inst_bytes: u32, context: &mut guest::context::Co
 }
 
 /// Trap handler for exception
+#[allow(clippy::cast_possible_truncation)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
 

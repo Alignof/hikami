@@ -12,6 +12,7 @@ use sbi_spec::legacy;
 /// Trap SBI Ecall
 ///
 /// Handling SBI ecall is delegated to `Sbi` struct.
+#[allow(clippy::cast_possible_truncation)]
 pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize) -> ! {
     let sbi_cell = SBI.lock();
     let sbi_data = sbi_cell.get().unwrap();
@@ -81,7 +82,7 @@ pub extern "C" fn forward_exception() {
 }
 
 /// Trap handler for exception
-#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::MachineEnvCall | Exception::SupervisorEnvCall | Exception::UserEnvCall => {
