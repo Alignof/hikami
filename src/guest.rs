@@ -2,8 +2,16 @@
 
 pub mod context;
 
-use crate::memmap::constant::{guest, DRAM_BASE};
+use crate::memmap::{
+    constant::{guest, DRAM_BASE},
+    page_table,
+    page_table::PteFlag,
+    MemoryMap,
+};
 use context::Context;
+use core::ops::Range;
+
+use alloc::vec::Vec;
 use elf::{endian::AnyEndian, ElfBytes};
 
 /// Guest Information
@@ -55,15 +63,8 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
-    pub fn load_guest_elf(&self, elf_addr: *mut u8, guest_initrd_size: usize) -> usize {
-        let guest_elf = unsafe {
-            ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-                elf_addr,
-                guest_initrd_size,
-            ))
-            .unwrap()
-        };
-        let guest_base_addr = self.dram_base() + guest::TEXT_OFFSET;
+    pub fn load_guest_elf(&self, guest_elf: &ElfBytes<AnyEndian>, elf_addr: *mut u8) -> usize {
+        let guest_base_addr = self.dram_base() + guest::DRAM_OFFSET;
         let first_segment_addr = guest_elf.segments().unwrap().iter().nth(0).unwrap().p_paddr;
         for prog_header in guest_elf
             .segments()

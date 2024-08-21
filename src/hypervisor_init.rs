@@ -10,10 +10,11 @@ use crate::memmap::constant::{
     hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
     DRAM_BASE,
 };
-use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
 use core::arch::asm;
+
+use elf::{endian::AnyEndian, ElfBytes};
 use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
 #[inline(never)]
@@ -84,7 +85,26 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     let page_table_start = hypervisor::BASE_ADDR
         + hypervisor::PAGE_TABLE_OFFSET
         + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    setup_g_stage_page_table(page_table_start);
+
+    // load guest elf from address
+    let guest_elf = unsafe {
+        ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
+            hypervisor_data.devices().initrd.paddr() as *mut u8,
+            hypervisor_data.devices().initrd.size(),
+        ))
+        .unwrap()
+    };
+
+    // load guest image
+    let guest_entry_point = new_guest.load_guest_elf(
+        &guest_elf,
+        hypervisor_data.devices().initrd.paddr() as *mut u8,
+    );
+
+    // crate page table from ELF
+    new_guest.setup_g_stage_page_table_from_elf(&guest_elf, guest_entry_point, page_table_start);
+
+    // set device memory map
     hypervisor_data
         .devices()
         .device_mapping_g_stage(page_table_start);
@@ -92,12 +112,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // enable two-level address translation
     hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
     hfence_gvma_all();
-
-    // load guest image
-    let guest_entry_point = new_guest.load_guest_elf(
-        hypervisor_data.devices().initrd.paddr() as *mut u8,
-        hypervisor_data.devices().initrd.size(),
-    );
 
     // set new guest data
     hypervisor_data.register_guest(new_guest);
