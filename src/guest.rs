@@ -64,7 +64,7 @@ impl Guest {
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
     pub fn load_guest_elf(&self, guest_elf: &ElfBytes<AnyEndian>, elf_addr: *mut u8) -> usize {
-        let guest_base_addr = self.dram_base() + guest::DRAM_OFFSET;
+        let guest_base_addr = self.dram_base() + guest::IMAGE_OFFEST;
         let first_segment_addr = guest_elf.segments().unwrap().iter().nth(0).unwrap().p_paddr;
         for prog_header in guest_elf
             .segments()

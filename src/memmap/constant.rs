@@ -20,7 +20,9 @@
 //! |             |             |                               |
 //! | 0x9000_0000 | 0x9000_2000 | guest page table              |
 //! | 0x9000_2000 | 0x9000_4000 | guest device tree             |
-//! | 0x9200_0000 |     ...     | guest dram                    |
+//! | 0x9200_0000 |     ...     | guest heap                    |
+//! |     ...     | 0x9300_0000 | guest stack                   |
+//! | 0x9300_0000 |     ...     | text data of guest            |
 
 /// Max number of HART
 pub const MAX_HART_NUM: usize = 8;
@@ -87,6 +89,6 @@ pub mod guest {
     pub const HEAP_OFFSET: usize = 0x200_0000;
     /// Stack offset of guest space
     pub const STACK_OFFSET: usize = 0x300_0000;
-    /// Guest Text secion offset
-    pub const TEXT_OFFSET: usize = 0x300_0000;
+    /// Heap offset of guest space
+    pub const IMAGE_OFFEST: usize = 0x300_0000;
 }
