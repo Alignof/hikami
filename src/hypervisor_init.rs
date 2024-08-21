@@ -16,28 +16,6 @@ use crate::{GUEST_DTB, HYPERVISOR_DATA};
 use core::arch::asm;
 use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
-/// Create page tables in G-stage address translation.
-///
-/// TODO: Automatic generation of page tables according to guest OS address translation map.
-fn setup_g_stage_page_table(page_table_start: usize) {
-    use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
-    let memory_map: [MemoryMap; 2] = [
-        // hypervisor RAM
-        MemoryMap::new(
-            0x9000_0000..0x9040_0000,
-            0x9000_0000..0x9040_0000,
-            &[Dirty, Accessed, Write, Read, User, Valid],
-        ),
-        // TEXT
-        MemoryMap::new(
-            0x9300_0000..0x9600_0000,
-            0x9300_0000..0x9600_0000,
-            &[Dirty, Accessed, Exec, Write, Read, User, Valid],
-        ),
-    ];
-    page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
-}
-
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // hart_id must be zero.
