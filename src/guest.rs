@@ -86,4 +86,43 @@ impl Guest {
 
         guest_base_addr
     }
+
+    /// Create page tables in G-stage address translation from ELF.
+    pub fn setup_g_stage_page_table_from_elf(
+        &self,
+        guest_elf: &ElfBytes<AnyEndian>,
+        guest_entry_point: usize,
+        page_table_start: usize,
+    ) {
+        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+
+        let align_size = |size: u64, align: u64| ((size + (align - 1)) & !(align - 1)) as usize;
+        let mut memory_map: Vec<MemoryMap> = Vec::new();
+
+        for prog_header in guest_elf
+            .segments()
+            .expect("failed to get segments from elf")
+            .iter()
+        {
+            let region_start: usize = guest_entry_point + prog_header.p_paddr as usize;
+            let memory_region: Range<usize> = region_start
+                ..(region_start + align_size(prog_header.p_memsz, prog_header.p_align))
+                    .try_into()
+                    .unwrap();
+
+            memory_map.push(MemoryMap::new(
+                memory_region.clone(), // virt
+                memory_region,         // phys
+                match prog_header.p_flags & 0b111 {
+                    0b100 => &[Dirty, Accessed, Read, User, Valid],
+                    0b101 => &[Dirty, Accessed, Exec, Read, User, Valid],
+                    0b110 => &[Dirty, Accessed, Write, Read, User, Valid],
+                    0b111 => &[Dirty, Accessed, Exec, Write, Read, User, Valid],
+                    _ => panic!("unsupported flags"),
+                },
+            ));
+        }
+
+        page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
+    }
 }
