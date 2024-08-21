@@ -94,7 +94,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             Err(e) => panic!("{}", e),
         }
     };
-    // copy device tree
+    // copy device tree to guest
     let guest_dtb_addr = unsafe {
         new_guest.copy_device_tree(GUEST_DTB.as_ptr() as *const u8 as usize, GUEST_DTB.len())
     };
