@@ -10,9 +10,9 @@
 		stdout-path = "/htif";
 	};
 
-	memory@92000000 {
+	memory@93000000 {
 		device_type = "memory";
-		reg = <0x00 0x92000000 0x00 0x9200000>;
+		reg = <0x00 0x93000000 0x00 0x9300000>;
 	};
 
 	cpus {
@@ -29,7 +29,7 @@
 			riscv,isa-extensions = "i\0m\0a\0f\0d\0c\0h\0zic64b\0zicbom\0zicbop\0zicboz\0ziccamoa\0ziccif\0zicclsm\0ziccrse\0zicntr\0zicsr\0zifencei\0zihintntl\0zihintpause\0zihpm\0za64rs\0zawrs\0zfa\0zca\0zcd\0zba\0zbb\0zbc\0zbs\0ssccptr\0sscounterenw\0sstc\0sstvala\0sstvecd\0svadu";
 			riscv,isa-base = "rv64i";
 			riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_za64rs_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_ssccptr_sscounterenw_sstc_sstvala_sstvecd_svadu";
-			mmu-type = "riscv,sv39";
+			mmu-type = "riscv,sv57";
 
 			interrupt-controller {
 				#interrupt-cells = <0x01>;
