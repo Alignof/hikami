@@ -12,7 +12,7 @@ use crate::memmap::constant::{
 };
 use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
-use crate::HYPERVISOR_DATA;
+use crate::{GUEST_DTB, HYPERVISOR_DATA};
 use core::arch::asm;
 use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
@@ -95,7 +95,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         }
     };
     // copy device tree
-    let guest_dtb_addr = unsafe { new_guest.copy_device_tree(dtb_addr, device_tree.total_size()) };
+    let guest_dtb_addr = unsafe {
+        new_guest.copy_device_tree(GUEST_DTB.as_ptr() as *const u8 as usize, GUEST_DTB.len())
+    };
 
     // parsing and storing device data
     hypervisor_data.init_devices(device_tree);
