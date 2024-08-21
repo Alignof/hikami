@@ -16,7 +16,7 @@
 //! | 0x8120_4000 | 0x8130_0000 | hypervisor device tree blob   |
 //! | 0x8130_0000 | 0x8140_0000 | hypervisor reserved           |
 //! | 0x8200_0000 |     ...     | hypervisor heap               |
-//! |     ...     | 0x8300_0000 | hypervisor stack              |
+//! |     ...     | 0x9000_0000 | hypervisor stack              |
 //! |             |             |                               |
 //! | 0x9000_0000 | 0x9000_2000 | guest page table              |
 //! | 0x9000_2000 | 0x9000_4000 | guest device tree             |
@@ -69,9 +69,9 @@ pub mod hypervisor {
     /// Base address of heap.
     pub const HEAP_OFFSET: usize = 0x100_0000;
     /// Heap size.
-    pub const HEAP_SIZE: usize = 0xc0_0000;
+    pub const HEAP_SIZE: usize = 0xdc0_0000;
     /// Base address of stack.
-    pub const STACK_OFFSET: usize = 0x200_0000; // modify trap vector immediate when change it.
+    pub const STACK_OFFSET: usize = 0xf00_0000; // modify trap vector immediate when change it.
     /// Stack size for each HART.
     pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 }

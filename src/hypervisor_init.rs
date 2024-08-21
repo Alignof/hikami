@@ -102,7 +102,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     );
 
     // crate page table from ELF
-    new_guest.setup_g_stage_page_table_from_elf(&guest_elf, guest_entry_point, page_table_start);
+    new_guest.setup_g_stage_page_table_from_elf(&guest_elf, page_table_start);
 
     // set device memory map
     hypervisor_data
@@ -163,7 +163,7 @@ fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
             fence.i
 
             // set to stack top
-            li sp, 0x83000000
+            li sp, 0x90000000
             addi sp, sp, -272 // Size of ContextData = 8 * 34
 
             // restore sstatus 
