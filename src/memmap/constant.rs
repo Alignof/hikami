@@ -66,20 +66,3 @@ pub mod hypervisor {
     /// Base address of stack.
     pub const STACK_OFFSET: usize = 0xf00_0000; // modify trap vector immediate when change it.
 }
-
-pub mod guest {
-    //! Guest memory region (`0x9000_0000` - )
-
-    /// Memory region on dram that be allocated each HARTs.
-    pub const BASE_OFFSET_PER_HART: usize = 0x1000_0000;
-
-    /// loading device tree offset of guest space
-    pub const DEVICE_TREE_OFFSET: usize = 0x2000;
-    #[allow(dead_code)]
-    /// Heap offset of guest space
-    pub const HEAP_OFFSET: usize = 0x200_0000;
-    /// Stack offset of guest space
-    pub const STACK_OFFSET: usize = 0x300_0000;
-    /// Heap offset of guest space
-    pub const IMAGE_OFFEST: usize = 0x300_0000;
-}
