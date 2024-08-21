@@ -23,10 +23,7 @@ use spin::Mutex;
 
 use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{
-    hypervisor::{self, STACK_SIZE_PER_HART},
-    DRAM_BASE, MAX_HART_NUM,
-};
+use crate::memmap::constant::{hypervisor, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
 
 /// Panic handler
