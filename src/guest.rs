@@ -92,38 +92,51 @@ impl Guest {
     pub fn setup_g_stage_page_table_from_elf(
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
-        guest_entry_point: usize,
         page_table_start: usize,
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
+        let guest_base_addr = self.dram_base() + guest::IMAGE_OFFEST;
         let align_size = |size: u64, align: u64| ((size + (align - 1)) & !(align - 1)) as usize;
         let mut memory_map: Vec<MemoryMap> = Vec::new();
+        let mut last_region: Range<usize> = Default::default();
 
         for prog_header in guest_elf
             .segments()
             .expect("failed to get segments from elf")
             .iter()
         {
-            let region_start: usize = guest_entry_point + prog_header.p_paddr as usize;
-            let memory_region: Range<usize> = region_start
-                ..(region_start + align_size(prog_header.p_memsz, prog_header.p_align))
-                    .try_into()
-                    .unwrap();
+            const PT_LOAD: u32 = 1;
+            if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
+                let region_start: usize = guest_base_addr + prog_header.p_paddr as usize;
+                let region_end: usize =
+                    region_start + align_size(prog_header.p_memsz, prog_header.p_align);
 
-            memory_map.push(MemoryMap::new(
-                memory_region.clone(), // virt
-                memory_region,         // phys
-                match prog_header.p_flags & 0b111 {
-                    0b100 => &[Dirty, Accessed, Read, User, Valid],
-                    0b101 => &[Dirty, Accessed, Exec, Read, User, Valid],
-                    0b110 => &[Dirty, Accessed, Write, Read, User, Valid],
-                    0b111 => &[Dirty, Accessed, Exec, Write, Read, User, Valid],
-                    _ => panic!("unsupported flags"),
-                },
-            ));
+                last_region = if last_region.end < region_end {
+                    region_start..region_end
+                } else {
+                    last_region
+                };
+
+                memory_map.push(MemoryMap::new(
+                    region_start..region_end, // virt
+                    region_start..region_end, // phys
+                    match prog_header.p_flags & 0b111 {
+                        0b100 => &[Dirty, Accessed, Read, User, Valid],
+                        0b101 => &[Dirty, Accessed, Exec, Read, User, Valid],
+                        0b110 => &[Dirty, Accessed, Write, Read, User, Valid],
+                        0b111 => &[Dirty, Accessed, Exec, Write, Read, User, Valid],
+                        _ => panic!("unsupported flags"),
+                    },
+                ));
+            }
         }
 
+        memory_map.push(MemoryMap::new(
+            last_region.end..0xffff_ffff, // virt
+            last_region.end..0xffff_ffff, // phys
+            &[Dirty, Accessed, Exec, Write, Read, User, Valid],
+        ));
         page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
     }
 }
