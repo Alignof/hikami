@@ -8,6 +8,7 @@ use crate::memmap::{
     MemoryMap,
 };
 use context::Context;
+use core::mem::MaybeUninit;
 use core::ops::Range;
 
 use alloc::boxed::Box;
@@ -171,7 +172,8 @@ impl Guest {
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
         for guest_physical_addr in self.memory_region.clone().step_by(PAGE_SIZE) {
             // allocate memory from heap
-            let mut host_physical_block_as_vec = Vec::<u8>::with_capacity(PAGE_SIZE);
+            let mut host_physical_block_as_vec: Vec<MaybeUninit<u8>> =
+                Vec::with_capacity(PAGE_SIZE);
             unsafe {
                 host_physical_block_as_vec.set_len(PAGE_SIZE);
             }
