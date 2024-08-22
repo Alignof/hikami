@@ -66,14 +66,15 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // create new guest data
     let guest_id = hart_id + 1;
     let guest_memory_begin =
-        hypervisor::BASE_ADDR + hypervisor::GUEST_DRAM_BEGIN_OFFSET + guest_id * GUEST_DRAM_SIZE;
+        hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET + guest_id * GUEST_DRAM_SIZE;
+    let guest_dtb_addr = hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET;
     let page_table_start = hypervisor::BASE_ADDR
         + hypervisor::PAGE_TABLE_OFFSET
         + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     let new_guest = Guest::new(
         hart_id,
         page_table_start,
-        hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET,
+        guest_dtb_addr,
         guest_memory_begin..guest_memory_begin + GUEST_DRAM_SIZE,
     );
 
@@ -91,14 +92,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     hypervisor_data.register_devices(device_tree);
 
     // copy device tree to guest
-    let guest_dtb_addr = unsafe {
-        new_guest.copy_device_tree(GUEST_DTB.as_ptr() as *const u8 as usize, GUEST_DTB.len())
-    };
-
-    // setup G-stage page table
-    let page_table_start = hypervisor::BASE_ADDR
-        + hypervisor::PAGE_TABLE_OFFSET
-        + hart_id * PAGE_TABLE_OFFSET_PER_HART;
+    unsafe {
+        new_guest.copy_device_tree(GUEST_DTB.as_ptr() as *const u8 as usize, GUEST_DTB.len());
+    }
 
     // load guest elf from address
     let guest_elf = unsafe {
@@ -160,7 +156,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
-    hart_entry(hart_id, new_guest.guest_dtb_addr());
+    hart_entry(hart_id, guest_dtb_addr);
 }
 
 /// Entry for guest (VS-mode).

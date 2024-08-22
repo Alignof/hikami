@@ -62,5 +62,7 @@ pub mod hypervisor {
     /// Base address of device tree blob for guest image
     pub const GUEST_DEVICE_TREE_OFFSET: usize = 0x2000;
     /// Base address of heap.
-    pub const GUEST_DRAM_BEGIN_OFFSET: usize = 0x100_0000;
+    pub const HEAP_OFFSET: usize = 0x1000_0000;
+    /// Heap size.
+    pub const HEAP_SIZE: usize = 0x2000_0000;
 }
