@@ -7,7 +7,7 @@ use crate::h_extension::csrs::{
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{
     hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
-    DRAM_SIZE_PER_HART,
+    GUEST_DRAM_SIZE,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};

@@ -21,7 +21,7 @@ pub const MAX_HART_NUM: usize = 8;
 /// Base address of dram.
 pub const DRAM_BASE: usize = 0x8000_0000;
 /// Dram memory space per HART.
-pub const DRAM_SIZE_PER_HART: usize = 256 * 1024 * 1024; // 256 MB
+pub const GUEST_DRAM_SIZE: usize = 256 * 1024 * 1024; // 256 MB
 /// Stack size for each HART.
 pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 /// Offset for converting physical device address to virtual address.
