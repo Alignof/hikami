@@ -1,6 +1,3 @@
-use crate::memmap::constant::hypervisor;
-use core::mem::size_of;
-
 /// Guest context on memory
 #[repr(C)]
 #[allow(dead_code)]
@@ -20,11 +17,9 @@ pub struct Context {
     address: usize,
 }
 
-impl Default for Context {
-    fn default() -> Self {
-        Context {
-            address: (hypervisor::BASE_ADDR + hypervisor::STACK_OFFSET) - size_of::<ContextData>(),
-        }
+impl Context {
+    pub fn new(address: usize) -> Self {
+        Context { address }
     }
 }
 

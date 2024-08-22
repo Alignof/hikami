@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use elf::{endian::AnyEndian, ElfBytes};
 
 /// Guest Information
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Guest {
     /// Guest ID
     guest_id: usize,
@@ -23,10 +23,11 @@ pub struct Guest {
 
 impl Guest {
     pub fn new(hart_id: usize, memory_region: Range<usize>) -> Self {
+        let stack_top = memory_region.end;
         Guest {
             guest_id: hart_id,
             memory_region,
-            context: Context::default(),
+            context: Context::new(stack_top),
         }
     }
 
