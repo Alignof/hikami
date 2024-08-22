@@ -67,8 +67,12 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     let guest_id = hart_id + 1;
     let guest_memory_begin =
         hypervisor::BASE_ADDR + hypervisor::GUEST_DRAM_BEGIN_OFFSET + guest_id * GUEST_DRAM_SIZE;
+    let page_table_start = hypervisor::BASE_ADDR
+        + hypervisor::PAGE_TABLE_OFFSET
+        + hart_id * PAGE_TABLE_OFFSET_PER_HART;
     let new_guest = Guest::new(
         hart_id,
+        page_table_start,
         hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET,
         guest_memory_begin..guest_memory_begin + GUEST_DRAM_SIZE,
     );

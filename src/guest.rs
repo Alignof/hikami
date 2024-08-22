@@ -2,7 +2,6 @@
 
 pub mod context;
 
-use crate::memmap::constant::hypervisor;
 use crate::memmap::{
     page_table,
     page_table::{PteFlag, PAGE_SIZE},
@@ -20,6 +19,8 @@ use elf::{endian::AnyEndian, ElfBytes};
 pub struct Guest {
     /// Guest ID
     guest_id: usize,
+    /// Page table that is passed to guest address
+    page_table_addr: usize,
     /// Device tree address
     dtb_addr: usize,
     /// Allocated memory region
@@ -29,10 +30,16 @@ pub struct Guest {
 }
 
 impl Guest {
-    pub fn new(hart_id: usize, dtb_addr: usize, memory_region: Range<usize>) -> Self {
+    pub fn new(
+        hart_id: usize,
+        page_table_addr: usize,
+        dtb_addr: usize,
+        memory_region: Range<usize>,
+    ) -> Self {
         let stack_top = memory_region.end;
         Guest {
             guest_id: hart_id,
+            page_table_addr,
             dtb_addr,
             memory_region,
             context: Context::new(stack_top),
@@ -159,8 +166,12 @@ impl Guest {
 
     /// Allocate guest memory space from heap and create corresponding page table.
     pub fn allocate_memory_space(&self) {
-        for guest_physical_addr in self.memory_region {
-            let mut guest_memory_as_vec = Vec::<u8>::with_capacity(PAGE_SIZE);
+        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+
+        let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+        for guest_physical_addr in self.memory_region.clone().step_by(PAGE_SIZE) {
+            // allocate memory from heap
+            let mut host_physical_block_as_vec = Vec::<u8>::with_capacity(PAGE_SIZE);
             unsafe {
                 guest_memory_as_vec.set_len(PAGE_SIZE);
             }
