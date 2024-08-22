@@ -64,7 +64,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
 
     // create new guest data
-    let new_guest = Guest::new(hart_id);
+    let new_guest = Guest::new(
+        hart_id,
+        guest_memory_begin..guest_memory_begin + DRAM_SIZE_PER_HART,
+    );
 
     // parse device tree
     let device_tree = unsafe {

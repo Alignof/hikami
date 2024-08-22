@@ -2,12 +2,8 @@
 
 pub mod context;
 
-use crate::memmap::{
-    constant::{guest, DRAM_BASE},
-    page_table,
-    page_table::PteFlag,
-    MemoryMap,
-};
+use crate::memmap::constant::hypervisor;
+use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use context::Context;
 use core::ops::Range;
 
@@ -19,14 +15,17 @@ use elf::{endian::AnyEndian, ElfBytes};
 pub struct Guest {
     /// Guest ID
     guest_id: usize,
+    /// Allocated memory region
+    memory_region: Range<usize>,
     /// Guest context data
     pub context: Context,
 }
 
 impl Guest {
-    pub fn new(hart_id: usize) -> Self {
+    pub fn new(hart_id: usize, memory_region: Range<usize>) -> Self {
         Guest {
             guest_id: hart_id,
+            memory_region,
             context: Context::default(),
         }
     }
@@ -38,7 +37,7 @@ impl Guest {
 
     /// Return guest dram space start
     fn dram_base(&self) -> usize {
-        DRAM_BASE + guest::BASE_OFFSET_PER_HART * (self.guest_id + 1)
+        self.memory_region.start
     }
 
     /// Copy device tree from hypervisor side.  
@@ -47,7 +46,7 @@ impl Guest {
     /// # Panics
     /// It will be panic if `dtb_addr` is invalid.
     pub unsafe fn copy_device_tree(&self, dtb_addr: usize, dtb_size: usize) -> usize {
-        let guest_dtb_addr = self.dram_base() + guest::DEVICE_TREE_OFFSET;
+        let guest_dtb_addr = hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET;
         unsafe {
             core::ptr::copy(dtb_addr as *const u8, guest_dtb_addr as *mut u8, dtb_size);
         }
@@ -64,7 +63,7 @@ impl Guest {
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
     pub fn load_guest_elf(&self, guest_elf: &ElfBytes<AnyEndian>, elf_addr: *mut u8) -> usize {
-        let guest_base_addr = self.dram_base() + guest::IMAGE_OFFEST;
+        let guest_base_addr = self.dram_base();
         let first_segment_addr = guest_elf.segments().unwrap().iter().nth(0).unwrap().p_paddr;
         for prog_header in guest_elf
             .segments()
@@ -96,7 +95,7 @@ impl Guest {
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
-        let guest_base_addr = self.dram_base() + guest::IMAGE_OFFEST;
+        let guest_base_addr = self.dram_base();
         let align_size = |size: u64, align: u64| ((size + (align - 1)) & !(align - 1)) as usize;
         let mut memory_map: Vec<MemoryMap> = Vec::new();
         let mut last_region: Range<usize> = Default::default();
