@@ -6,12 +6,13 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{
-    guest::{self, BASE_OFFSET_PER_HART},
     hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
-    DRAM_BASE,
+    DRAM_SIZE_PER_HART,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
+
+use alloc::boxed::Box;
 use core::arch::asm;
 
 use elf::{endian::AnyEndian, ElfBytes};
@@ -62,6 +63,10 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+
+    // allocate guest memory space
+    let guest_memory_space = Box::new([0_u8; DRAM_SIZE_PER_HART]);
+    let guest_memory_begin = guest_memory_space.as_ptr() as *const u8 as usize;
 
     // create new guest data
     let new_guest = Guest::new(
@@ -154,12 +159,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
 /// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
+fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        // set stack top value to sscratch
-        let guest_id = hart_id + 1;
-        sscratch::write(DRAM_BASE + guest_id * BASE_OFFSET_PER_HART + guest::STACK_OFFSET);
-
         // enter VS-mode
         asm!(
             ".align 4
