@@ -12,7 +12,6 @@ use crate::memmap::constant::{
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
 
-use alloc::boxed::Box;
 use core::arch::asm;
 
 use elf::{endian::AnyEndian, ElfBytes};
@@ -64,15 +63,18 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
 
-    // allocate guest memory space
-    let guest_memory_space = Box::new([0_u8; DRAM_SIZE_PER_HART]);
-    let guest_memory_begin = guest_memory_space.as_ptr() as *const u8 as usize;
-
     // create new guest data
+    let guest_id = hart_id + 1;
+    let guest_memory_begin =
+        hypervisor::BASE_ADDR + hypervisor::GUEST_DRAM_BEGIN_OFFSET + guest_id * GUEST_DRAM_SIZE;
     let new_guest = Guest::new(
         hart_id,
-        guest_memory_begin..guest_memory_begin + DRAM_SIZE_PER_HART,
+        hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET,
+        guest_memory_begin..guest_memory_begin + GUEST_DRAM_SIZE,
     );
+
+    // allocate guest memory space
+    new_guest.allocate_memory_space();
 
     // parse device tree
     let device_tree = unsafe {

@@ -3,10 +3,15 @@
 pub mod context;
 
 use crate::memmap::constant::hypervisor;
-use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
+use crate::memmap::{
+    page_table,
+    page_table::{PteFlag, PAGE_SIZE},
+    MemoryMap,
+};
 use context::Context;
 use core::ops::Range;
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use elf::{endian::AnyEndian, ElfBytes};
 
@@ -54,17 +59,17 @@ impl Guest {
     }
 
     /// Copy device tree from hypervisor side.  
-    /// It returns copy destination address.
     ///
     /// # Panics
     /// It will be panic if `dtb_addr` is invalid.
-    pub unsafe fn copy_device_tree(&self, dtb_addr: usize, dtb_size: usize) -> usize {
-        let guest_dtb_addr = hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET;
+    pub unsafe fn copy_device_tree(&self, dtb_addr: usize, dtb_size: usize) {
         unsafe {
-            core::ptr::copy(dtb_addr as *const u8, guest_dtb_addr as *mut u8, dtb_size);
+            core::ptr::copy(
+                dtb_addr as *const u8,
+                self.guest_dtb_addr() as *mut u8,
+                dtb_size,
+            );
         }
-
-        guest_dtb_addr
     }
 
     /// Load an elf to guest memory space.
@@ -150,5 +155,18 @@ impl Guest {
             &[Dirty, Accessed, Exec, Write, Read, User, Valid],
         ));
         page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
+    }
+
+    /// Allocate guest memory space from heap and create corresponding page table.
+    pub fn allocate_memory_space(&self) {
+        for guest_physical_addr in self.memory_region {
+            let mut guest_memory_as_vec = Vec::<u8>::with_capacity(PAGE_SIZE);
+            unsafe {
+                guest_memory_as_vec.set_len(PAGE_SIZE);
+            }
+            let guest_memory_slice = guest_memory_as_vec.into_boxed_slice();
+            let guest_memory_begin = Box::into_raw(guest_memory_slice) as *const u8 as usize;
+            page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
+        }
     }
 }
