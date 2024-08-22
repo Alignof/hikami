@@ -173,11 +173,22 @@ impl Guest {
             // allocate memory from heap
             let mut host_physical_block_as_vec = Vec::<u8>::with_capacity(PAGE_SIZE);
             unsafe {
-                guest_memory_as_vec.set_len(PAGE_SIZE);
+                host_physical_block_as_vec.set_len(PAGE_SIZE);
             }
-            let guest_memory_slice = guest_memory_as_vec.into_boxed_slice();
-            let guest_memory_begin = Box::into_raw(guest_memory_slice) as *const u8 as usize;
-            page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
+            let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
+            let host_physical_block_begin =
+                Box::into_raw(host_physical_block_slice) as *const u8 as usize;
+
+            // create memory mapping
+            page_table::sv39x4::generate_page_table(
+                self.page_table_addr,
+                &[MemoryMap::new(
+                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                    host_physical_block_begin..host_physical_block_begin + PAGE_SIZE,
+                    all_pte_flags_are_set,
+                )],
+                false,
+            );
         }
     }
 }
