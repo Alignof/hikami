@@ -96,7 +96,7 @@ impl HypervisorData {
     ///
     /// # Panics
     /// It will be panic when parsing device tree failed.
-    pub fn init_devices(&mut self, device_tree: Fdt) {
+    pub fn register_devices(&mut self, device_tree: Fdt) {
         self.devices.replace(Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             virtio: virtio::VirtIO::new_all(&device_tree, "/soc/virtio_mmio"),

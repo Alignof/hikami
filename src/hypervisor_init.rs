@@ -73,13 +73,13 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
             Err(e) => panic!("{}", e),
         }
     };
+    // parsing and storing device data
+    hypervisor_data.register_devices(device_tree);
+
     // copy device tree to guest
     let guest_dtb_addr = unsafe {
         new_guest.copy_device_tree(GUEST_DTB.as_ptr() as *const u8 as usize, GUEST_DTB.len())
     };
-
-    // parsing and storing device data
-    hypervisor_data.init_devices(device_tree);
 
     // setup G-stage page table
     let page_table_start = hypervisor::BASE_ADDR
