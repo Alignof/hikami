@@ -160,14 +160,23 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 /// Entry for guest (VS-mode).
 #[inline(never)]
 fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
+    // aquire hypervisor data
+    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let stack_top = hypervisor_data.guest().stack_top();
+    // release HYPERVISOR_DATA lock
+    drop(hypervisor_data);
+
+    // init guest stack pointer is don't care
+    sscratch::write(0);
+
     unsafe {
         // enter VS-mode
         asm!(
             ".align 4
             fence.i
 
-            // set to stack top
-            li sp, 0x90000000
+            // set sp to scratch stack top
+            mv sp, {stack_top}  
             addi sp, sp, -272 // Size of ContextData = 8 * 34
 
             // restore sstatus 
@@ -217,6 +226,7 @@ fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
             sret
             ",
             in("a1") dtb_addr,
+            stack_top = in(reg) stack_top,
             options(noreturn)
         );
     }
