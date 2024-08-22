@@ -19,6 +19,7 @@ use elf::{endian::AnyEndian, ElfBytes};
 #[derive(Debug)]
 pub struct Guest {
     /// Guest ID
+    #[allow(clippy::struct_field_names)]
     guest_id: usize,
     /// Page table that is passed to guest address
     page_table_addr: usize,
@@ -122,9 +123,10 @@ impl Guest {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let guest_base_addr = self.dram_base();
-        let align_size = |size: u64, align: u64| ((size + (align - 1)) & !(align - 1)) as usize;
+        let align_size =
+            |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
         let mut memory_map: Vec<MemoryMap> = Vec::new();
-        let mut last_region: Range<usize> = Default::default();
+        let mut last_region: Range<usize> = Range::default();
 
         for prog_header in guest_elf
             .segments()
@@ -133,7 +135,8 @@ impl Guest {
         {
             const PT_LOAD: u32 = 1;
             if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
-                let region_start: usize = guest_base_addr + prog_header.p_paddr as usize;
+                let region_start: usize =
+                    guest_base_addr + usize::try_from(prog_header.p_paddr).unwrap();
                 let region_end: usize =
                     region_start + align_size(prog_header.p_memsz, prog_header.p_align);
 
