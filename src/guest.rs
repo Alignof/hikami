@@ -15,6 +15,8 @@ use elf::{endian::AnyEndian, ElfBytes};
 pub struct Guest {
     /// Guest ID
     guest_id: usize,
+    /// Device tree address
+    dtb_addr: usize,
     /// Allocated memory region
     memory_region: Range<usize>,
     /// Guest context data
@@ -22,10 +24,11 @@ pub struct Guest {
 }
 
 impl Guest {
-    pub fn new(hart_id: usize, memory_region: Range<usize>) -> Self {
+    pub fn new(hart_id: usize, dtb_addr: usize, memory_region: Range<usize>) -> Self {
         let stack_top = memory_region.end;
         Guest {
             guest_id: hart_id,
+            dtb_addr,
             memory_region,
             context: Context::new(stack_top),
         }
@@ -39,6 +42,10 @@ impl Guest {
     /// Return Stack top (end of memory region)
     pub fn stack_top(&self) -> usize {
         self.memory_region.end
+    }
+
+    pub fn guest_dtb_addr(&self) -> usize {
+        self.dtb_addr
     }
 
     /// Return guest dram space start

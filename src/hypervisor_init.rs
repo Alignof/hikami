@@ -154,7 +154,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
-    hart_entry(hart_id, guest_dtb_addr);
+    hart_entry(hart_id, new_guest.guest_dtb_addr());
 }
 
 /// Entry for guest (VS-mode).
