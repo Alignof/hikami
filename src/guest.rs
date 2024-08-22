@@ -35,6 +35,11 @@ impl Guest {
         self.guest_id
     }
 
+    /// Return Stack top (end of memory region)
+    pub fn stack_top(&self) -> usize {
+        self.memory_region.end
+    }
+
     /// Return guest dram space start
     fn dram_base(&self) -> usize {
         self.memory_region.start
