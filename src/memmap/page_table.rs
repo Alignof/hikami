@@ -7,6 +7,7 @@ pub const PAGE_SIZE: usize = 4096;
 /// Page table level.
 ///
 /// ref: The RISC-V Instruction Set Manual: Volume II p151.
+#[derive(Copy, Clone)]
 enum PageTableLevel {
     /// Page table level 0
     ///
@@ -20,6 +21,16 @@ enum PageTableLevel {
     ///
     /// 4KB = 12 bit = offset (12 bit)
     Lv4KB,
+}
+
+impl PageTableLevel {
+    pub fn size(self) -> usize {
+        match self {
+            Self::Lv1GB => 0x40000000,
+            Self::Lv2MB => 0x200000,
+            Self::Lv4KB => 0x1000,
+        }
+    }
 }
 
 /// Each flags for page tables.
@@ -76,5 +87,14 @@ impl GuestPhysicalAddress {
 
     fn vpn0(&self) -> usize {
         (self.0 >> 12) & 0x1ff
+    }
+}
+
+/// Host physical address (GPA)
+struct HostPhysicalAddress(usize);
+
+impl HostPhysicalAddress {
+    fn page_number(self, level: PageTableLevel) -> u64 {
+        self.0 as u64 / level.size() as u64
     }
 }

@@ -7,7 +7,9 @@
 use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
-use super::{GuestPhysicalAddress, PageTableEntry, PageTableLevel, PteFlag, PAGE_SIZE};
+use super::{
+    GuestPhysicalAddress, HostPhysicalAddress, PageTableEntry, PageTableLevel, PteFlag, PAGE_SIZE,
+};
 use crate::memmap::MemoryMap;
 
 /// Generate third-level page table. (Sv39x4)
@@ -53,7 +55,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
 
         for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
             let v_start = GuestPhysicalAddress(memmap.virt.start + offset);
-            let p_start = memmap.phys.start + offset;
+            let p_start = HostPhysicalAddress(memmap.phys.start + offset);
 
             // first level
             let vpn2 = v_start.vpn2();
@@ -96,7 +98,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
                 )
             };
             third_lv_page_table[vpn0] =
-                PageTableEntry::new((p_start / PAGE_SIZE).try_into().unwrap(), memmap.flags);
+                PageTableEntry::new(p_start.page_number(page_level), memmap.flags);
         }
     }
 }
