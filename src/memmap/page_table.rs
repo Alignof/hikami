@@ -89,8 +89,8 @@ impl From<*mut [u64; constants::PAGE_TABLE_SIZE]> for PageTableAddress {
 
 impl PageTableAddress {
     /// Return page number
-    fn page_number(self, level: PageTableLevel) -> u64 {
-        self.0 as u64 / level.size() as u64
+    fn page_number(self) -> u64 {
+        self.0 as u64 / constants::PAGE_SIZE as u64
     }
 
     /// Convert self to `PageTableEntry` pointer.
@@ -117,7 +117,7 @@ impl GuestPhysicalAddress {
 struct HostPhysicalAddress(usize);
 
 impl HostPhysicalAddress {
-    fn page_number(self, level: PageTableLevel) -> u64 {
-        self.0 as u64 / level.size() as u64
+    fn page_number(self) -> u64 {
+        self.0 as u64 / constants::PAGE_SIZE as u64
     }
 }
