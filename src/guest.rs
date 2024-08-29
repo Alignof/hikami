@@ -4,7 +4,7 @@ pub mod context;
 
 use crate::memmap::{
     page_table,
-    page_table::{PteFlag, PAGE_SIZE},
+    page_table::{constants::PAGE_SIZE, PteFlag},
     MemoryMap,
 };
 use context::Context;

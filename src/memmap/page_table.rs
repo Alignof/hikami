@@ -1,8 +1,12 @@
 pub mod sv39;
 pub mod sv39x4;
 
-/// Size of memory areathat a page can point to.
-pub const PAGE_SIZE: usize = 4096;
+pub mod constants {
+    /// Size of memory areathat a page can point to.
+    pub const PAGE_SIZE: usize = 4096;
+    /// Second or Third page table size
+    pub const PAGE_TABLE_SIZE: usize = 512;
+}
 
 /// Page table level.
 ///
@@ -76,8 +80,8 @@ impl PageTableEntry {
 /// Page table address
 struct PageTableAddress(usize);
 
-impl From<*mut [u64; 512]> for PageTableAddress {
-    fn from(f: *mut [u64; 512]) -> Self {
+impl From<*mut [u64; constants::PAGE_TABLE_SIZE]> for PageTableAddress {
+    fn from(f: *mut [u64; constants::PAGE_TABLE_SIZE]) -> Self {
         PageTableAddress(f as *const u64 as usize)
     }
 }

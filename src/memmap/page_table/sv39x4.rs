@@ -8,18 +8,19 @@ use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
 use super::{
+    constants::{PAGE_SIZE, PAGE_TABLE_SIZE},
     GuestPhysicalAddress, HostPhysicalAddress, PageTableAddress, PageTableEntry, PageTableLevel,
-    PteFlag, PAGE_SIZE,
+    PteFlag,
 };
 use crate::memmap::MemoryMap;
+
+/// First page table size
+pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
 
 /// Generate third-level page table. (Sv39x4)
 #[allow(clippy::module_name_repetitions)]
 pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
     use crate::{print, println};
-
-    const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
-    const PAGE_TABLE_SIZE: usize = 512;
 
     assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
 

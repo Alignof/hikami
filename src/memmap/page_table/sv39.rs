@@ -6,7 +6,7 @@
 use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
-use super::{PageTableEntry, PteFlag, PAGE_SIZE};
+use super::{constants::PAGE_SIZE, PageTableEntry, PteFlag};
 use crate::memmap::MemoryMap;
 
 /// Generate third-level page table. (Sv39)
