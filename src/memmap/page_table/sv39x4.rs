@@ -46,7 +46,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         assert!(memmap.virt.len() == memmap.phys.len());
 
         // decide page level from memory range
-        let page_level = match memmap.virt.len() {
+        let trans_page_level = match memmap.virt.len() {
             0x0..=0x1000 => PageTableLevel::Lv4KB,
             0x1001..=0x200000 => PageTableLevel::Lv2MB,
             _ => PageTableLevel::Lv1GB,
@@ -68,7 +68,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
                 let second_pt_paddr: PageTableAddress = Box::into_raw(second_pt).into();
 
                 first_lv_page_table[vpn2] = PageTableEntry::new(
-                    second_pt_paddr.page_number(page_level),
+                    second_pt_paddr.page_number(trans_page_level),
                     PteFlag::Valid as u8,
                 );
 
@@ -87,7 +87,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
                 let third_pt_paddr: PageTableAddress = Box::into_raw(third_pt).into();
 
                 second_lv_page_table[vpn1] = PageTableEntry::new(
-                    third_pt_paddr.page_number(page_level),
+                    third_pt_paddr.page_number(trans_page_level),
                     PteFlag::Valid as u8,
                 );
 
@@ -99,7 +99,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             let third_lv_page_table: &mut [PageTableEntry] =
                 unsafe { from_raw_parts_mut(third_table_start_addr.to_pte_ptr(), PAGE_TABLE_SIZE) };
             third_lv_page_table[vpn0] =
-                PageTableEntry::new(p_start.page_number(page_level), memmap.flags);
+                PageTableEntry::new(p_start.page_number(trans_page_level), memmap.flags);
         }
     }
 }
