@@ -8,7 +8,8 @@ use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
 use super::{
-    GuestPhysicalAddress, HostPhysicalAddress, PageTableEntry, PageTableLevel, PteFlag, PAGE_SIZE,
+    GuestPhysicalAddress, HostPhysicalAddress, PageTableAddress, PageTableEntry, PageTableLevel,
+    PteFlag, PAGE_SIZE,
 };
 use crate::memmap::MemoryMap;
 
@@ -61,10 +62,10 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             let vpn2 = v_start.vpn2();
             if !first_lv_page_table[vpn2].already_created() {
                 let second_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let second_pt_paddr = Box::into_raw(second_pt);
+                let second_pt_paddr: PageTableAddress = Box::into_raw(second_pt).into();
 
                 first_lv_page_table[vpn2] = PageTableEntry::new(
-                    second_pt_paddr as u64 / PAGE_SIZE as u64,
+                    second_pt_paddr.page_number(page_level),
                     PteFlag::Valid as u8,
                 );
             }

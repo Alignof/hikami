@@ -73,6 +73,21 @@ impl PageTableEntry {
     }
 }
 
+/// Page table address
+struct PageTableAddress(usize);
+
+impl From<*mut [u64; 512]> for PageTableAddress {
+    fn from(f: *mut [u64; 512]) -> Self {
+        PageTableAddress(f as *const u64 as usize)
+    }
+}
+
+impl PageTableAddress {
+    fn page_number(self, level: PageTableLevel) -> u64 {
+        self.0 as u64 / level.size() as u64
+    }
+}
+
 /// Guest physical address (GPA)
 struct GuestPhysicalAddress(usize);
 
