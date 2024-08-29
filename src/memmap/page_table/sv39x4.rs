@@ -48,9 +48,10 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
 
         // decide page level from memory range
         let trans_page_level = match memmap.virt.len() {
-            0x0..=0x1000 => PageTableLevel::Lv4KB,
-            0x1001..=0x200000 => PageTableLevel::Lv2MB,
-            _ => PageTableLevel::Lv1GB,
+            0x0..=0x1fffff => PageTableLevel::Lv4KB,
+            0x200000..=0x3fffffff => PageTableLevel::Lv2MB,
+            0x40000000..=usize::MAX => PageTableLevel::Lv1GB,
+            _ => unreachable!(),
         };
 
         assert!(memmap.virt.start % trans_page_level.size() == 0);
