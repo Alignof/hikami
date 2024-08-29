@@ -4,6 +4,24 @@ pub mod sv39x4;
 /// Size of memory areathat a page can point to.
 pub const PAGE_SIZE: usize = 4096;
 
+/// Page table level.
+///
+/// ref: The RISC-V Instruction Set Manual: Volume II p151.
+enum PageTableLevel {
+    /// Page table level 0
+    ///
+    /// 1GB = 30 bit = vpn[1] (9 bit) + vpn[0] (9 bit) + offset (12 bit)
+    Lv1GB,
+    /// Page table level 1
+    ///
+    /// 2MB = 21 bit = vpn[0] (9 bit) + offset (12 bit)
+    Lv2MB,
+    /// Page table level 2
+    ///
+    /// 4KB = 12 bit = offset (12 bit)
+    Lv4KB,
+}
+
 /// Each flags for page tables.
 #[allow(dead_code)]
 #[derive(Copy, Clone)]

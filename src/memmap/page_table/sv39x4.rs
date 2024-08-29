@@ -7,7 +7,7 @@
 use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
-use super::{PageTableEntry, PteFlag, PAGE_SIZE};
+use super::{PageTableEntry, PageTableLevel, PteFlag, PAGE_SIZE};
 use crate::memmap::MemoryMap;
 
 /// Generate third-level page table. (Sv39x4)
@@ -40,6 +40,14 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
 
         assert!(memmap.virt.len() == memmap.phys.len());
+
+        // decide page level from memory range
+        let page_level = match memmap.virt.len() {
+            0x0..=0x1000 => PageTableLevel::Lv4KB,
+            0x1001..=0x200000 => PageTableLevel::Lv2MB,
+            _ => PageTableLevel::Lv1GB,
+        };
+
         assert!(memmap.virt.start % PAGE_SIZE == 0);
         assert!(memmap.phys.start % PAGE_SIZE == 0);
 
