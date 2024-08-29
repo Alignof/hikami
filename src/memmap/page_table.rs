@@ -5,7 +5,9 @@ pub mod constants {
     /// Size of memory areathat a page can point to.
     pub const PAGE_SIZE: usize = 4096;
     /// Second or Third page table size
-    pub const PAGE_TABLE_SIZE: usize = 512;
+    ///
+    /// vpn[1] == vpn[0] == 9 bit
+    pub const PAGE_TABLE_SIZE: usize = 0b10_0000_0000;
 }
 
 /// Page table level.
@@ -60,7 +62,7 @@ pub enum PteFlag {
 }
 
 /// Page table entry
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct PageTableEntry(u64);
 
 impl PageTableEntry {
@@ -81,8 +83,8 @@ impl PageTableEntry {
 #[derive(Copy, Clone)]
 struct PageTableAddress(usize);
 
-impl From<*mut [u64; constants::PAGE_TABLE_SIZE]> for PageTableAddress {
-    fn from(f: *mut [u64; constants::PAGE_TABLE_SIZE]) -> Self {
+impl From<*mut [PageTableEntry; constants::PAGE_TABLE_SIZE]> for PageTableAddress {
+    fn from(f: *mut [PageTableEntry; constants::PAGE_TABLE_SIZE]) -> Self {
         PageTableAddress(f as *const u64 as usize)
     }
 }

@@ -88,7 +88,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
                         current_page_table[vpn].pte() as usize * trans_page_level.size(),
                     )
                 } else {
-                    let next_page_table = Box::new([0u64; PAGE_TABLE_SIZE]);
+                    let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_SIZE]);
                     let next_page_table_addr: PageTableAddress =
                         Box::into_raw(next_page_table).into();
 
