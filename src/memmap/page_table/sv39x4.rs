@@ -8,9 +8,8 @@ use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
 use super::{
-    constants::{PAGE_SIZE, PAGE_TABLE_SIZE},
-    GuestPhysicalAddress, HostPhysicalAddress, PageTableAddress, PageTableEntry, PageTableLevel,
-    PteFlag,
+    constants::PAGE_TABLE_SIZE, GuestPhysicalAddress, HostPhysicalAddress, PageTableAddress,
+    PageTableEntry, PageTableLevel, PteFlag,
 };
 use crate::memmap::MemoryMap;
 
@@ -18,6 +17,8 @@ use crate::memmap::MemoryMap;
 pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
 
 /// Generate third-level page table. (Sv39x4)
+///
+/// The number of address translation stages is determined by the size of the range.
 #[allow(clippy::module_name_repetitions)]
 pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
     use crate::{print, println};
@@ -52,54 +53,53 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             _ => PageTableLevel::Lv1GB,
         };
 
-        assert!(memmap.virt.start % PAGE_SIZE == 0);
-        assert!(memmap.phys.start % PAGE_SIZE == 0);
+        assert!(memmap.virt.start % trans_page_level.size() == 0);
+        assert!(memmap.phys.start % trans_page_level.size() == 0);
 
-        for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
+        for offset in (0..memmap.virt.len()).step_by(trans_page_level.size()) {
             let v_start = GuestPhysicalAddress(memmap.virt.start + offset);
             let p_start = HostPhysicalAddress(memmap.phys.start + offset);
 
-            // first level
-            let vpn2 = v_start.vpn(2);
-            let second_table_start_addr = if first_lv_page_table[vpn2].already_created() {
-                PageTableAddress(first_lv_page_table[vpn2].pte() as usize * PAGE_SIZE)
-            } else {
-                let second_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let second_pt_paddr: PageTableAddress = Box::into_raw(second_pt).into();
+            let mut next_table_addr: PageTableAddress = PageTableAddress(0);
+            for current_level in [
+                PageTableLevel::Lv1GB,
+                PageTableLevel::Lv2MB,
+                PageTableLevel::Lv4KB,
+            ] {
+                let vpn = v_start.vpn(current_level as usize);
+                let current_page_table = match current_level {
+                    PageTableLevel::Lv1GB => &mut *first_lv_page_table,
+                    PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
+                        from_raw_parts_mut(next_table_addr.to_pte_ptr(), PAGE_TABLE_SIZE)
+                    },
+                };
 
-                first_lv_page_table[vpn2] = PageTableEntry::new(
-                    second_pt_paddr.page_number(trans_page_level),
-                    PteFlag::Valid as u8,
-                );
+                // End of translation
+                if current_level == trans_page_level {
+                    current_page_table[vpn] =
+                        PageTableEntry::new(p_start.page_number(), memmap.flags);
 
-                second_pt_paddr
-            };
+                    break;
+                }
 
-            // second level
-            let vpn1 = v_start.vpn(1);
-            let second_lv_page_table: &mut [PageTableEntry] = unsafe {
-                from_raw_parts_mut(second_table_start_addr.to_pte_ptr(), PAGE_TABLE_SIZE)
-            };
-            let third_table_start_addr = if second_lv_page_table[vpn1].already_created() {
-                PageTableAddress(second_lv_page_table[vpn1].pte() as usize * PAGE_SIZE)
-            } else {
-                let third_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let third_pt_paddr: PageTableAddress = Box::into_raw(third_pt).into();
+                // Create next level page table
+                next_table_addr = if current_page_table[vpn].already_created() {
+                    PageTableAddress(
+                        current_page_table[vpn].pte() as usize * trans_page_level.size(),
+                    )
+                } else {
+                    let next_page_table = Box::new([0u64; PAGE_TABLE_SIZE]);
+                    let next_page_table_addr: PageTableAddress =
+                        Box::into_raw(next_page_table).into();
 
-                second_lv_page_table[vpn1] = PageTableEntry::new(
-                    third_pt_paddr.page_number(trans_page_level),
-                    PteFlag::Valid as u8,
-                );
+                    current_page_table[vpn] = PageTableEntry::new(
+                        next_page_table_addr.page_number(),
+                        PteFlag::Valid as u8,
+                    );
 
-                third_pt_paddr
-            };
-
-            // third level
-            let vpn0 = v_start.vpn(0);
-            let third_lv_page_table: &mut [PageTableEntry] =
-                unsafe { from_raw_parts_mut(third_table_start_addr.to_pte_ptr(), PAGE_TABLE_SIZE) };
-            third_lv_page_table[vpn0] =
-                PageTableEntry::new(p_start.page_number(trans_page_level), memmap.flags);
+                    next_page_table_addr
+                };
+            }
         }
     }
 }
