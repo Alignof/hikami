@@ -103,16 +103,13 @@ impl PageTableAddress {
 struct GuestPhysicalAddress(usize);
 
 impl GuestPhysicalAddress {
-    fn vpn2(&self) -> usize {
-        (self.0 >> 30) & 0x7ff
-    }
-
-    fn vpn1(&self) -> usize {
-        (self.0 >> 21) & 0x1ff
-    }
-
-    fn vpn0(&self) -> usize {
-        (self.0 >> 12) & 0x1ff
+    fn vpn(&self, index: usize) -> usize {
+        match index {
+            2 => (self.0 >> 30) & 0x7ff,
+            1 => (self.0 >> 21) & 0x1ff,
+            0 => (self.0 >> 12) & 0x1ff,
+            _ => unreachable!(),
+        }
     }
 }
 

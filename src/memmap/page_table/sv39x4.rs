@@ -60,7 +60,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             let p_start = HostPhysicalAddress(memmap.phys.start + offset);
 
             // first level
-            let vpn2 = v_start.vpn2();
+            let vpn2 = v_start.vpn(2);
             let second_table_start_addr = if first_lv_page_table[vpn2].already_created() {
                 PageTableAddress(first_lv_page_table[vpn2].pte() as usize * PAGE_SIZE)
             } else {
@@ -76,7 +76,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             };
 
             // second level
-            let vpn1 = v_start.vpn1();
+            let vpn1 = v_start.vpn(1);
             let second_lv_page_table: &mut [PageTableEntry] = unsafe {
                 from_raw_parts_mut(second_table_start_addr.to_pte_ptr(), PAGE_TABLE_SIZE)
             };
@@ -95,7 +95,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             };
 
             // third level
-            let vpn0 = v_start.vpn0();
+            let vpn0 = v_start.vpn(0);
             let third_lv_page_table: &mut [PageTableEntry] =
                 unsafe { from_raw_parts_mut(third_table_start_addr.to_pte_ptr(), PAGE_TABLE_SIZE) };
             third_lv_page_table[vpn0] =
