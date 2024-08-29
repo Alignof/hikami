@@ -78,6 +78,7 @@ impl PageTableEntry {
 }
 
 /// Page table address
+#[derive(Copy, Clone)]
 struct PageTableAddress(usize);
 
 impl From<*mut [u64; constants::PAGE_TABLE_SIZE]> for PageTableAddress {
@@ -87,8 +88,14 @@ impl From<*mut [u64; constants::PAGE_TABLE_SIZE]> for PageTableAddress {
 }
 
 impl PageTableAddress {
+    /// Return page number
     fn page_number(self, level: PageTableLevel) -> u64 {
         self.0 as u64 / level.size() as u64
+    }
+
+    /// Convert self to `PageTableEntry` pointer.
+    fn to_pte_ptr(&self) -> *mut PageTableEntry {
+        self.0 as *mut PageTableEntry
     }
 }
 

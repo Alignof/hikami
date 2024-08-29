@@ -61,7 +61,9 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
 
             // first level
             let vpn2 = v_start.vpn2();
-            if !first_lv_page_table[vpn2].already_created() {
+            let second_table_start_addr = if first_lv_page_table[vpn2].already_created() {
+                PageTableAddress(first_lv_page_table[vpn2].pte() as usize * PAGE_SIZE)
+            } else {
                 let second_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
                 let second_pt_paddr: PageTableAddress = Box::into_raw(second_pt).into();
 
@@ -69,36 +71,33 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
                     second_pt_paddr.page_number(page_level),
                     PteFlag::Valid as u8,
                 );
-            }
+
+                second_pt_paddr
+            };
 
             // second level
             let vpn1 = v_start.vpn1();
-            let second_table_start_addr = first_lv_page_table[vpn2].pte() * PAGE_SIZE as u64;
             let second_lv_page_table: &mut [PageTableEntry] = unsafe {
-                from_raw_parts_mut(
-                    second_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE,
-                )
+                from_raw_parts_mut(second_table_start_addr.to_pte_ptr(), PAGE_TABLE_SIZE)
             };
-            if !second_lv_page_table[vpn1].already_created() {
+            let third_table_start_addr = if second_lv_page_table[vpn1].already_created() {
+                PageTableAddress(second_lv_page_table[vpn1].pte() as usize * PAGE_SIZE)
+            } else {
                 let third_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let third_pt_paddr = Box::into_raw(third_pt);
+                let third_pt_paddr: PageTableAddress = Box::into_raw(third_pt).into();
 
                 second_lv_page_table[vpn1] = PageTableEntry::new(
-                    third_pt_paddr as u64 / PAGE_SIZE as u64,
+                    third_pt_paddr.page_number(page_level),
                     PteFlag::Valid as u8,
                 );
-            }
+
+                third_pt_paddr
+            };
 
             // third level
             let vpn0 = v_start.vpn0();
-            let third_table_start_addr = second_lv_page_table[vpn1].pte() * PAGE_SIZE as u64;
-            let third_lv_page_table: &mut [PageTableEntry] = unsafe {
-                from_raw_parts_mut(
-                    third_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE,
-                )
-            };
+            let third_lv_page_table: &mut [PageTableEntry] =
+                unsafe { from_raw_parts_mut(third_table_start_addr.to_pte_ptr(), PAGE_TABLE_SIZE) };
             third_lv_page_table[vpn0] =
                 PageTableEntry::new(p_start.page_number(page_level), memmap.flags);
         }
