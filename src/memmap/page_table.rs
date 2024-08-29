@@ -61,3 +61,20 @@ impl PageTableEntry {
         self.0 >> 10
     }
 }
+
+/// Guest physical address (GPA)
+struct GuestPhysicalAddress(usize);
+
+impl GuestPhysicalAddress {
+    fn vpn2(&self) -> usize {
+        (self.0 >> 30) & 0x7ff
+    }
+
+    fn vpn1(&self) -> usize {
+        (self.0 >> 21) & 0x1ff
+    }
+
+    fn vpn0(&self) -> usize {
+        (self.0 >> 12) & 0x1ff
+    }
+}
