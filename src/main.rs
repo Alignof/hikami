@@ -70,8 +70,10 @@ impl HypervisorData {
     }
 }
 
+use linked_list_allocator::LockedHeap;
 #[global_allocator]
-static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 /// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
 static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
@@ -92,8 +94,8 @@ pub static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_byte
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
-        ALLOCATOR.init(
-            hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET,
+        ALLOCATOR.lock().init(
+            (hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET) as *mut u8,
             hypervisor::HEAP_SIZE,
         );
     }
