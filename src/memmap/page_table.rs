@@ -11,20 +11,20 @@ pub mod constants {
 /// Page table level.
 ///
 /// ref: The RISC-V Instruction Set Manual: Volume II p151.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum PageTableLevel {
     /// Page table level 0
     ///
     /// 1GB = 30 bit = vpn[1] (9 bit) + vpn[0] (9 bit) + offset (12 bit)
-    Lv1GB,
+    Lv1GB = 2,
     /// Page table level 1
     ///
     /// 2MB = 21 bit = vpn[0] (9 bit) + offset (12 bit)
-    Lv2MB,
+    Lv2MB = 1,
     /// Page table level 2
     ///
     /// 4KB = 12 bit = offset (12 bit)
-    Lv4KB,
+    Lv4KB = 0,
 }
 
 impl PageTableLevel {
