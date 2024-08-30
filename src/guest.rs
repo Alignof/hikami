@@ -15,6 +15,23 @@ use core::mem::MaybeUninit;
 use core::ops::Range;
 use elf::{endian::AnyEndian, ElfBytes};
 
+/// Aligned page size memory block
+#[repr(C, align(0x1000))]
+struct PageBlock([u8; 0x1000]);
+
+impl PageBlock {
+    fn alloc() -> HostPhysicalAddress {
+        let mut host_physical_block_as_vec: Vec<core::mem::MaybeUninit<PageBlock>> =
+            Vec::with_capacity(1);
+        unsafe {
+            host_physical_block_as_vec.set_len(1);
+        }
+
+        let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
+        HostPhysicalAddress(Box::into_raw(host_physical_block_slice) as *const u8 as usize)
+    }
+}
+
 /// Guest Information
 #[derive(Debug)]
 pub struct Guest {
@@ -112,23 +129,14 @@ impl Guest {
             const PT_LOAD: u32 = 1;
             if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
                 assert!(prog_header.p_align >= PAGE_SIZE as u64);
-                let aligned_size = align_size(prog_header.p_filesz, prog_header.p_align);
+                let aligned_segment_size = align_size(prog_header.p_filesz, prog_header.p_align);
 
-                for offset in (0..aligned_size).step_by(PAGE_SIZE) {
+                for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
                     let guest_physical_addr = self.dram_base() + offset;
                     elf_end = core::cmp::max(elf_end, guest_physical_addr + PAGE_SIZE);
 
                     // allocate memory from heap
-                    let mut host_physical_block_as_vec: Vec<MaybeUninit<u8>> =
-                        Vec::with_capacity(PAGE_SIZE);
-                    unsafe {
-                        host_physical_block_as_vec.set_len(PAGE_SIZE);
-                    }
-                    let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
-                    let host_physical_block_begin =
-                        HostPhysicalAddress(
-                            Box::into_raw(host_physical_block_slice) as *const u8 as usize
-                        );
+                    let aligned_page_size_block_addr = PageBlock::alloc();
 
                     // copy elf segment to new heap block
                     unsafe {
@@ -136,7 +144,7 @@ impl Guest {
                             elf_addr.wrapping_add(
                                 usize::try_from(prog_header.p_offset).unwrap() + offset,
                             ),
-                            host_physical_block_begin.raw() as *mut u8,
+                            aligned_page_size_block_addr.raw() as *mut u8,
                             usize::try_from(PAGE_SIZE).unwrap(),
                         );
                     }
@@ -146,7 +154,7 @@ impl Guest {
                         self.page_table_addr,
                         &[MemoryMap::new(
                             guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                            host_physical_block_begin..host_physical_block_begin + PAGE_SIZE,
+                            aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
                             all_pte_flags_are_set,
                         )],
                         false,
@@ -167,21 +175,14 @@ impl Guest {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
 
             // allocate memory from heap
-            let mut host_physical_block_as_vec: Vec<MaybeUninit<u8>> =
-                Vec::with_capacity(PAGE_SIZE);
-            unsafe {
-                host_physical_block_as_vec.set_len(PAGE_SIZE);
-            }
-            let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
-            let host_physical_block_begin =
-                HostPhysicalAddress(Box::into_raw(host_physical_block_slice) as *const u8 as usize);
+            let aligned_page_size_block_addr = PageBlock::alloc();
 
             // create memory mapping
             page_table::sv39x4::generate_page_table(
                 self.page_table_addr,
                 &[MemoryMap::new(
                     guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                    host_physical_block_begin..host_physical_block_begin + PAGE_SIZE,
+                    aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
                     all_pte_flags_are_set,
                 )],
                 false,
