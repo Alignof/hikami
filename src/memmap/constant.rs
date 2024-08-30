@@ -33,8 +33,6 @@ pub const MAX_HART_NUM: usize = 8;
 pub const DRAM_BASE: usize = 0x8000_0000;
 /// Stack size for each HART.
 pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
-/// Offset for converting physical device address to virtual address.
-pub const PA2VA_DEVICE_OFFSET: usize = 0xffff_fffc_0000_0000;
 
 pub mod device {
     //! Device memory map
