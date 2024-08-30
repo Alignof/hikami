@@ -23,7 +23,7 @@ use spin::Mutex;
 
 use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{hypervisor, machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{heap, machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
 
 /// Panic handler
@@ -94,10 +94,9 @@ pub static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_byte
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
-        ALLOCATOR.lock().init(
-            (hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET) as *mut u8,
-            hypervisor::HEAP_SIZE,
-        );
+        ALLOCATOR
+            .lock()
+            .init(heap::HEAP_BASE as *mut u8, heap::HEAP_SIZE);
     }
 
     unsafe {

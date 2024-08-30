@@ -14,7 +14,7 @@
 //! | 0x8100_0000 | 0x8100_2000 | G-stage root page table    |
 //! | 0x8100_2000 | 0x8100_4000 | device tree blob for guest |
 //! | 0x8200_0000 |     ...     | hypervisor heap            |
-//! |     ...     | 0xXXXX_XXXX | hypervisor stack           |
+//! |     ...     | 0xa200_0000 | hypervisor stack           |
 
 /// Max number of HART
 pub const MAX_HART_NUM: usize = 8;
@@ -50,7 +50,7 @@ pub mod machine {
 }
 
 pub mod hypervisor {
-    //! Hypervisor memory region (`0x8120_0000` - `0x8300_0000`)
+    //! Hypervisor memory region (`0x8100_0000` - `0x810x_xxxx`)
 
     /// Base address of hypervisor region.
     pub const BASE_ADDR: usize = 0x8100_0000;
@@ -61,8 +61,13 @@ pub mod hypervisor {
     pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
     /// Base address of device tree blob for guest image
     pub const GUEST_DEVICE_TREE_OFFSET: usize = 0x2000;
+}
+
+pub mod heap {
+    //! Heap memory region (`0x9000_0000` - `0xa000_0000`)
+
     /// Base address of heap.
-    pub const HEAP_OFFSET: usize = 0x1000_0000;
+    pub const HEAP_BASE: usize = 0x9000_0000;
     /// Heap size.
     pub const HEAP_SIZE: usize = 0x2000_0000;
 }
