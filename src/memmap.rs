@@ -7,7 +7,20 @@ use crate::memmap::page_table::PteFlag;
 use core::ops::Range;
 
 /// Guest Physical Address
+#[derive(Debug, Copy, Clone)]
 pub struct GuestPhysicalAddress(usize);
+
+impl GuestPhysicalAddress {
+    pub fn raw(self) -> usize {
+        self.0
+    }
+}
+
+impl From<GuestPhysicalAddress> for usize {
+    fn from(gpa: GuestPhysicalAddress) -> Self {
+        gpa.0
+    }
+}
 
 impl core::ops::Add<usize> for GuestPhysicalAddress {
     type Output = GuestPhysicalAddress;
