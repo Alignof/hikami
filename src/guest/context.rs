@@ -1,3 +1,5 @@
+use crate::memmap::GuestPhysicalAddress;
+
 /// Guest context on memory
 #[repr(C)]
 #[allow(dead_code)]
@@ -14,11 +16,11 @@ pub struct ContextData {
 /// Guest context
 #[derive(Debug, Copy, Clone)]
 pub struct Context {
-    address: usize,
+    address: GuestPhysicalAddress,
 }
 
 impl Context {
-    pub fn new(address: usize) -> Self {
+    pub fn new(address: GuestPhysicalAddress) -> Self {
         Context { address }
     }
 }
@@ -28,7 +30,7 @@ impl Context {
     #[allow(clippy::mut_from_ref)]
     fn get_context(&self) -> &mut ContextData {
         unsafe {
-            (self.address as *mut ContextData)
+            (self.address.raw() as *mut ContextData)
                 .as_mut()
                 .expect("address of ContextData is invalid")
         }

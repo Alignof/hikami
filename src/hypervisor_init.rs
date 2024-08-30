@@ -133,7 +133,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         hstatus::set_spv();
 
         // set entry point
-        sepc::write(guest_entry_point);
+        sepc::write(guest_entry_point.into());
 
         // set trap vector
         assert!(hstrap_vector as *const fn() as usize % 4 == 0);
@@ -226,7 +226,7 @@ fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
             sret
             ",
             in("a1") dtb_addr,
-            stack_top = in(reg) stack_top,
+            stack_top = in(reg) stack_top.raw(),
             options(noreturn)
         );
     }

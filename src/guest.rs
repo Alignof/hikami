@@ -5,14 +5,14 @@ pub mod context;
 use crate::memmap::{
     page_table,
     page_table::{constants::PAGE_SIZE, PteFlag},
-    MemoryMap,
+    GuestPhysicalAddress, MemoryMap,
 };
 use context::Context;
-use core::mem::MaybeUninit;
-use core::ops::Range;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::mem::MaybeUninit;
+use core::ops::Range;
 use elf::{endian::AnyEndian, ElfBytes};
 
 /// Guest Information
@@ -26,7 +26,7 @@ pub struct Guest {
     /// Device tree address
     dtb_addr: usize,
     /// Allocated memory region
-    memory_region: Range<usize>,
+    memory_region: Range<GuestPhysicalAddress>,
     /// Guest context data
     pub context: Context,
 }
@@ -36,7 +36,7 @@ impl Guest {
         hart_id: usize,
         page_table_addr: usize,
         dtb_addr: usize,
-        memory_region: Range<usize>,
+        memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
         let stack_top = memory_region.end;
         Guest {
@@ -54,7 +54,7 @@ impl Guest {
     }
 
     /// Return Stack top (end of memory region)
-    pub fn stack_top(&self) -> usize {
+    pub fn stack_top(&self) -> GuestPhysicalAddress {
         self.memory_region.end
     }
 
@@ -63,7 +63,7 @@ impl Guest {
     }
 
     /// Return guest dram space start
-    fn dram_base(&self) -> usize {
+    fn dram_base(&self) -> GuestPhysicalAddress {
         self.memory_region.start
     }
 
@@ -93,7 +93,11 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
-    pub fn load_guest_elf(&self, guest_elf: &ElfBytes<AnyEndian>, elf_addr: *mut u8) -> usize {
+    pub fn load_guest_elf(
+        &self,
+        guest_elf: &ElfBytes<AnyEndian>,
+        elf_addr: *mut u8,
+    ) -> GuestPhysicalAddress {
         let guest_base_addr = self.dram_base();
         let first_segment_addr = guest_elf.segments().unwrap().iter().nth(0).unwrap().p_paddr;
         for prog_header in guest_elf
@@ -108,7 +112,7 @@ impl Guest {
                         elf_addr.wrapping_add(usize::try_from(prog_header.p_offset).unwrap()),
                         (guest_base_addr
                             + usize::try_from(prog_header.p_paddr - first_segment_addr).unwrap())
-                            as *mut u8,
+                        .raw() as *mut u8,
                         usize::try_from(prog_header.p_filesz).unwrap(),
                     );
                 }
@@ -140,7 +144,7 @@ impl Guest {
             const PT_LOAD: u32 = 1;
             if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
                 let region_start: usize =
-                    guest_base_addr + usize::try_from(prog_header.p_paddr).unwrap();
+                    guest_base_addr.raw() + usize::try_from(prog_header.p_paddr).unwrap();
                 let region_end: usize =
                     region_start + align_size(prog_header.p_memsz, prog_header.p_align);
 
@@ -177,7 +181,7 @@ impl Guest {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
-        for guest_physical_addr in self.memory_region.clone().step_by(PAGE_SIZE) {
+        for guest_physical_addr in self.page_size_iter() {
             // allocate memory from heap
             let mut host_physical_block_as_vec: Vec<MaybeUninit<u8>> =
                 Vec::with_capacity(PAGE_SIZE);
