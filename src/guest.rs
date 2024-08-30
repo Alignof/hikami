@@ -161,63 +161,6 @@ impl Guest {
         elf_end
     }
 
-    /// Create page tables in G-stage address translation from ELF.
-    pub fn setup_g_stage_page_table_from_elf(
-        &self,
-        guest_elf: &ElfBytes<AnyEndian>,
-        page_table_start: HostPhysicalAddress,
-    ) {
-        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
-
-        let guest_base_addr = self.dram_base();
-        let align_size =
-            |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
-        let mut memory_map: Vec<MemoryMap> = Vec::new();
-        let mut last_region: Range<GuestPhysicalAddress> = Range::default();
-
-        for prog_header in guest_elf
-            .segments()
-            .expect("failed to get segments from elf")
-            .iter()
-        {
-            const PT_LOAD: u32 = 1;
-            if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
-                let region_vstart: GuestPhysicalAddress =
-                    guest_base_addr + usize::try_from(prog_header.p_paddr).unwrap();
-                let region_vend: GuestPhysicalAddress =
-                    region_vstart + align_size(prog_header.p_memsz, prog_header.p_align);
-
-                last_region = if last_region.end < region_vend {
-                    region_vstart..region_vend
-                } else {
-                    last_region
-                };
-
-                let region_pstart = HostPhysicalAddress(region_vstart.raw());
-                let region_pend = HostPhysicalAddress(region_vstart.raw());
-                memory_map.push(MemoryMap::new(
-                    region_vstart..region_vend, // virt
-                    region_pstart..region_pend, // phys
-                    match prog_header.p_flags & 0b111 {
-                        0b100 => &[Dirty, Accessed, Read, User, Valid],
-                        0b101 => &[Dirty, Accessed, Exec, Read, User, Valid],
-                        0b110 => &[Dirty, Accessed, Write, Read, User, Valid],
-                        0b111 => &[Dirty, Accessed, Exec, Write, Read, User, Valid],
-                        _ => panic!("unsupported flags"),
-                    },
-                ));
-            }
-        }
-
-        let hpa_last_region_end = HostPhysicalAddress(last_region.end.raw());
-        memory_map.push(MemoryMap::new(
-            last_region.end..GuestPhysicalAddress(0xffff_ffff), // virt
-            hpa_last_region_end..HostPhysicalAddress(0xffff_ffff), // phys
-            &[Dirty, Accessed, Exec, Write, Read, User, Valid],
-        ));
-        page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
-    }
-
     /// Allocate guest memory space from heap and create corresponding page table.
     pub fn allocate_memory_space(&self) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};

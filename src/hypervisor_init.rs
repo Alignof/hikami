@@ -79,9 +79,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
     );
 
-    // allocate guest memory space
-    new_guest.allocate_memory_space();
-
     // parse device tree
     let device_tree = unsafe {
         match fdt::Fdt::from_ptr(dtb_addr.raw() as *const u8) {
@@ -114,9 +111,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         &guest_elf,
         hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
     );
-
-    // crate page table from ELF
-    new_guest.setup_g_stage_page_table_from_elf(&guest_elf, page_table_start);
 
     // set device memory map
     hypervisor_data
