@@ -1,6 +1,8 @@
 pub mod sv39;
 pub mod sv39x4;
 
+use crate::memmap::GuestPhysicalAddress;
+
 pub mod constants {
     /// Size of memory areathat a page can point to.
     pub const PAGE_SIZE: usize = 4096;
@@ -100,9 +102,6 @@ impl PageTableAddress {
         self.0 as *mut PageTableEntry
     }
 }
-
-/// Guest physical address (GPA)
-struct GuestPhysicalAddress(usize);
 
 impl GuestPhysicalAddress {
     fn vpn(&self, index: usize) -> usize {
