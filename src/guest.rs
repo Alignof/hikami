@@ -85,10 +85,10 @@ impl Guest {
         }
     }
 
-    /// Load an elf to guest memory space.
+    /// Load an elf to new allocated guest memory page.
     ///
     /// It only load `PT_LOAD` type segments.
-    /// Entry address is determined by ... .
+    /// Entry address is base address of the dram.
     ///
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
@@ -98,8 +98,11 @@ impl Guest {
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *mut u8,
     ) -> GuestPhysicalAddress {
-        let guest_base_addr = self.dram_base();
-        let first_segment_addr = guest_elf.segments().unwrap().iter().nth(0).unwrap().p_paddr;
+        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+        let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+        let align_size =
+            |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
+
         for prog_header in guest_elf
             .segments()
             .expect("failed to get segments from elf")
@@ -107,19 +110,50 @@ impl Guest {
         {
             const PT_LOAD: u32 = 1;
             if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
-                unsafe {
-                    core::ptr::copy(
-                        elf_addr.wrapping_add(usize::try_from(prog_header.p_offset).unwrap()),
-                        (guest_base_addr
-                            + usize::try_from(prog_header.p_paddr - first_segment_addr).unwrap())
-                        .raw() as *mut u8,
-                        usize::try_from(prog_header.p_filesz).unwrap(),
+                assert!(prog_header.p_align > PAGE_SIZE as u64);
+                let aligned_size = align_size(prog_header.p_filesz, prog_header.p_align);
+
+                for offset in (0..aligned_size).step_by(PAGE_SIZE) {
+                    let guest_physical_addr = self.dram_base() + offset;
+
+                    // allocate memory from heap
+                    let mut host_physical_block_as_vec: Vec<MaybeUninit<u8>> =
+                        Vec::with_capacity(PAGE_SIZE);
+                    unsafe {
+                        host_physical_block_as_vec.set_len(PAGE_SIZE);
+                    }
+                    let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
+                    let host_physical_block_begin =
+                        HostPhysicalAddress(
+                            Box::into_raw(host_physical_block_slice) as *const u8 as usize
+                        );
+
+                    // copy elf segment to new heap block
+                    unsafe {
+                        core::ptr::copy(
+                            elf_addr.wrapping_add(
+                                usize::try_from(prog_header.p_offset).unwrap() + offset,
+                            ),
+                            host_physical_block_begin.raw() as *mut u8,
+                            usize::try_from(PAGE_SIZE).unwrap(),
+                        );
+                    }
+
+                    // create memory mapping
+                    page_table::sv39x4::generate_page_table(
+                        self.page_table_addr,
+                        &[MemoryMap::new(
+                            guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                            host_physical_block_begin..host_physical_block_begin + PAGE_SIZE,
+                            all_pte_flags_are_set,
+                        )],
+                        false,
                     );
                 }
             }
         }
 
-        guest_base_addr
+        self.dram_base()
     }
 
     /// Create page tables in G-stage address translation from ELF.
