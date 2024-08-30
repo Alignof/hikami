@@ -136,7 +136,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         hstatus::set_spv();
 
         // set entry point
-        sepc::write(guest_entry_point.into());
+        sepc::write(guest_entry_point.raw());
 
         // set trap vector
         assert!(hstrap_vector as *const fn() as usize % 4 == 0);

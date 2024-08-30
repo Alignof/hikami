@@ -22,12 +22,6 @@ impl GuestPhysicalAddress {
     }
 }
 
-impl From<GuestPhysicalAddress> for usize {
-    fn from(gpa: GuestPhysicalAddress) -> Self {
-        gpa.0
-    }
-}
-
 impl core::ops::Add<usize> for GuestPhysicalAddress {
     type Output = GuestPhysicalAddress;
     fn add(self, other: usize) -> Self::Output {
@@ -55,12 +49,6 @@ pub struct HostPhysicalAddress(pub usize);
 impl HostPhysicalAddress {
     pub fn raw(self) -> usize {
         self.0
-    }
-}
-
-impl From<HostPhysicalAddress> for usize {
-    fn from(gpa: HostPhysicalAddress) -> Self {
-        gpa.0
     }
 }
 
