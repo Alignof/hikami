@@ -21,6 +21,7 @@ pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
 /// The number of address translation stages is determined by the size of the range.
 #[allow(clippy::module_name_repetitions)]
 pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
+    use crate::memmap::AddressRangeUtil;
     use crate::{print, println};
 
     assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
@@ -54,7 +55,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             _ => unreachable!(),
         };
 
-        assert!(memmap.virt.start.into() % trans_page_level.size() == 0);
+        assert!(memmap.virt.start.raw() % trans_page_level.size() == 0);
         assert!(memmap.phys.start % trans_page_level.size() == 0);
 
         for offset in (0..memmap.virt.len()).step_by(trans_page_level.size()) {

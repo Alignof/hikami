@@ -6,6 +6,16 @@ pub mod page_table;
 use crate::memmap::page_table::PteFlag;
 use core::ops::Range;
 
+trait AddressRangeUtil {
+    fn len(self) -> usize;
+}
+
+impl AddressRangeUtil for Range<GuestPhysicalAddress> {
+    fn len(self) -> usize {
+        self.end.raw() - self.start.raw()
+    }
+}
+
 /// Guest Physical Address
 #[derive(Debug, Copy, Clone)]
 pub struct GuestPhysicalAddress(usize);

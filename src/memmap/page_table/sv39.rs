@@ -12,6 +12,7 @@ use crate::memmap::MemoryMap;
 /// Generate third-level page table. (Sv39)
 #[allow(clippy::module_name_repetitions)]
 pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
+    use crate::memmap::AddressRangeUtil;
     use crate::{print, println};
 
     const PAGE_TABLE_SIZE: usize = 512;
@@ -36,8 +37,8 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
 
         assert!(memmap.virt.len() == memmap.phys.len());
-        assert!(memmap.virt.start.into() % PAGE_SIZE == 0);
-        assert!(memmap.phys.start.into() % PAGE_SIZE == 0);
+        assert!(memmap.virt.start.raw() % PAGE_SIZE == 0);
+        assert!(memmap.phys.start % PAGE_SIZE == 0);
 
         for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
             let v_start = memmap.virt.start + offset;
