@@ -6,6 +6,9 @@ pub mod page_table;
 use crate::memmap::page_table::PteFlag;
 use core::ops::Range;
 
+/// Guest Physical Address
+pub struct GuestPhysicalAddress(usize);
+
 #[derive(Clone)]
 pub struct MemoryMap {
     virt: Range<usize>,
