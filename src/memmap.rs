@@ -9,7 +9,7 @@ use core::ops::Range;
 /// Utility for Range<Address>
 trait AddressRangeUtil {
     /// Return length of range.
-    fn len(self) -> usize;
+    fn len(&self) -> usize;
 }
 
 /// Guest Physical Address
@@ -43,7 +43,7 @@ impl core::ops::Rem<usize> for GuestPhysicalAddress {
 }
 
 impl AddressRangeUtil for Range<GuestPhysicalAddress> {
-    fn len(self) -> usize {
+    fn len(&self) -> usize {
         self.end.raw() - self.start.raw()
     }
 }
@@ -79,7 +79,7 @@ impl core::ops::Rem<usize> for HostPhysicalAddress {
 }
 
 impl AddressRangeUtil for Range<HostPhysicalAddress> {
-    fn len(self) -> usize {
+    fn len(&self) -> usize {
         self.end.raw() - self.start.raw()
     }
 }
