@@ -91,7 +91,8 @@ impl Guest {
     /// Entry address is base address of the dram.
     ///
     /// # Return
-    /// End address of the ELF. (for filling remind memory space)
+    /// - Entry point address in Guest memory space.
+    /// - End address of the ELF. (for filling remind memory space)
     ///
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
@@ -100,7 +101,7 @@ impl Guest {
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *mut u8,
-    ) -> GuestPhysicalAddress {
+    ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
         let align_size =
@@ -158,7 +159,7 @@ impl Guest {
             }
         }
 
-        elf_end
+        (self.dram_base(), elf_end)
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.

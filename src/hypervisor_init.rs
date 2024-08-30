@@ -107,7 +107,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     };
 
     // load guest image
-    let guest_entry_point = new_guest.load_guest_elf(
+    let (guest_entry_point, elf_end_addr) = new_guest.load_guest_elf(
         &guest_elf,
         hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
     );
