@@ -41,6 +41,35 @@ impl AddressRangeUtil for Range<GuestPhysicalAddress> {
     }
 }
 
+/// Host Physical Address
+#[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd)]
+pub struct HostPhysicalAddress(pub usize);
+
+impl HostPhysicalAddress {
+    pub fn raw(self) -> usize {
+        self.0
+    }
+}
+
+impl From<HostPhysicalAddress> for usize {
+    fn from(gpa: HostPhysicalAddress) -> Self {
+        gpa.0
+    }
+}
+
+impl core::ops::Add<usize> for HostPhysicalAddress {
+    type Output = HostPhysicalAddress;
+    fn add(self, other: usize) -> Self::Output {
+        HostPhysicalAddress(self.0 + other)
+    }
+}
+
+impl AddressRangeUtil for Range<HostPhysicalAddress> {
+    fn len(self) -> usize {
+        self.end.raw() - self.start.raw()
+    }
+}
+
 #[derive(Clone)]
 pub struct MemoryMap {
     virt: Range<GuestPhysicalAddress>,
