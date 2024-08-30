@@ -71,12 +71,4 @@ impl Device for VirtIO {
             &DEVICE_FLAGS,
         )
     }
-
-    fn identity_memmap(&self) -> MemoryMap {
-        MemoryMap::new(
-            self.paddr()..self.paddr() + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
-        )
-    }
 }

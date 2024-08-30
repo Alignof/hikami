@@ -2,7 +2,7 @@
 
 use super::Device;
 use crate::memmap::page_table::PteFlag;
-use crate::memmap::{constant, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{constant, GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 use rustsbi::{HartMask, SbiRet};
 
@@ -63,15 +63,7 @@ impl Device for Clint {
 
     fn memmap(&self) -> MemoryMap {
         MemoryMap::new(
-            self.vaddr()..self.vaddr() + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
-        )
-    }
-
-    fn identity_memmap(&self) -> MemoryMap {
-        MemoryMap::new(
-            self.paddr()..self.paddr() + self.size(),
+            vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
             &DEVICE_FLAGS,
         )

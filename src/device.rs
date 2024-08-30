@@ -21,10 +21,8 @@ pub trait Device {
     fn size(&self) -> usize;
     /// Return address of physical memory
     fn paddr(&self) -> HostPhysicalAddress;
-    /// Return memory map between virtual to physical
-    fn memmap(&self) -> MemoryMap;
     /// Return memory map between physical to physical
-    fn identity_memmap(&self) -> MemoryMap;
+    fn memmap(&self) -> MemoryMap;
 }
 
 /// Manage devices sush as uart, plic, etc...

@@ -63,14 +63,6 @@ impl Device for Uart {
             &DEVICE_FLAGS,
         )
     }
-
-    fn identity_memmap(&self) -> MemoryMap {
-        MemoryMap::new(
-            self.paddr()..self.paddr() + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
-        )
-    }
 }
 
 /// Ref: [https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/trait.Console.html](https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/trait.Console.html)
