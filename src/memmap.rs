@@ -35,6 +35,13 @@ impl core::ops::Add<usize> for GuestPhysicalAddress {
     }
 }
 
+impl core::ops::Rem<usize> for GuestPhysicalAddress {
+    type Output = usize;
+    fn rem(self, other: usize) -> Self::Output {
+        self.0 % other
+    }
+}
+
 impl AddressRangeUtil for Range<GuestPhysicalAddress> {
     fn len(self) -> usize {
         self.end.raw() - self.start.raw()
@@ -64,6 +71,13 @@ impl core::ops::Add<usize> for HostPhysicalAddress {
     }
 }
 
+impl core::ops::Rem<usize> for HostPhysicalAddress {
+    type Output = usize;
+    fn rem(self, other: usize) -> Self::Output {
+        self.0 % other
+    }
+}
+
 impl AddressRangeUtil for Range<HostPhysicalAddress> {
     fn len(self) -> usize {
         self.end.raw() - self.start.raw()
@@ -73,12 +87,16 @@ impl AddressRangeUtil for Range<HostPhysicalAddress> {
 #[derive(Clone)]
 pub struct MemoryMap {
     virt: Range<GuestPhysicalAddress>,
-    phys: Range<usize>,
+    phys: Range<HostPhysicalAddress>,
     flags: u8,
 }
 
 impl MemoryMap {
-    pub fn new(virt: Range<GuestPhysicalAddress>, phys: Range<usize>, flags: &[PteFlag]) -> Self {
+    pub fn new(
+        virt: Range<GuestPhysicalAddress>,
+        phys: Range<HostPhysicalAddress>,
+        flags: &[PteFlag],
+    ) -> Self {
         Self {
             virt,
             phys,
