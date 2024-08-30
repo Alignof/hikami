@@ -7,11 +7,15 @@ use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
 use super::{constants::PAGE_SIZE, PageTableEntry, PteFlag};
-use crate::memmap::MemoryMap;
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 /// Generate third-level page table. (Sv39)
 #[allow(clippy::module_name_repetitions)]
-pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
+pub fn generate_page_table(
+    root_table_start_addr: HostPhysicalAddress,
+    memmaps: &[MemoryMap],
+    initialize: bool,
+) {
     use crate::memmap::AddressRangeUtil;
     use crate::{print, println};
 
@@ -19,7 +23,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
-            root_table_start_addr as *mut PageTableEntry,
+            root_table_start_addr.raw() as *mut PageTableEntry,
             PAGE_TABLE_SIZE,
         )
     };
@@ -31,7 +35,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
 
     println!(
         "=========gen page table(Sv39): {:x}====================",
-        root_table_start_addr
+        root_table_start_addr.raw()
     );
     for memmap in memmaps {
         println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
@@ -84,8 +88,10 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
                     PAGE_TABLE_SIZE,
                 )
             };
-            third_lv_page_table[vpn0] =
-                PageTableEntry::new((p_start / PAGE_SIZE).try_into().unwrap(), memmap.flags);
+            third_lv_page_table[vpn0] = PageTableEntry::new(
+                (p_start.raw() / PAGE_SIZE).try_into().unwrap(),
+                memmap.flags,
+            );
         }
     }
 }

@@ -96,7 +96,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
         // Initialize global allocator
         ALLOCATOR
             .lock()
-            .init(heap::HEAP_BASE as *mut u8, heap::HEAP_SIZE);
+            .init(heap::HEAP_BASE.raw() as *mut u8, heap::HEAP_SIZE);
     }
 
     unsafe {
@@ -116,7 +116,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
             stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) machine::STACK_BASE,
+            stack_base = in(reg) machine::STACK_BASE.raw(),
             DRAM_BASE = in(reg) DRAM_BASE,
             mstart = sym mstart,
         );

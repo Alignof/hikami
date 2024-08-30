@@ -39,13 +39,13 @@ pub struct Devices {
 }
 
 impl Devices {
-    pub fn device_mapping(&self, page_table_start: usize) {
+    pub fn device_mapping(&self, page_table_start: HostPhysicalAddress) {
         let memory_map = self.create_device_map();
         page_table::sv39::generate_page_table(page_table_start, &memory_map, false);
     }
 
-    pub fn device_mapping_g_stage(&self, page_table_start: usize) {
-        let memory_map = self.create_device_identity_map();
+    pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
+        let memory_map = self.create_device_map();
         page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
     }
 
@@ -53,32 +53,13 @@ impl Devices {
         let mut device_mapping: Vec<MemoryMap> = self
             .virtio
             .iter()
-            .flat_map(|virt| [virt.memmap(), virt.identity_memmap()])
+            .flat_map(|virt| [virt.memmap(), virt.memmap()])
             .collect();
 
         device_mapping.extend_from_slice(&[
             self.uart.memmap(),
-            self.uart.identity_memmap(),
             self.initrd.memmap(),
-            self.initrd.identity_memmap(),
             self.plic.memmap(),
-            self.plic.identity_memmap(),
-        ]);
-
-        device_mapping
-    }
-
-    fn create_device_identity_map(&self) -> Vec<MemoryMap> {
-        let mut device_mapping: Vec<MemoryMap> = self
-            .virtio
-            .iter()
-            .flat_map(|virt| [virt.identity_memmap()])
-            .collect();
-
-        device_mapping.extend_from_slice(&[
-            self.uart.identity_memmap(),
-            self.initrd.identity_memmap(),
-            self.plic.identity_memmap(),
         ]);
 
         device_mapping

@@ -9,12 +9,12 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     match interrupt_cause {
         Interrupt::MachineSoft => {
             mip::set_ssoft();
-            let interrupt_addr = (CLINT_ADDR + mhartid::read() * 4) as *mut u64;
+            let interrupt_addr = (CLINT_ADDR.raw() + mhartid::read() * 4) as *mut u64;
             interrupt_addr.write_volatile(0);
         }
         Interrupt::MachineTimer => {
             mip::set_stimer();
-            let mtimecmp_addr = (MTIMECMP_ADDR + mhartid::read() * 8) as *mut u64;
+            let mtimecmp_addr = (MTIMECMP_ADDR.raw() + mhartid::read() * 8) as *mut u64;
             mtimecmp_addr.write_volatile(u64::MAX);
         }
         Interrupt::MachineExternal => riscv::asm::wfi(), // wait for interrupt

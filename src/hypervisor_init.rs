@@ -10,7 +10,7 @@ use crate::memmap::{
         guest_memory,
         hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
     },
-    GuestPhysicalAddress, HostPhysicalAddress,
+    HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
@@ -100,7 +100,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // load guest elf from address
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            hypervisor_data.devices().initrd.paddr() as *mut u8,
+            hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
             hypervisor_data.devices().initrd.size(),
         ))
         .unwrap()
@@ -109,7 +109,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // load guest image
     let guest_entry_point = new_guest.load_guest_elf(
         &guest_elf,
-        hypervisor_data.devices().initrd.paddr() as *mut u8,
+        hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
     );
 
     // crate page table from ELF
@@ -121,7 +121,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .device_mapping_g_stage(page_table_start);
 
     // enable two-level address translation
-    hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
+    hgatp::set(HgatpMode::Sv39x4, 0, page_table_start.raw() >> 12);
     hfence_gvma_all();
 
     // set new guest data
