@@ -6,7 +6,7 @@ mod plic;
 pub mod uart;
 mod virtio;
 
-use crate::memmap::{page_table, MemoryMap};
+use crate::memmap::{page_table, HostPhysicalAddress, MemoryMap};
 use crate::HypervisorData;
 use alloc::vec::Vec;
 use fdt::Fdt;
@@ -20,9 +20,7 @@ pub trait Device {
     /// Return size of memory region.
     fn size(&self) -> usize;
     /// Return address of physical memory
-    fn paddr(&self) -> usize;
-    /// Return address of virtual memory
-    fn vaddr(&self) -> usize;
+    fn paddr(&self) -> HostPhysicalAddress;
     /// Return memory map between virtual to physical
     fn memmap(&self) -> MemoryMap;
     /// Return memory map between physical to physical

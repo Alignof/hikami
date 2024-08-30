@@ -2,7 +2,7 @@
 
 use super::Device;
 use crate::memmap::page_table::PteFlag;
-use crate::memmap::{constant, MemoryMap};
+use crate::memmap::{constant, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 use rustsbi::{HartMask, SbiRet};
 
@@ -33,7 +33,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 /// Local interrupt controller
 #[derive(Debug)]
 pub struct Clint {
-    base_addr: usize,
+    base_addr: HostPhysicalAddress,
     size: usize,
 }
 
@@ -59,10 +59,6 @@ impl Device for Clint {
 
     fn paddr(&self) -> usize {
         self.base_addr
-    }
-
-    fn vaddr(&self) -> usize {
-        self.base_addr + constant::PA2VA_DEVICE_OFFSET
     }
 
     fn memmap(&self) -> MemoryMap {

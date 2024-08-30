@@ -43,10 +43,6 @@ impl Device for Initrd {
         self.base_addr
     }
 
-    fn vaddr(&self) -> usize {
-        self.base_addr + constant::PA2VA_DEVICE_OFFSET
-    }
-
     fn memmap(&self) -> MemoryMap {
         MemoryMap::new(
             self.vaddr()..self.vaddr() + self.size(),
