@@ -1,7 +1,7 @@
 pub mod sv39;
 pub mod sv39x4;
 
-use crate::memmap::GuestPhysicalAddress;
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 
 pub mod constants {
     /// Size of memory areathat a page can point to.
@@ -113,9 +113,6 @@ impl GuestPhysicalAddress {
         }
     }
 }
-
-/// Host physical address (GPA)
-struct HostPhysicalAddress(usize);
 
 impl HostPhysicalAddress {
     fn page_number(self) -> u64 {
