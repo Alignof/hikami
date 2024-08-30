@@ -6,8 +6,8 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::constant::{
+    guest_memory,
     hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
-    GUEST_DRAM_SIZE,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
@@ -64,9 +64,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
 
     // create new guest data
-    let guest_id = hart_id + 1;
-    let guest_memory_begin =
-        hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET + guest_id * GUEST_DRAM_SIZE;
+    let guest_memory_begin = guest_memory::DRAM_BASE + hart_id * guest_memory::DRAM_SIZE_PER_GUEST;
     let guest_dtb_addr = hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET;
     let page_table_start = hypervisor::BASE_ADDR
         + hypervisor::PAGE_TABLE_OFFSET
@@ -75,7 +73,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         hart_id,
         page_table_start,
         guest_dtb_addr,
-        guest_memory_begin..guest_memory_begin + GUEST_DRAM_SIZE,
+        guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
     );
 
     // allocate guest memory space
