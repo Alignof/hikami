@@ -16,7 +16,7 @@ use core::arch::asm;
 use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
-use wild_screen_alloc::WildScreenAlloc;
+
 
 use once_cell::unsync::Lazy;
 use spin::Mutex;

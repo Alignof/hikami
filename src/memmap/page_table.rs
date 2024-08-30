@@ -34,8 +34,8 @@ enum PageTableLevel {
 impl PageTableLevel {
     pub fn size(self) -> usize {
         match self {
-            Self::Lv1GB => 0x40000000,
-            Self::Lv2MB => 0x200000,
+            Self::Lv1GB => 0x4000_0000,
+            Self::Lv2MB => 0x0020_0000,
             Self::Lv4KB => 0x1000,
         }
     }

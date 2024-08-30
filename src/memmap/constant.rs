@@ -1,31 +1,31 @@
 //! Constant for memory map.
 //!
 //! # Host physical address
-//! | start       | end         | region                     |
-//! |-------------|-------------|----------------------------|
-//! | 0x0200_0000 | 0x0210_0000 | QEMU CLINT                 |
-//! | 0x0c00_0000 | 0x0c60_0000 | QEMU PLIC                  |
-//! | 0x1000_0000 | 0x1000_0100 | QEMU UART                  |
-//! | 0x1000_1000 | 0x1000_8000 | QEMU VirtIO                |
-//! |             |             |                            |
-//! | 0x8000_0000 | 0x8020_0000 | text data of hikami        |
-//! | 0x8020_0000 |     ...     | bottom of stack            |
-//! |     ...     | 0x8080_0000 | machine stack              |
-//! |             |             |                            |
-//! | 0x8100_0000 | 0x8100_2000 | G-stage root page table    |
-//! | 0x8100_2000 | 0x8100_4000 | device tree blob for guest |
-//! | 0x8200_0000 |     ...     | hypervisor heap            |
-//! |     ...     | 0xa200_0000 | hypervisor stack           |
+//! | start         | end           | region                     |
+//! |---------------|---------------|----------------------------|
+//! | `0x0200_0000` | `0x0210_0000` | QEMU CLINT                 |
+//! | `0x0c00_0000` | `0x0c60_0000` | QEMU PLIC                  |
+//! | `0x1000_0000` | `0x1000_0100` | QEMU UART                  |
+//! | `0x1000_1000` | `0x1000_8000` | QEMU `VirtIO`                |
+//! |               |               |                            |
+//! | `0x8000_0000` | `0x8020_0000` | text data of hikami        |
+//! | `0x8020_0000` |     ...       | bottom of stack            |
+//! |     ...       | `0x8080_0000` | machine stack              |
+//! |               |               |                            |
+//! | `0x8100_0000` | `0x8100_2000` | G-stage root page table    |
+//! | `0x8100_2000` | `0x8100_4000` | device tree blob for guest |
+//! | `0x8200_0000` |     ...       | hypervisor heap            |
+//! |     ...       | `0xa200_0000` | hypervisor stack           |
 //!
 //! # Guest physical address
-//! | start       | end         | region                     |
-//! |-------------|-------------|----------------------------|
-//! | 0x0200_0000 | 0x0210_0000 | QEMU CLINT                 |
-//! | 0x0c00_0000 | 0x0c60_0000 | QEMU PLIC                  |
-//! | 0x1000_0000 | 0x1000_0100 | QEMU UART                  |
-//! | 0x1000_1000 | 0x1000_8000 | QEMU VirtIO                |
-//! |             |             |                            |
-//! | 0x8000_0000 | 0x9000_0000 | text data of guest 1       |
+//! | start         | end           | region                     |
+//! |---------------|---------------|----------------------------|
+//! | `0x0200_0000` | `0x0210_0000` | QEMU CLINT                 |
+//! | `0x0c00_0000` | `0x0c60_0000` | QEMU PLIC                  |
+//! | `0x1000_0000` | `0x1000_0100` | QEMU UART                  |
+//! | `0x1000_1000` | `0x1000_8000` | QEMU VirtIO                |
+//! |               |               |                            |
+//! | `0x8000_0000` | `0x9000_0000` | text data of guest 1       |
 
 /// Max number of HART
 pub const MAX_HART_NUM: usize = 8;
