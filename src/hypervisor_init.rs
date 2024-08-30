@@ -5,9 +5,12 @@ use crate::h_extension::csrs::{
     InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
-use crate::memmap::constant::{
-    guest_memory,
-    hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
+use crate::memmap::{
+    constant::{
+        guest_memory,
+        hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
+    },
+    GuestPhysicalAddress, HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
@@ -52,14 +55,14 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
     );
 
-    vsmode_setup(hart_id, dtb_addr);
+    vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr));
 }
 
 /// Setup for VS-mode
 ///
 /// * Parse DTB
 /// * Setup page table
-fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
+fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
 
@@ -81,7 +84,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
     // parse device tree
     let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+        match fdt::Fdt::from_ptr(dtb_addr.raw() as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
         }
@@ -159,7 +162,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
 /// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
+fn hart_entry(_hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let stack_top = hypervisor_data.guest().stack_top();
@@ -225,7 +228,7 @@ fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
 
             sret
             ",
-            in("a1") dtb_addr,
+            in("a1") dtb_addr.raw(),
             stack_top = in(reg) stack_top.raw(),
             options(noreturn)
         );

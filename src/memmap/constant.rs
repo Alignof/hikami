@@ -39,30 +39,36 @@ pub const PA2VA_DEVICE_OFFSET: usize = 0xffff_fffc_0000_0000;
 pub mod device {
     //! Device memory map
 
+    use crate::memmap::HostPhysicalAddress;
+
     /// Uart address
     /// For println macro.
-    pub const UART_ADDR: usize = 0x1000_0000;
+    pub const UART_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x1000_0000);
 
     /// CLINT address
     /// For trap `SupervisorSoftware` interrupt
-    pub const CLINT_ADDR: usize = 0x200_0000;
+    pub const CLINT_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x200_0000);
 
     /// mtimecmp CSRs address
-    pub const MTIMECMP_ADDR: usize = 0x200_4000;
+    pub const MTIMECMP_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x200_4000);
 }
 
 pub mod machine {
     //! Machine memory region (`0x8020_0000` - `0x8080_0000`)
 
+    use crate::memmap::HostPhysicalAddress;
+
     /// Base address of machine stack.
-    pub const STACK_BASE: usize = 0x8080_0000;
+    pub const STACK_BASE: HostPhysicalAddress = HostPhysicalAddress(0x8080_0000);
 }
 
 pub mod hypervisor {
     //! Hypervisor memory region (`0x8100_0000` - `0x810x_xxxx`)
 
+    use crate::memmap::HostPhysicalAddress;
+
     /// Base address of hypervisor region.
-    pub const BASE_ADDR: usize = 0x8100_0000;
+    pub const BASE_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x8100_0000);
 
     /// Base address of page table.
     pub const PAGE_TABLE_OFFSET: usize = 0x0;
@@ -75,8 +81,10 @@ pub mod hypervisor {
 pub mod heap {
     //! Heap memory region (`0x9000_0000` - `0xa000_0000`)
 
+    use crate::memmap::HostPhysicalAddress;
+
     /// Base address of heap.
-    pub const HEAP_BASE: usize = 0x9000_0000;
+    pub const HEAP_BASE: HostPhysicalAddress = HostPhysicalAddress(0x9000_0000);
     /// Heap size.
     pub const HEAP_SIZE: usize = 0x2000_0000;
 }
