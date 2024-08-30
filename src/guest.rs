@@ -115,7 +115,7 @@ impl Guest {
         {
             const PT_LOAD: u32 = 1;
             if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
-                assert!(prog_header.p_align > PAGE_SIZE as u64);
+                assert!(prog_header.p_align >= PAGE_SIZE as u64);
                 let aligned_size = align_size(prog_header.p_filesz, prog_header.p_align);
 
                 for offset in (0..aligned_size).step_by(PAGE_SIZE) {
