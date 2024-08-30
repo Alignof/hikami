@@ -94,7 +94,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // copy device tree to guest
     unsafe {
-        new_guest.copy_device_tree(GUEST_DTB.as_ptr().cast::<u8>() as usize, GUEST_DTB.len());
+        new_guest.copy_device_tree(
+            HostPhysicalAddress(GUEST_DTB.as_ptr() as usize),
+            GUEST_DTB.len(),
+        );
     }
 
     // load guest elf from address

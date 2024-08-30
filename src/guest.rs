@@ -75,10 +75,10 @@ impl Guest {
     ///
     /// # Panics
     /// It will be panic if `dtb_addr` is invalid.
-    pub unsafe fn copy_device_tree(&self, dtb_addr: usize, dtb_size: usize) {
+    pub unsafe fn copy_device_tree(&self, dtb_addr: HostPhysicalAddress, dtb_size: usize) {
         unsafe {
             core::ptr::copy(
-                dtb_addr as *const u8,
+                dtb_addr.raw() as *const u8,
                 self.guest_dtb_addr().raw() as *mut u8,
                 dtb_size,
             );
