@@ -13,7 +13,7 @@ trait AddressRangeUtil {
 }
 
 /// Guest Physical Address
-#[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq)]
 pub struct GuestPhysicalAddress(pub usize);
 
 impl GuestPhysicalAddress {

@@ -90,6 +90,9 @@ impl Guest {
     /// It only load `PT_LOAD` type segments.
     /// Entry address is base address of the dram.
     ///
+    /// # Return
+    /// End address of the ELF. (for filling remind memory space)
+    ///
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
@@ -102,6 +105,7 @@ impl Guest {
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
         let align_size =
             |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
+        let mut elf_end: GuestPhysicalAddress = GuestPhysicalAddress::default();
 
         for prog_header in guest_elf
             .segments()
@@ -115,6 +119,7 @@ impl Guest {
 
                 for offset in (0..aligned_size).step_by(PAGE_SIZE) {
                     let guest_physical_addr = self.dram_base() + offset;
+                    elf_end = core::cmp::max(elf_end, guest_physical_addr + PAGE_SIZE);
 
                     // allocate memory from heap
                     let mut host_physical_block_as_vec: Vec<MaybeUninit<u8>> =
@@ -153,7 +158,7 @@ impl Guest {
             }
         }
 
-        self.dram_base()
+        elf_end
     }
 
     /// Create page tables in G-stage address translation from ELF.
