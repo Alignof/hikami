@@ -67,10 +67,6 @@ impl Guest {
         self.memory_region.start
     }
 
-    fn page_size_iter(&self) -> core::iter::StepBy<Range<usize>> {
-        (self.memory_region.start.raw()..self.memory_region.end.raw()).step_by(PAGE_SIZE)
-    }
-
     /// Copy device tree from hypervisor side.  
     ///
     /// # Panics
