@@ -134,7 +134,7 @@ impl Guest {
         let align_size =
             |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
         let mut memory_map: Vec<MemoryMap> = Vec::new();
-        let mut last_region: Range<usize> = Range::default();
+        let mut last_region: Range<GuestPhysicalAddress> = Range::default();
 
         for prog_header in guest_elf
             .segments()
@@ -143,20 +143,22 @@ impl Guest {
         {
             const PT_LOAD: u32 = 1;
             if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
-                let region_start: usize =
-                    guest_base_addr.raw() + usize::try_from(prog_header.p_paddr).unwrap();
-                let region_end: usize =
-                    region_start + align_size(prog_header.p_memsz, prog_header.p_align);
+                let region_vstart: GuestPhysicalAddress =
+                    guest_base_addr + usize::try_from(prog_header.p_paddr).unwrap();
+                let region_vend: GuestPhysicalAddress =
+                    region_vstart + align_size(prog_header.p_memsz, prog_header.p_align);
 
-                last_region = if last_region.end < region_end {
-                    region_start..region_end
+                last_region = if last_region.end < region_vend {
+                    region_vstart..region_vend
                 } else {
                     last_region
                 };
 
+                let region_pstart = region_vstart.into();
+                let region_pend = region_vstart.into();
                 memory_map.push(MemoryMap::new(
-                    region_start..region_end, // virt
-                    region_start..region_end, // phys
+                    region_vstart..region_vend, // virt
+                    region_pstart..region_pend, // phys
                     match prog_header.p_flags & 0b111 {
                         0b100 => &[Dirty, Accessed, Read, User, Valid],
                         0b101 => &[Dirty, Accessed, Exec, Read, User, Valid],
@@ -169,8 +171,8 @@ impl Guest {
         }
 
         memory_map.push(MemoryMap::new(
-            last_region.end..0xffff_ffff, // virt
-            last_region.end..0xffff_ffff, // phys
+            last_region.end..GuestPhysicalAddress(0xffff_ffff), // virt
+            last_region.end.into()..0xffff_ffff,                // phys
             &[Dirty, Accessed, Exec, Write, Read, User, Valid],
         ));
         page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
