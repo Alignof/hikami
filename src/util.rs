@@ -24,7 +24,7 @@ impl Write for UartWriter {
     /// Write string to tty via UART.
     #[allow(clippy::cast_possible_wrap)]
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        let uart_addr = UART_ADDR as *mut u32;
+        let uart_addr = UART_ADDR.raw() as *mut u32;
         for c in s.bytes() {
             unsafe {
                 while (uart_addr.read_volatile() as i32) < 0 {}

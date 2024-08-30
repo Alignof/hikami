@@ -1,6 +1,6 @@
 use super::Device;
 use crate::memmap::page_table::PteFlag;
-use crate::memmap::{constant, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
 use fdt::Fdt;
 
@@ -16,7 +16,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 /// Since more than one may be found, we will temporarily use the first one.
 #[derive(Debug)]
 pub struct VirtIO {
-    base_addr: usize,
+    base_addr: HostPhysicalAddress,
     size: usize,
     irq: u8,
 }
@@ -30,7 +30,7 @@ impl VirtIO {
                 let region = node.reg().unwrap().next().unwrap();
                 let irq = node.property("interrupts").unwrap().value[0];
                 VirtIO {
-                    base_addr: region.starting_address as usize,
+                    base_addr: HostPhysicalAddress(region.starting_address as usize),
                     size: region.size.unwrap(),
                     irq,
                 }
@@ -50,7 +50,7 @@ impl Device for VirtIO {
         let irq = node.property("interrupts").unwrap().value[0];
 
         VirtIO {
-            base_addr: region.starting_address as usize,
+            base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             irq,
         }
@@ -60,25 +60,14 @@ impl Device for VirtIO {
         self.size
     }
 
-    fn paddr(&self) -> usize {
+    fn paddr(&self) -> HostPhysicalAddress {
         self.base_addr
     }
 
-    fn vaddr(&self) -> usize {
-        self.base_addr + constant::PA2VA_DEVICE_OFFSET
-    }
-
     fn memmap(&self) -> MemoryMap {
+        let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
-            self.vaddr()..self.vaddr() + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
-        )
-    }
-
-    fn identity_memmap(&self) -> MemoryMap {
-        MemoryMap::new(
-            self.paddr()..self.paddr() + self.size(),
+            vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
             &DEVICE_FLAGS,
         )

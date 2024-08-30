@@ -8,10 +8,9 @@ use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
 use super::{
-    constants::PAGE_TABLE_SIZE, GuestPhysicalAddress, HostPhysicalAddress, PageTableAddress,
-    PageTableEntry, PageTableLevel, PteFlag,
+    constants::PAGE_TABLE_SIZE, PageTableAddress, PageTableEntry, PageTableLevel, PteFlag,
 };
-use crate::memmap::MemoryMap;
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 /// First page table size
 pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
@@ -20,14 +19,19 @@ pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
 ///
 /// The number of address translation stages is determined by the size of the range.
 #[allow(clippy::module_name_repetitions)]
-pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
+pub fn generate_page_table(
+    root_table_start_addr: HostPhysicalAddress,
+    memmaps: &[MemoryMap],
+    initialize: bool,
+) {
+    use crate::memmap::AddressRangeUtil;
     use crate::{print, println};
 
     assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
-            root_table_start_addr as *mut PageTableEntry,
+            root_table_start_addr.raw() as *mut PageTableEntry,
             FIRST_LV_PAGE_TABLE_SIZE,
         )
     };
@@ -39,7 +43,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
 
     println!(
         "=========gen page table(Sv39x4): {:x}====================",
-        root_table_start_addr
+        root_table_start_addr.raw()
     );
     for memmap in memmaps {
         println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
@@ -48,9 +52,9 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
 
         // decide page level from memory range
         let trans_page_level = match memmap.virt.len() {
-            0x0..=0x1fffff => PageTableLevel::Lv4KB,
-            0x200000..=0x3fffffff => PageTableLevel::Lv2MB,
-            0x40000000..=usize::MAX => PageTableLevel::Lv1GB,
+            0x0..=0x001f_ffff => PageTableLevel::Lv4KB,
+            0x0020_0000..=0x3fff_ffff => PageTableLevel::Lv2MB,
+            0x4000_0000..=usize::MAX => PageTableLevel::Lv1GB,
             _ => unreachable!(),
         };
 
@@ -58,8 +62,8 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         assert!(memmap.phys.start % trans_page_level.size() == 0);
 
         for offset in (0..memmap.virt.len()).step_by(trans_page_level.size()) {
-            let v_start = GuestPhysicalAddress(memmap.virt.start + offset);
-            let p_start = HostPhysicalAddress(memmap.phys.start + offset);
+            let v_start = memmap.virt.start + offset;
+            let p_start = memmap.phys.start + offset;
 
             let mut next_table_addr: PageTableAddress = PageTableAddress(0);
             for current_level in [

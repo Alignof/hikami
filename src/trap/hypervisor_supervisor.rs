@@ -75,7 +75,7 @@ unsafe fn hstrap_exit() -> ! {
 
         sret
         ",
-        stack_top = in(reg) stack_top,
+        stack_top = in(reg) stack_top.raw(),
         options(noreturn)
     );
 }

@@ -16,14 +16,14 @@ use core::arch::asm;
 use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
-use wild_screen_alloc::WildScreenAlloc;
+
 
 use once_cell::unsync::Lazy;
 use spin::Mutex;
 
 use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{hypervisor, machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{heap, machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
 
 /// Panic handler
@@ -70,8 +70,10 @@ impl HypervisorData {
     }
 }
 
+use linked_list_allocator::LockedHeap;
 #[global_allocator]
-static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 /// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
 static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
@@ -92,10 +94,9 @@ pub static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_byte
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
-        ALLOCATOR.init(
-            hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET,
-            hypervisor::HEAP_SIZE,
-        );
+        ALLOCATOR
+            .lock()
+            .init(heap::HEAP_BASE.raw() as *mut u8, heap::HEAP_SIZE);
     }
 
     unsafe {
@@ -115,7 +116,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
             stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) machine::STACK_BASE,
+            stack_base = in(reg) machine::STACK_BASE.raw(),
             DRAM_BASE = in(reg) DRAM_BASE,
             mstart = sym mstart,
         );

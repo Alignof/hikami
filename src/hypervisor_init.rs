@@ -5,9 +5,12 @@ use crate::h_extension::csrs::{
     InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
-use crate::memmap::constant::{
-    hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
-    GUEST_DRAM_SIZE,
+use crate::memmap::{
+    constant::{
+        guest_memory,
+        hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
+    },
+    HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
@@ -52,21 +55,19 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
     );
 
-    vsmode_setup(hart_id, dtb_addr);
+    vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr));
 }
 
 /// Setup for VS-mode
 ///
 /// * Parse DTB
 /// * Setup page table
-fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
+fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
 
     // create new guest data
-    let guest_id = hart_id + 1;
-    let guest_memory_begin =
-        hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET + guest_id * GUEST_DRAM_SIZE;
+    let guest_memory_begin = guest_memory::DRAM_BASE + hart_id * guest_memory::DRAM_SIZE_PER_GUEST;
     let guest_dtb_addr = hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET;
     let page_table_start = hypervisor::BASE_ADDR
         + hypervisor::PAGE_TABLE_OFFSET
@@ -75,7 +76,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         hart_id,
         page_table_start,
         guest_dtb_addr,
-        guest_memory_begin..guest_memory_begin + GUEST_DRAM_SIZE,
+        guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
     );
 
     // allocate guest memory space
@@ -83,7 +84,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
     // parse device tree
     let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+        match fdt::Fdt::from_ptr(dtb_addr.raw() as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
         }
@@ -93,13 +94,16 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
     // copy device tree to guest
     unsafe {
-        new_guest.copy_device_tree(GUEST_DTB.as_ptr().cast::<u8>() as usize, GUEST_DTB.len());
+        new_guest.copy_device_tree(
+            HostPhysicalAddress(GUEST_DTB.as_ptr() as usize),
+            GUEST_DTB.len(),
+        );
     }
 
     // load guest elf from address
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            hypervisor_data.devices().initrd.paddr() as *mut u8,
+            hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
             hypervisor_data.devices().initrd.size(),
         ))
         .unwrap()
@@ -108,7 +112,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
     // load guest image
     let guest_entry_point = new_guest.load_guest_elf(
         &guest_elf,
-        hypervisor_data.devices().initrd.paddr() as *mut u8,
+        hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
     );
 
     // crate page table from ELF
@@ -120,7 +124,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         .device_mapping_g_stage(page_table_start);
 
     // enable two-level address translation
-    hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
+    hgatp::set(HgatpMode::Sv39x4, 0, page_table_start.raw() >> 12);
     hfence_gvma_all();
 
     // set new guest data
@@ -135,7 +139,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         hstatus::set_spv();
 
         // set entry point
-        sepc::write(guest_entry_point);
+        sepc::write(guest_entry_point.raw());
 
         // set trap vector
         assert!(hstrap_vector as *const fn() as usize % 4 == 0);
@@ -161,7 +165,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
 /// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
+fn hart_entry(_hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let stack_top = hypervisor_data.guest().stack_top();
@@ -227,8 +231,8 @@ fn hart_entry(_hart_id: usize, dtb_addr: usize) -> ! {
 
             sret
             ",
-            in("a1") dtb_addr,
-            stack_top = in(reg) stack_top,
+            in("a1") dtb_addr.raw(),
+            stack_top = in(reg) stack_top.raw(),
             options(noreturn)
         );
     }
