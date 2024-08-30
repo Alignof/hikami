@@ -48,7 +48,7 @@ impl Device for Clint {
             .unwrap();
 
         Clint {
-            base_addr: region.starting_address as usize,
+            base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
         }
     }
@@ -57,11 +57,12 @@ impl Device for Clint {
         self.size
     }
 
-    fn paddr(&self) -> usize {
+    fn paddr(&self) -> HostPhysicalAddress {
         self.base_addr
     }
 
     fn memmap(&self) -> MemoryMap {
+        let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
             vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
@@ -77,8 +78,8 @@ impl rustsbi::Timer for Clint {
         unsafe {
             let hart_id = riscv::register::mhartid::read();
             assert_eq!(hart_id, 0);
-            let mtimecmp_addr = (self.base_addr + register::MTIMECMP_OFFSET) as *mut u64;
-            mtimecmp_addr.write_volatile(stime_value);
+            let mtimecmp_ptr = (self.base_addr.raw() + register::MTIMECMP_OFFSET) as *mut u64;
+            mtimecmp_ptr.write_volatile(stime_value);
         }
     }
 }
@@ -89,10 +90,10 @@ impl rustsbi::Ipi for Clint {
         for i in 0..constant::MAX_HART_NUM {
             // TODO check hsm wheter allow_ipi enabled.
             if hart_mask.has_bit(i) {
-                let msip_addr = (self.base_addr + register::MSIP_OFFSET) as *mut u64;
+                let msip_ptr = (self.base_addr.raw() + register::MSIP_OFFSET) as *mut u64;
                 unsafe {
-                    let msip_value = msip_addr.read_volatile();
-                    msip_addr.write_volatile(msip_value | i as u64);
+                    let msip_value = msip_ptr.read_volatile();
+                    msip_ptr.write_volatile(msip_value | i as u64);
                 }
             }
         }
