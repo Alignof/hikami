@@ -36,15 +36,15 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
         println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
 
         assert!(memmap.virt.len() == memmap.phys.len());
-        assert!(memmap.virt.start % PAGE_SIZE == 0);
-        assert!(memmap.phys.start % PAGE_SIZE == 0);
+        assert!(memmap.virt.start.into() % PAGE_SIZE == 0);
+        assert!(memmap.phys.start.into() % PAGE_SIZE == 0);
 
         for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
             let v_start = memmap.virt.start + offset;
             let p_start = memmap.phys.start + offset;
 
             // first level
-            let vpn2 = (v_start >> 30) & 0x1ff;
+            let vpn2 = (v_start.raw() >> 30) & 0x1ff;
             if !first_lv_page_table[vpn2].already_created() {
                 let second_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
                 let second_pt_paddr = Box::into_raw(second_pt);
@@ -56,7 +56,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             }
 
             // second level
-            let vpn1 = (v_start >> 21) & 0x1ff;
+            let vpn1 = (v_start.raw() >> 21) & 0x1ff;
             let second_table_start_addr = first_lv_page_table[vpn2].pte() * PAGE_SIZE as u64;
             let second_lv_page_table: &mut [PageTableEntry] = unsafe {
                 from_raw_parts_mut(
@@ -75,7 +75,7 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             }
 
             // third level
-            let vpn0 = (v_start >> 12) & 0x1ff;
+            let vpn0 = (v_start.raw() >> 12) & 0x1ff;
             let third_table_start_addr = second_lv_page_table[vpn1].pte() * PAGE_SIZE as u64;
             let third_lv_page_table: &mut [PageTableEntry] = unsafe {
                 from_raw_parts_mut(

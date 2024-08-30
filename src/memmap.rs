@@ -31,13 +31,13 @@ impl core::ops::Add<usize> for GuestPhysicalAddress {
 
 #[derive(Clone)]
 pub struct MemoryMap {
-    virt: Range<usize>,
+    virt: Range<GuestPhysicalAddress>,
     phys: Range<usize>,
     flags: u8,
 }
 
 impl MemoryMap {
-    pub fn new(virt: Range<usize>, phys: Range<usize>, flags: &[PteFlag]) -> Self {
+    pub fn new(virt: Range<GuestPhysicalAddress>, phys: Range<usize>, flags: &[PteFlag]) -> Self {
         Self {
             virt,
             phys,

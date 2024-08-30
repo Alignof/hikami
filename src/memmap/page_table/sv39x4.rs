@@ -8,10 +8,10 @@ use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
 use super::{
-    constants::PAGE_TABLE_SIZE, GuestPhysicalAddress, HostPhysicalAddress, PageTableAddress,
-    PageTableEntry, PageTableLevel, PteFlag,
+    constants::PAGE_TABLE_SIZE, HostPhysicalAddress, PageTableAddress, PageTableEntry,
+    PageTableLevel, PteFlag,
 };
-use crate::memmap::MemoryMap;
+use crate::memmap::{GuestPhysicalAddress, MemoryMap};
 
 /// First page table size
 pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
@@ -54,11 +54,11 @@ pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], 
             _ => unreachable!(),
         };
 
-        assert!(memmap.virt.start % trans_page_level.size() == 0);
+        assert!(memmap.virt.start.into() % trans_page_level.size() == 0);
         assert!(memmap.phys.start % trans_page_level.size() == 0);
 
         for offset in (0..memmap.virt.len()).step_by(trans_page_level.size()) {
-            let v_start = GuestPhysicalAddress(memmap.virt.start + offset);
+            let v_start = memmap.virt.start + offset;
             let p_start = HostPhysicalAddress(memmap.phys.start + offset);
 
             let mut next_table_addr: PageTableAddress = PageTableAddress(0);
