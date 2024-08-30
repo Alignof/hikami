@@ -9,6 +9,13 @@ use core::ops::Range;
 /// Guest Physical Address
 pub struct GuestPhysicalAddress(usize);
 
+impl core::ops::Add<usize> for GuestPhysicalAddress {
+    type Output = GuestPhysicalAddress;
+    fn add(self, other: usize) -> Self::Output {
+        GuestPhysicalAddress(self.0 + other)
+    }
+}
+
 #[derive(Clone)]
 pub struct MemoryMap {
     virt: Range<usize>,
