@@ -163,11 +163,11 @@ impl Guest {
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
-    pub fn allocate_memory_space(&self) {
+    pub fn filling_memory_region(&self, region: Range<GuestPhysicalAddress>) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
-        for guest_physical_addr in self.page_size_iter() {
+        for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
 
             // allocate memory from heap

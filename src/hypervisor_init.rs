@@ -112,6 +112,11 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
     );
 
+    // filling remain memory region
+    new_guest.filling_memory_region(
+        elf_end_addr..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
+    );
+
     // set device memory map
     hypervisor_data
         .devices()
