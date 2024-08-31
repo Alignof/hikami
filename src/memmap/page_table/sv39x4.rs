@@ -25,7 +25,6 @@ pub fn generate_page_table(
     initialize: bool,
 ) {
     use crate::memmap::AddressRangeUtil;
-    use crate::{print, println};
 
     assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
 
@@ -41,13 +40,7 @@ pub fn generate_page_table(
         first_lv_page_table.fill(PageTableEntry(0));
     }
 
-    println!(
-        "=========gen page table(Sv39x4): {:x}====================",
-        root_table_start_addr.raw()
-    );
     for memmap in memmaps {
-        println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
-
         assert!(memmap.virt.len() == memmap.phys.len());
 
         // decide page level from memory range
