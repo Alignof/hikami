@@ -116,7 +116,7 @@ impl Guest {
         elf_addr: *mut u8,
     ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
-        let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+
         let align_size =
             |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
         let mut elf_end: GuestPhysicalAddress = GuestPhysicalAddress::default();
@@ -155,7 +155,13 @@ impl Guest {
                         &[MemoryMap::new(
                             guest_physical_addr..guest_physical_addr + PAGE_SIZE,
                             aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                            all_pte_flags_are_set,
+                            match prog_header.p_flags & 0b111 {
+                                0b100 => &[Dirty, Accessed, Read, User, Valid],
+                                0b101 => &[Dirty, Accessed, Exec, Read, User, Valid],
+                                0b110 => &[Dirty, Accessed, Write, Read, User, Valid],
+                                0b111 => &[Dirty, Accessed, Exec, Write, Read, User, Valid],
+                                _ => panic!("unsupported flags"),
+                            },
                         )],
                     );
                 }
