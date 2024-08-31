@@ -15,6 +15,19 @@ use crate::memmap::{HostPhysicalAddress, MemoryMap};
 /// First page table size
 pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
 
+/// Zero filling root page table
+pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
+    let first_lv_page_table: &mut [PageTableEntry] = unsafe {
+        from_raw_parts_mut(
+            root_table_start_addr.raw() as *mut PageTableEntry,
+            FIRST_LV_PAGE_TABLE_SIZE,
+        )
+    };
+
+    // zero filling page table
+    first_lv_page_table.fill(PageTableEntry(0));
+}
+
 /// Generate third-level page table. (Sv39x4)
 ///
 /// The number of address translation stages is determined by the size of the range.

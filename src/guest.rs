@@ -11,7 +11,6 @@ use context::Context;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::mem::MaybeUninit;
 use core::ops::Range;
 use elf::{endian::AnyEndian, ElfBytes};
 
@@ -56,6 +55,7 @@ impl Guest {
         memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
         let stack_top = memory_region.end;
+        page_table::sv39x4::initialize_page_table(page_table_addr);
         Guest {
             guest_id: hart_id,
             page_table_addr,
