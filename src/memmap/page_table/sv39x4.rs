@@ -32,11 +32,7 @@ pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
 ///
 /// The number of address translation stages is determined by the size of the range.
 #[allow(clippy::module_name_repetitions)]
-pub fn generate_page_table(
-    root_table_start_addr: HostPhysicalAddress,
-    memmaps: &[MemoryMap],
-    initialize: bool,
-) {
+pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: &[MemoryMap]) {
     use crate::memmap::AddressRangeUtil;
 
     assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
@@ -47,11 +43,6 @@ pub fn generate_page_table(
             FIRST_LV_PAGE_TABLE_SIZE,
         )
     };
-
-    // zero filling page table
-    if initialize {
-        first_lv_page_table.fill(PageTableEntry(0));
-    }
 
     for memmap in memmaps {
         assert!(memmap.virt.len() == memmap.phys.len());

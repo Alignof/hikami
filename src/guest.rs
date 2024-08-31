@@ -157,7 +157,6 @@ impl Guest {
                             aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
                             all_pte_flags_are_set,
                         )],
-                        false,
                     );
                 }
             }
@@ -185,7 +184,6 @@ impl Guest {
                     aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
                     all_pte_flags_are_set,
                 )],
-                false,
             );
         }
     }
