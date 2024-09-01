@@ -125,7 +125,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
             stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) _top_m_stack as *const u8 as usize,
+            stack_base = in(reg) &_top_m_stack as *const u8 as usize,
             DRAM_BASE = in(reg) DRAM_BASE,
             mstart = sym mstart,
         );
