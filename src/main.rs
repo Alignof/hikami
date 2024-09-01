@@ -17,14 +17,38 @@ use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
 
-
+use linked_list_allocator::LockedHeap;
 use once_cell::unsync::Lazy;
 use spin::Mutex;
 
 use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{heap, machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
+
+#[global_allocator]
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
+
+/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
+static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
+    Lazy::new(|| Mutex::new(HypervisorData::default()));
+
+/// Singleton for SBI handler.
+static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
+
+/// Device tree blob that is passed to guest
+#[link_section = ".guest_dtb"]
+static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
+
+extern "C" {
+    /// start of heap (defined in `memory.x`)
+    static mut _start_heap: u8;
+    /// heap size (defined in `memory.x`)
+    static _hv_heap_size: u8;
+    /// machine stack top (defined in `memory.x`)
+    static _top_m_stack: u8;
+}
 
 /// Panic handler
 #[panic_handler]
@@ -70,22 +94,6 @@ impl HypervisorData {
     }
 }
 
-use linked_list_allocator::LockedHeap;
-#[global_allocator]
-// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
-
-/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
-static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
-    Lazy::new(|| Mutex::new(HypervisorData::default()));
-
-/// Singleton for SBI handler.
-static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
-
-/// Device tree blob that is passed to guest
-#[link_section = ".dtb"]
-pub static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
-
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
 /// * init mtvec and stvec
@@ -94,9 +102,10 @@ pub static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_byte
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
-        ALLOCATOR
-            .lock()
-            .init(heap::HEAP_BASE.raw() as *mut u8, heap::HEAP_SIZE);
+        ALLOCATOR.lock().init(
+            &mut _start_heap as *mut u8,
+            &_hv_heap_size as *const u8 as usize,
+        );
     }
 
     unsafe {
@@ -116,7 +125,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
             stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) machine::STACK_BASE.raw(),
+            stack_base = in(reg) &_top_m_stack as *const u8 as usize,
             DRAM_BASE = in(reg) DRAM_BASE,
             mstart = sym mstart,
         );

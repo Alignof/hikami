@@ -15,6 +15,10 @@ use crate::memmap::{HostPhysicalAddress, MemoryMap};
 /// First page table size
 pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
 
+/// Device tree blob that is passed to guest
+#[link_section = ".root_page_table"]
+pub static ROOT_PAGE_TABLE: [u8; FIRST_LV_PAGE_TABLE_SIZE] = [0u8; FIRST_LV_PAGE_TABLE_SIZE];
+
 /// Zero filling root page table
 pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
