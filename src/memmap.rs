@@ -59,6 +59,13 @@ impl core::ops::Add<usize> for HostPhysicalAddress {
     }
 }
 
+impl core::ops::Sub<usize> for HostPhysicalAddress {
+    type Output = HostPhysicalAddress;
+    fn sub(self, other: usize) -> Self::Output {
+        HostPhysicalAddress(self.0 - other)
+    }
+}
+
 impl core::ops::Rem<usize> for HostPhysicalAddress {
     type Output = usize;
     fn rem(self, other: usize) -> Self::Output {

@@ -9,7 +9,7 @@ use crate::memmap::{
     page_table::{constants::PAGE_SIZE, PteFlag},
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
 };
-use context::Context;
+use context::{Context, ContextData};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -70,7 +70,7 @@ impl Guest {
             dtb_addr: HostPhysicalAddress(guest_dtb.as_ptr() as usize),
             stack_top_addr,
             memory_region,
-            context: Context::new(stack_top_addr),
+            context: Context::new(stack_top_addr - core::mem::size_of::<ContextData>()),
         }
     }
 
