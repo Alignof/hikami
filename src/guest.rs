@@ -141,7 +141,8 @@ impl Guest {
                 let aligned_segment_size = align_size(prog_header.p_filesz, prog_header.p_align);
 
                 for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
-                    let guest_physical_addr = self.dram_base() + offset;
+                    let guest_physical_addr =
+                        self.dram_base() + prog_header.p_paddr.try_into().unwrap() + offset;
                     elf_end = core::cmp::max(elf_end, guest_physical_addr + PAGE_SIZE);
 
                     // allocate memory from heap
