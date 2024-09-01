@@ -63,7 +63,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
 
     // create new guest data
-    let guest_memory_begin = guest_memory::DRAM_BASE + hart_id * guest_memory::DRAM_SIZE_PER_GUEST;
+    let guest_id = hart_id + 1;
+    let guest_memory_begin = guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
     let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
     let guest_dtb_addr = HostPhysicalAddress(GUEST_DTB.as_ptr() as usize);
     let new_guest = Guest::new(
