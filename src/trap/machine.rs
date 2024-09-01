@@ -13,7 +13,9 @@ unsafe fn mtrap_exit() -> ! {
     asm!(
         "
         // set to stack top
-        li sp, 0x80800000 // MACHINE_STACK_BASE
+    1:
+        auipc sp, %pcrel_hi(_top_m_stack)
+        addi sp, sp, %pcrel_lo(1b)
         addi sp, sp, -256
         
         ld ra, 1*8(sp)
@@ -64,7 +66,9 @@ unsafe fn mtrap_exit() -> ! {
 unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
     asm!("
         // set to stack top
-        li sp, 0x80800000 // MACHINE_STACK_BASE
+    1:
+        auipc sp, %pcrel_hi(_top_m_stack)
+        addi sp, sp, %pcrel_lo(1b)
         addi sp, sp, -256
 
         ld ra, 1*8(sp)
