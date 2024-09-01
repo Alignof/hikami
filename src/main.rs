@@ -22,7 +22,7 @@ use spin::Mutex;
 
 use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{heap, machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
 
 /// Panic handler
@@ -85,6 +85,13 @@ static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 #[link_section = ".guest_dtb"]
 static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
 
+extern "C" {
+    /// start of heap (defined in `memory.x`)
+    static mut _start_heap: u8;
+    /// heap size (defined in `memory.x`)
+    static _hv_heap_size: u8;
+}
+
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
 /// * init mtvec and stvec
@@ -93,9 +100,10 @@ static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
-        ALLOCATOR
-            .lock()
-            .init(heap::HEAP_BASE.raw() as *mut u8, heap::HEAP_SIZE);
+        ALLOCATOR.lock().init(
+            &mut _start_heap as *mut u8,
+            &_hv_heap_size as *const u8 as usize,
+        );
     }
 
     unsafe {

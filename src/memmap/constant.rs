@@ -11,9 +11,6 @@
 //! | `0x8000_0000` | `0x8020_0000` | text and read only data of hikami |
 //! | `0x8020_0000` |      ...      | bottom of stack                   |
 //! |      ...      | `0x8080_0000` | machine stack                     |
-//! |               |               |                                   |
-//! | `0x8200_0000` | `0xa200_0000` | hypervisor heap                   |
-//! | `0xa200_0000` | `0xa300_0000` | hypervisor stack                  |
 //!
 //! # Guest physical address
 //! | start         | end           | region               |

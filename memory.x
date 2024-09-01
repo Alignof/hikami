@@ -21,3 +21,16 @@ REGION_ALIAS("REGION_HEAP", RAM);
 REGION_ALIAS("REGION_STACK", L2_LIM);
 
 _stack_start = ORIGIN(L2_LIM) + LENGTH(L2_LIM);
+_hv_heap_size = 0x20000000;
+
+SECTIONS
+{
+    . = ALIGN(4K);
+    .hv_heap (NOLOAD) :
+    {
+        _start_heap = .;
+        . += _hv_heap_size;
+        _end_heap = .;
+    } > REGION_HEAP
+
+}
