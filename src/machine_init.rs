@@ -110,10 +110,23 @@ extern "C" fn enter_hypervisor_mode(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // set stack pointer
         asm!(
-            "mv sp, {machine_sp}",
+            "
+            mv t0, {hart_id}
+            mv t1, {dtb_addr}
+            mv sp, {machine_sp}
+            ",
+            hart_id = in(reg) hart_id,
+            dtb_addr = in(reg) dtb_addr,
             machine_sp = in(reg) &crate::_top_m_stack as *const u8 as usize + STACK_SIZE_PER_HART * hart_id
         );
         // enter HS-mode.
-        asm!("mret", in("a0") hart_id, in("a1") dtb_addr, options(noreturn));
+        asm!(
+            "
+            mv a0, t0
+            mv a1, t1
+            mret
+            ",
+            options(noreturn)
+        );
     }
 }
