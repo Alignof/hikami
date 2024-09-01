@@ -43,6 +43,8 @@ pub struct Guest {
     page_table_addr: HostPhysicalAddress,
     /// Device tree address
     dtb_addr: HostPhysicalAddress,
+    /// Stack top address
+    stack_top_addr: HostPhysicalAddress,
     /// Allocated memory region
     memory_region: Range<GuestPhysicalAddress>,
     /// Guest context data
@@ -56,7 +58,8 @@ impl Guest {
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
         memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
-        let stack_top = memory_region.end;
+        let stack_top_addr =
+            unsafe { HostPhysicalAddress(&crate::_stack_start as *const u8 as usize) };
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
         page_table::sv39x4::initialize_page_table(page_table_addr);
@@ -65,8 +68,9 @@ impl Guest {
             guest_id: hart_id,
             page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
             dtb_addr: HostPhysicalAddress(guest_dtb.as_ptr() as usize),
+            stack_top_addr,
             memory_region,
-            context: Context::new(stack_top),
+            context: Context::new(stack_top_addr),
         }
     }
 
