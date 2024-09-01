@@ -9,7 +9,7 @@ pub mod constants {
     /// Second or Third page table size
     ///
     /// vpn[1] == vpn[0] == 9 bit
-    pub const PAGE_TABLE_SIZE: usize = 0b10_0000_0000;
+    pub const PAGE_TABLE_LEN: usize = 512;
 }
 
 /// Page table level.
@@ -85,8 +85,8 @@ impl PageTableEntry {
 #[derive(Copy, Clone)]
 struct PageTableAddress(usize);
 
-impl From<*mut [PageTableEntry; constants::PAGE_TABLE_SIZE]> for PageTableAddress {
-    fn from(f: *mut [PageTableEntry; constants::PAGE_TABLE_SIZE]) -> Self {
+impl From<*mut [PageTableEntry; constants::PAGE_TABLE_LEN]> for PageTableAddress {
+    fn from(f: *mut [PageTableEntry; constants::PAGE_TABLE_LEN]) -> Self {
         PageTableAddress(f as *const u64 as usize)
     }
 }
