@@ -25,15 +25,19 @@ _hv_heap_size = 0x20000000;
 
 SECTIONS
 {
-    . = ALIGN(4K);
-    .guest_dtb :
+    .guest_dtb : ALIGN(4K)
     {
         *(.guest_dtb);
         . = ALIGN(4K);
     } > REGION_DATA
 
-    . = ALIGN(4K);
-    .hv_heap (NOLOAD) :
+    .root_page_table : ALIGN(4K)
+    {
+        *(.root_page_table);
+        . = ALIGN(4K);
+    } > REGION_DATA
+
+    .hv_heap (NOLOAD) : ALIGN(1024K) 
     {
         _start_heap = .;
         . += _hv_heap_size;
