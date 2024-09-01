@@ -39,7 +39,7 @@ SECTIONS
         . = ALIGN(4K);
     } > REGION_DATA
 
-    .root_page_table : ALIGN(4K)
+    .root_page_table : ALIGN(16K)
     {
         *(.root_page_table);
         . = ALIGN(4K);
