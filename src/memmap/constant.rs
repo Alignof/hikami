@@ -58,17 +58,6 @@ pub mod machine {
     pub const STACK_BASE: HostPhysicalAddress = HostPhysicalAddress(0x8080_0000);
 }
 
-pub mod heap {
-    //! Heap memory region (`0x9000_0000` - `0xa000_0000`)
-
-    use crate::memmap::HostPhysicalAddress;
-
-    /// Base address of heap.
-    pub const HEAP_BASE: HostPhysicalAddress = HostPhysicalAddress(0x9000_0000);
-    /// Heap size.
-    pub const HEAP_SIZE: usize = 0x2000_0000;
-}
-
 pub mod guest_memory {
     //! Guest memory region on Guest Physical Address
 
