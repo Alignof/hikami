@@ -7,24 +7,23 @@
 use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
-use super::{
-    constants::PAGE_TABLE_SIZE, PageTableAddress, PageTableEntry, PageTableLevel, PteFlag,
-};
+use super::{constants::PAGE_TABLE_LEN, PageTableAddress, PageTableEntry, PageTableLevel, PteFlag};
 use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 /// First page table size
-pub const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
+pub const FIRST_LV_PAGE_TABLE_LEN: usize = 2048;
 
 /// Device tree blob that is passed to guest
 #[link_section = ".root_page_table"]
-pub static ROOT_PAGE_TABLE: [u8; FIRST_LV_PAGE_TABLE_SIZE] = [0u8; FIRST_LV_PAGE_TABLE_SIZE];
+pub static ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
+    [PageTableEntry(0u64); FIRST_LV_PAGE_TABLE_LEN];
 
 /// Zero filling root page table
 pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
             root_table_start_addr.raw() as *mut PageTableEntry,
-            FIRST_LV_PAGE_TABLE_SIZE,
+            FIRST_LV_PAGE_TABLE_LEN,
         )
     };
 
@@ -44,7 +43,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
             root_table_start_addr.raw() as *mut PageTableEntry,
-            FIRST_LV_PAGE_TABLE_SIZE,
+            FIRST_LV_PAGE_TABLE_LEN,
         )
     };
 
@@ -94,7 +93,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
                         current_page_table[vpn].pte() as usize * trans_page_level.size(),
                     )
                 } else {
-                    let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_SIZE]);
+                    let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_LEN]);
                     let next_page_table_addr: PageTableAddress =
                         Box::into_raw(next_page_table).into();
 

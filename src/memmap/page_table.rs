@@ -65,7 +65,7 @@ pub enum PteFlag {
 
 /// Page table entry
 #[derive(Copy, Clone, Default)]
-struct PageTableEntry(u64);
+pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
     fn new(ppn: u64, flags: u8) -> Self {

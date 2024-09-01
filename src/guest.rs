@@ -2,7 +2,8 @@
 
 pub mod context;
 
-use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_SIZE;
+use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
+use crate::memmap::page_table::PageTableEntry;
 use crate::memmap::{
     page_table,
     page_table::{constants::PAGE_SIZE, PteFlag},
@@ -51,7 +52,7 @@ pub struct Guest {
 impl Guest {
     pub fn new(
         hart_id: usize,
-        root_page_table: &'static [u8; FIRST_LV_PAGE_TABLE_SIZE],
+        root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
         memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
