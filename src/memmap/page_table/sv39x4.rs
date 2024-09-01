@@ -7,7 +7,10 @@
 use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
-use super::{constants::PAGE_TABLE_LEN, PageTableAddress, PageTableEntry, PageTableLevel, PteFlag};
+use super::{
+    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
+    PageTableAddress, PageTableEntry, PageTableLevel, PteFlag,
+};
 use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 /// First page table size
@@ -75,7 +78,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
                 let current_page_table = match current_level {
                     PageTableLevel::Lv1GB => &mut *first_lv_page_table,
                     PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
-                        from_raw_parts_mut(next_table_addr.to_pte_ptr(), PAGE_TABLE_SIZE)
+                        from_raw_parts_mut(next_table_addr.to_pte_ptr(), PAGE_TABLE_LEN)
                     },
                 };
 
@@ -89,9 +92,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
 
                 // Create next level page table
                 next_table_addr = if current_page_table[vpn].already_created() {
-                    PageTableAddress(
-                        current_page_table[vpn].pte() as usize * trans_page_level.size(),
-                    )
+                    PageTableAddress(current_page_table[vpn].pte() as usize * PAGE_SIZE)
                 } else {
                     let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_LEN]);
                     let next_page_table_addr: PageTableAddress =
