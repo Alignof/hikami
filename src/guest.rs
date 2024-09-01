@@ -2,6 +2,7 @@
 
 pub mod context;
 
+use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_SIZE;
 use crate::memmap::{
     page_table,
     page_table::{constants::PAGE_SIZE, PteFlag},
@@ -50,16 +51,19 @@ pub struct Guest {
 impl Guest {
     pub fn new(
         hart_id: usize,
-        page_table_addr: HostPhysicalAddress,
-        dtb_addr: HostPhysicalAddress,
+        root_page_table: &'static [u8; FIRST_LV_PAGE_TABLE_SIZE],
+        guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
         memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
         let stack_top = memory_region.end;
+        let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
+
         page_table::sv39x4::initialize_page_table(page_table_addr);
+
         Guest {
             guest_id: hart_id,
-            page_table_addr,
-            dtb_addr,
+            page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
+            dtb_addr: HostPhysicalAddress(guest_dtb.as_ptr() as usize),
             memory_region,
             context: Context::new(stack_top),
         }

@@ -6,12 +6,7 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
-    constant::{
-        guest_memory,
-        hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
-    },
-    page_table::sv39x4::ROOT_PAGE_TABLE,
-    HostPhysicalAddress,
+    constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
 use crate::{GUEST_DTB, HYPERVISOR_DATA};
@@ -69,12 +64,12 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // create new guest data
     let guest_memory_begin = guest_memory::DRAM_BASE + hart_id * guest_memory::DRAM_SIZE_PER_GUEST;
-    let guest_dtb_addr = hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET;
     let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
+    let guest_dtb_addr = HostPhysicalAddress(GUEST_DTB.as_ptr() as usize);
     let new_guest = Guest::new(
         hart_id,
-        root_page_table_addr,
-        guest_dtb_addr,
+        &ROOT_PAGE_TABLE,
+        &GUEST_DTB,
         guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
     );
 
