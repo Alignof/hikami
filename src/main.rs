@@ -17,6 +17,7 @@ use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
 
+use linked_list_allocator::LockedHeap;
 use once_cell::unsync::Lazy;
 use spin::Mutex;
 
@@ -24,6 +25,30 @@ use crate::guest::Guest;
 use crate::machine_init::mstart;
 use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
+
+#[global_allocator]
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
+
+/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
+static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
+    Lazy::new(|| Mutex::new(HypervisorData::default()));
+
+/// Singleton for SBI handler.
+static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
+
+/// Device tree blob that is passed to guest
+#[link_section = ".guest_dtb"]
+static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
+
+extern "C" {
+    /// start of heap (defined in `memory.x`)
+    static mut _start_heap: u8;
+    /// heap size (defined in `memory.x`)
+    static _hv_heap_size: u8;
+    /// machine stack top (defined in `memory.x`)
+    static _top_m_stack: u8;
+}
 
 /// Panic handler
 #[panic_handler]
@@ -67,31 +92,6 @@ impl HypervisorData {
         assert!(hart_id < MAX_HART_NUM);
         self.guest[hart_id] = Some(new_guest);
     }
-}
-
-use linked_list_allocator::LockedHeap;
-#[global_allocator]
-// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
-
-/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
-static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
-    Lazy::new(|| Mutex::new(HypervisorData::default()));
-
-/// Singleton for SBI handler.
-static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
-
-/// Device tree blob that is passed to guest
-#[link_section = ".guest_dtb"]
-static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
-
-extern "C" {
-    /// start of heap (defined in `memory.x`)
-    static mut _start_heap: u8;
-    /// heap size (defined in `memory.x`)
-    static _hv_heap_size: u8;
-    /// machine stack top (defined in `memory.x`)
-    static _top_m_stack: u8;
 }
 
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
