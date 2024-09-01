@@ -12,9 +12,6 @@
 //! | `0x8020_0000` |      ...      | bottom of stack                   |
 //! |      ...      | `0x8080_0000` | machine stack                     |
 //! |               |               |                                   |
-//! | `0x8100_0000` | `0x8100_2000` | G-stage root page table           |
-//! | `0x8100_2000` | `0x8100_4000` | device tree blob for guest        |
-//! | `0x8100_4000` | `0x8200_0000` | .data section for hikami          |
 //! | `0x8200_0000` | `0xa200_0000` | hypervisor heap                   |
 //! | `0xa200_0000` | `0xa300_0000` | hypervisor stack                  |
 //!
@@ -59,18 +56,6 @@ pub mod machine {
 
     /// Base address of machine stack.
     pub const STACK_BASE: HostPhysicalAddress = HostPhysicalAddress(0x8080_0000);
-}
-
-pub mod hypervisor {
-    //! Hypervisor memory region (`0x8100_0000` - `0x810x_xxxx`)
-
-    use crate::memmap::HostPhysicalAddress;
-
-    /// Base address of hypervisor region.
-    pub const BASE_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x8100_0000);
-
-    /// Base address of device tree blob for guest image
-    pub const GUEST_DEVICE_TREE_OFFSET: usize = 0x2000;
 }
 
 pub mod heap {
