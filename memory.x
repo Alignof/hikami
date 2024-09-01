@@ -22,9 +22,17 @@ REGION_ALIAS("REGION_STACK", L2_LIM);
 
 _stack_start = ORIGIN(L2_LIM) + LENGTH(L2_LIM);
 _hv_heap_size = 0x20000000;
+_m_stack_size = 0x400000;
 
+/* defined section in hikami */
 SECTIONS
 {
+    .machine_stack : ALIGN(4K) {
+        _bottom_m_stack = .;
+        . += _m_stack_size;
+        _top_m_stack = .;
+    } > MACHINE_RAM
+
     .guest_dtb : ALIGN(4K)
     {
         *(.guest_dtb);

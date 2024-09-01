@@ -22,7 +22,7 @@ use spin::Mutex;
 
 use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{machine, DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
+use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
 
 /// Panic handler
@@ -90,6 +90,8 @@ extern "C" {
     static mut _start_heap: u8;
     /// heap size (defined in `memory.x`)
     static _hv_heap_size: u8;
+    /// machine stack top (defined in `memory.x`)
+    static _top_m_stack: u8;
 }
 
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
@@ -123,7 +125,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
             stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) machine::STACK_BASE.raw(),
+            stack_base = in(reg) _top_m_stack as *const u8 as usize,
             DRAM_BASE = in(reg) DRAM_BASE,
             mstart = sym mstart,
         );
