@@ -42,6 +42,8 @@ static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
 
 extern "C" {
+    /// stack top (defined in `memory.x`)
+    static _stack_start: u8;
     /// start of heap (defined in `memory.x`)
     static mut _start_heap: u8;
     /// heap size (defined in `memory.x`)
