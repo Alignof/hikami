@@ -80,8 +80,8 @@ impl Guest {
     }
 
     /// Return Stack top (end of memory region)
-    pub fn stack_top(&self) -> GuestPhysicalAddress {
-        self.memory_region.end
+    pub fn stack_top(&self) -> HostPhysicalAddress {
+        self.stack_top_addr
     }
 
     pub fn guest_dtb_addr(&self) -> HostPhysicalAddress {

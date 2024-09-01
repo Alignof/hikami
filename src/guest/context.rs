@@ -1,4 +1,4 @@
-use crate::memmap::GuestPhysicalAddress;
+use crate::memmap::HostPhysicalAddress;
 
 /// Guest context on memory
 #[repr(C)]
@@ -16,11 +16,11 @@ pub struct ContextData {
 /// Guest context
 #[derive(Debug, Copy, Clone)]
 pub struct Context {
-    address: GuestPhysicalAddress,
+    address: HostPhysicalAddress,
 }
 
 impl Context {
-    pub fn new(address: GuestPhysicalAddress) -> Self {
+    pub fn new(address: HostPhysicalAddress) -> Self {
         Context { address }
     }
 }
