@@ -69,10 +69,6 @@ pub mod hypervisor {
     /// Base address of hypervisor region.
     pub const BASE_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x8100_0000);
 
-    /// Base address of page table.
-    pub const PAGE_TABLE_OFFSET: usize = 0x0;
-    /// Page table offset for each HART.
-    pub const PAGE_TABLE_OFFSET_PER_HART: usize = 1024;
     /// Base address of device tree blob for guest image
     pub const GUEST_DEVICE_TREE_OFFSET: usize = 0x2000;
 }

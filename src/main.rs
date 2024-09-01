@@ -17,7 +17,6 @@ use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
 
-
 use once_cell::unsync::Lazy;
 use spin::Mutex;
 
@@ -83,7 +82,6 @@ static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
 static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 
 /// Device tree blob that is passed to guest
-#[link_section = ".dtb"]
 pub static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
 
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.

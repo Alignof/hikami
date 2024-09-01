@@ -10,6 +10,7 @@ use crate::memmap::{
         guest_memory,
         hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
     },
+    page_table::sv39x4::ROOT_PAGE_TABLE,
     HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
@@ -69,12 +70,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // create new guest data
     let guest_memory_begin = guest_memory::DRAM_BASE + hart_id * guest_memory::DRAM_SIZE_PER_GUEST;
     let guest_dtb_addr = hypervisor::BASE_ADDR + hypervisor::GUEST_DEVICE_TREE_OFFSET;
-    let page_table_start = hypervisor::BASE_ADDR
-        + hypervisor::PAGE_TABLE_OFFSET
-        + hart_id * PAGE_TABLE_OFFSET_PER_HART;
+    let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
     let new_guest = Guest::new(
         hart_id,
-        page_table_start,
+        root_page_table_addr,
         guest_dtb_addr,
         guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
     );
@@ -120,10 +119,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // set device memory map
     hypervisor_data
         .devices()
-        .device_mapping_g_stage(page_table_start);
+        .device_mapping_g_stage(root_page_table_addr);
 
     // enable two-level address translation
-    hgatp::set(HgatpMode::Sv39x4, 0, page_table_start.raw() >> 12);
+    hgatp::set(HgatpMode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
     hfence_gvma_all();
 
     // set new guest data
