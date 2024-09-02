@@ -21,6 +21,7 @@ use elf::{endian::AnyEndian, ElfBytes};
 struct PageBlock([u8; 0x1000]);
 
 impl PageBlock {
+    /// Return aligned address of page size memory block.
     fn alloc() -> HostPhysicalAddress {
         let mut host_physical_block_as_vec: Vec<core::mem::MaybeUninit<PageBlock>> =
             Vec::with_capacity(1);
@@ -134,6 +135,7 @@ impl Guest {
         self.stack_top_addr
     }
 
+    /// Return guest device tree address. (GPA)
     pub fn guest_dtb_addr(&self) -> GuestPhysicalAddress {
         self.dtb_addr
     }

@@ -1,3 +1,5 @@
+//! Page table for address translation.
+
 pub mod sv39x4;
 
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
@@ -7,7 +9,7 @@ pub mod constants {
     pub const PAGE_SIZE: usize = 4096;
     /// Second or Third page table size
     ///
-    /// vpn[1] == vpn[0] == 9 bit
+    /// vpn\[1\] == vpn\[0\] == 9 bit
     pub const PAGE_TABLE_LEN: usize = 512;
 }
 
@@ -19,11 +21,11 @@ pub mod constants {
 enum PageTableLevel {
     /// Page table level 0
     ///
-    /// 1GB = 30 bit = vpn[1] (9 bit) + vpn[0] (9 bit) + offset (12 bit)
+    /// 1GB = 30 bit = vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
     Lv1GB = 2,
     /// Page table level 1
     ///
-    /// 2MB = 21 bit = vpn[0] (9 bit) + offset (12 bit)
+    /// 2MB = 21 bit = vpn\[0\] (9 bit) + offset (12 bit)
     Lv2MB = 1,
     /// Page table level 2
     ///

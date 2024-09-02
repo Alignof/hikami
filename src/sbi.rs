@@ -6,6 +6,7 @@ use crate::device::{clint, uart, Device};
 use fdt::Fdt;
 use rustsbi::RustSBI;
 
+/// Device reference for `RustSBI`.
 #[derive(RustSBI)]
 pub struct Sbi {
     /// Core Local INTerrupt

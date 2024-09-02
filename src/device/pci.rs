@@ -1,4 +1,4 @@
-//! PCI device
+//! PCI: Peripheral Component Interconnect
 
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};

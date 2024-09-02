@@ -1,3 +1,5 @@
+//! PLIC: Platform-Level Interrupt Controller  
+
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;

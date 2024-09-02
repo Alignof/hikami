@@ -1,3 +1,5 @@
+//! Trap VS-mode interrupt.
+
 use super::hstrap_exit;
 use crate::h_extension::csrs::{hvip, vsip, InterruptKind};
 use crate::memmap::constant::device::CLINT_ADDR;

@@ -1,3 +1,5 @@
+//! Trap VS-mode exception.
+
 mod sbi;
 
 use super::hstrap_exit;

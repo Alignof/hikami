@@ -74,6 +74,7 @@ macro_rules! set_csr_from_enum {
     };
 }
 
+/// VS-level interrupt kind.
 pub enum InterruptKind {
     /// VS-level external interrupts (bit 10)
     Vsei = 0b100_0000_0000,
@@ -236,6 +237,7 @@ pub mod hgatp {
         bits: usize,
     }
 
+    /// Translation mode in G-stage.
     #[allow(clippy::module_name_repetitions)]
     pub enum HgatpMode {
         Bare = 0,

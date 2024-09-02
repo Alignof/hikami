@@ -28,8 +28,11 @@ use crate::sbi::Sbi;
 
 #[global_allocator]
 // static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+/// Global allocator.
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
+/// Singleton for this hypervisor.
+///
 /// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
 static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
     Lazy::new(|| Mutex::new(HypervisorData::default()));

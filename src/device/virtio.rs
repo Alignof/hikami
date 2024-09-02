@@ -1,3 +1,5 @@
+//! A virtualization standard for network and disk device drivers.
+
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;

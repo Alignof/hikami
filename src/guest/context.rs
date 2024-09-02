@@ -1,6 +1,10 @@
+//! Guest context.
+
 use crate::memmap::HostPhysicalAddress;
 
 /// Guest context on memory
+///
+/// It place to hypervisor stack top.
 #[repr(C)]
 #[allow(dead_code)]
 #[allow(clippy::module_name_repetitions)]
@@ -36,22 +40,27 @@ impl Context {
         }
     }
 
+    /// Return regular register value.
     pub fn xreg(self, index: usize) -> u64 {
         self.get_context().xreg[index]
     }
 
+    /// Set regular register value.
     pub fn set_xreg(&mut self, index: usize, value: u64) {
         self.get_context().xreg[index] = value;
     }
 
+    /// Return sepc value.
     pub fn sepc(self) -> usize {
         self.get_context().sepc
     }
 
+    /// Set sepc.
     pub fn set_sepc(&mut self, value: usize) {
         self.get_context().sepc = value;
     }
 
+    /// Set sstatus.
     pub fn set_sstatus(&mut self, value: usize) {
         self.get_context().sstatus = value;
     }

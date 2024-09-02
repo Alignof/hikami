@@ -6,7 +6,7 @@ pub mod page_table;
 use crate::memmap::page_table::PteFlag;
 use core::ops::Range;
 
-/// Utility for Range<Address>
+/// Utility for `Range<Address>`
 trait AddressRangeUtil {
     /// Return length of range.
     fn len(&self) -> usize;
@@ -79,10 +79,14 @@ impl AddressRangeUtil for Range<HostPhysicalAddress> {
     }
 }
 
+/// Struct for represent memory regtion.
 #[derive(Clone)]
 pub struct MemoryMap {
+    /// Guest physical address
     virt: Range<GuestPhysicalAddress>,
+    /// Host physical address
     phys: Range<HostPhysicalAddress>,
+    /// Page table entry flags
     flags: u8,
 }
 

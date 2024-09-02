@@ -1,11 +1,13 @@
 use crate::memmap::constant::device::UART_ADDR;
 use core::fmt::{self, Write};
 
+/// Print to standard output.
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::util::_print(format_args!($($arg)*)));
 }
 
+/// Print with linebreak to standard output.
 #[macro_export]
 macro_rules! println {
     ($fmt:expr) => (print!(concat!($fmt, "\n")));

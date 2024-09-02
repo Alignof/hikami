@@ -1,3 +1,5 @@
+//! M-mode level initialization.
+
 use crate::hypervisor_init;
 use crate::memmap::constant::STACK_SIZE_PER_HART;
 use crate::trap::machine::mtrap_vector;
