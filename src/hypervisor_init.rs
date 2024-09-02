@@ -153,7 +153,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
 /// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
+fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let stack_top = hypervisor_data.guest().stack_top();
@@ -190,7 +190,7 @@ fn hart_entry(_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
             ld t2, 7*8(sp)
             ld s0, 8*8(sp)
             ld s1, 9*8(sp)
-            ld a0, 10*8(sp)
+            // a0 -> hart_id
             // a1 -> dtb_addr
             ld a2, 12*8(sp)
             ld a3, 13*8(sp)
@@ -219,6 +219,7 @@ fn hart_entry(_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
 
             sret
             ",
+            in("a0") hart_id,
             in("a1") dtb_addr.raw(),
             stack_top = in(reg) stack_top.raw(),
             options(noreturn)
