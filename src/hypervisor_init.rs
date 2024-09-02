@@ -1,3 +1,5 @@
+//! HS-mode level initialization.
+
 use crate::device::Device;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
