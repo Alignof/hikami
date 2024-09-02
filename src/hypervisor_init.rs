@@ -84,14 +84,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // parsing and storing device data
     hypervisor_data.register_devices(device_tree);
 
-    // copy device tree to guest
-    unsafe {
-        new_guest.copy_device_tree(
-            HostPhysicalAddress(GUEST_DTB.as_ptr() as usize),
-            GUEST_DTB.len(),
-        );
-    }
-
     // load guest elf from address
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(

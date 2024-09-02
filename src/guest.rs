@@ -3,10 +3,10 @@
 pub mod context;
 
 use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
-use crate::memmap::page_table::PageTableEntry;
 use crate::memmap::{
+    constant::guest_memory,
     page_table,
-    page_table::{constants::PAGE_SIZE, PteFlag},
+    page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
 };
 use context::{Context, ContextData};
@@ -42,7 +42,7 @@ pub struct Guest {
     /// Page table that is passed to guest address
     page_table_addr: HostPhysicalAddress,
     /// Device tree address
-    dtb_addr: HostPhysicalAddress,
+    dtb_addr: GuestPhysicalAddress,
     /// Stack top address
     stack_top_addr: HostPhysicalAddress,
     /// Allocated memory region
@@ -52,6 +52,10 @@ pub struct Guest {
 }
 
 impl Guest {
+    /// Initialize `Guest`.
+    ///
+    /// - Zero filling root page table.
+    /// - Map guest dtb to guest memory space.
     pub fn new(
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
@@ -64,14 +68,59 @@ impl Guest {
 
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
+        let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
+
         Guest {
             guest_id: hart_id,
             page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
-            dtb_addr: HostPhysicalAddress(guest_dtb.as_ptr() as usize),
+            dtb_addr,
             stack_top_addr,
             memory_region,
             context: Context::new(stack_top_addr - core::mem::size_of::<ContextData>()),
         }
+    }
+
+    /// Map guest device tree region
+    fn map_guest_dtb(
+        hart_id: usize,
+        page_table_addr: HostPhysicalAddress,
+        guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
+    ) -> GuestPhysicalAddress {
+        use PteFlag::{Accessed, Dirty, Read, User, Valid};
+
+        assert!(guest_dtb.len() < guest_memory::GUEST_DTB_SIZE_PER_HART);
+
+        let guest_dtb_gpa =
+            guest_memory::DRAM_BASE + hart_id * guest_memory::GUEST_DTB_SIZE_PER_HART;
+        let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+
+        for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
+            let guest_physical_addr = guest_dtb_gpa + offset;
+
+            // allocate memory from heap
+            let aligned_page_size_block_addr = PageBlock::alloc();
+
+            // copy elf segment to new heap block
+            unsafe {
+                core::ptr::copy(
+                    guest_dtb.as_ptr().byte_add(offset),
+                    aligned_page_size_block_addr.raw() as *mut u8,
+                    usize::try_from(PAGE_SIZE).unwrap(),
+                );
+            }
+
+            // create memory mapping
+            page_table::sv39x4::generate_page_table(
+                page_table_addr,
+                &[MemoryMap::new(
+                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                    aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
+                    &[Dirty, Accessed, Read, User, Valid],
+                )],
+            );
+        }
+
+        guest_dtb_gpa
     }
 
     /// Return HART(HARdware Thread) id.
@@ -84,27 +133,13 @@ impl Guest {
         self.stack_top_addr
     }
 
-    pub fn guest_dtb_addr(&self) -> HostPhysicalAddress {
+    pub fn guest_dtb_addr(&self) -> GuestPhysicalAddress {
         self.dtb_addr
     }
 
     /// Return guest dram space start
     fn dram_base(&self) -> GuestPhysicalAddress {
         self.memory_region.start
-    }
-
-    /// Copy device tree from hypervisor side.  
-    ///
-    /// # Panics
-    /// It will be panic if `dtb_addr` is invalid.
-    pub unsafe fn copy_device_tree(&self, dtb_addr: HostPhysicalAddress, dtb_size: usize) {
-        unsafe {
-            core::ptr::copy(
-                dtb_addr.raw() as *const u8,
-                self.guest_dtb_addr().raw() as *mut u8,
-                dtb_size,
-            );
-        }
     }
 
     /// Load an elf to new allocated guest memory page.
