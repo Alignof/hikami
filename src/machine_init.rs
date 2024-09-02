@@ -1,5 +1,5 @@
 use crate::hypervisor_init;
-use crate::memmap::constant::{hypervisor::STACK_SIZE_PER_HART, machine::MACHINE_STACK_BASE};
+use crate::memmap::constant::STACK_SIZE_PER_HART;
 use crate::trap::machine::mtrap_vector;
 use crate::{sbi::Sbi, SBI};
 use core::arch::asm;
@@ -70,7 +70,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         mcounteren::set_hpm(30);
         mcounteren::set_hpm(31);
         mstatus::set_mpp(mstatus::MPP::Supervisor);
-        mscratch::write(MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id);
+        mscratch::write(core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id);
         pmpaddr0::write(0xffff_ffff_ffff_ffff);
         pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
         satp::set(satp::Mode::Bare, 0, 0);
@@ -110,10 +110,23 @@ extern "C" fn enter_hypervisor_mode(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // set stack pointer
         asm!(
-            "mv sp, {machine_sp}",
-            machine_sp = in(reg) MACHINE_STACK_BASE + STACK_SIZE_PER_HART * hart_id
+            "
+            mv t0, {hart_id}
+            mv t1, {dtb_addr}
+            mv sp, {machine_sp}
+            ",
+            hart_id = in(reg) hart_id,
+            dtb_addr = in(reg) dtb_addr,
+            machine_sp = in(reg) core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id
         );
         // enter HS-mode.
-        asm!("mret", in("a0") hart_id, in("a1") dtb_addr, options(noreturn));
+        asm!(
+            "
+            mv a0, t0
+            mv a1, t1
+            mret
+            ",
+            options(noreturn)
+        );
     }
 }

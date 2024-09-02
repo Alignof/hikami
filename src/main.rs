@@ -16,18 +16,41 @@ use core::arch::asm;
 use core::cell::OnceCell;
 use core::panic::PanicInfo;
 use riscv_rt::entry;
-use wild_screen_alloc::WildScreenAlloc;
 
+use linked_list_allocator::LockedHeap;
 use once_cell::unsync::Lazy;
 use spin::Mutex;
 
 use crate::guest::Guest;
 use crate::machine_init::mstart;
-use crate::memmap::constant::{
-    hypervisor::{self, STACK_SIZE_PER_HART},
-    DRAM_BASE, MAX_HART_NUM,
-};
+use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::sbi::Sbi;
+
+#[global_allocator]
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
+
+/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
+static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
+    Lazy::new(|| Mutex::new(HypervisorData::default()));
+
+/// Singleton for SBI handler.
+static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
+
+/// Device tree blob that is passed to guest
+#[link_section = ".guest_dtb"]
+static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
+
+extern "C" {
+    /// stack top (defined in `memory.x`)
+    static _stack_start: u8;
+    /// start of heap (defined in `memory.x`)
+    static mut _start_heap: u8;
+    /// heap size (defined in `memory.x`)
+    static _hv_heap_size: u8;
+    /// machine stack top (defined in `memory.x`)
+    static _top_m_stack: u8;
+}
 
 /// Panic handler
 #[panic_handler]
@@ -73,15 +96,6 @@ impl HypervisorData {
     }
 }
 
-#[global_allocator]
-static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
-
-/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
-static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
-    Lazy::new(|| Mutex::new(HypervisorData::default()));
-
-static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
-
 /// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
 /// * set stack pointer
 /// * init mtvec and stvec
@@ -90,9 +104,9 @@ static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
-        ALLOCATOR.init(
-            hypervisor::BASE_ADDR + hypervisor::HEAP_OFFSET,
-            hypervisor::HEAP_SIZE,
+        ALLOCATOR.lock().init(
+            core::ptr::addr_of_mut!(_start_heap),
+            core::ptr::addr_of!(_hv_heap_size) as usize,
         );
     }
 
@@ -113,7 +127,7 @@ fn _start(hart_id: usize, dtb_addr: usize) -> ! {
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
             stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) hypervisor::BASE_ADDR + hypervisor::STACK_OFFSET,
+            stack_base = in(reg) core::ptr::addr_of!(_top_m_stack) as usize,
             DRAM_BASE = in(reg) DRAM_BASE,
             mstart = sym mstart,
         );

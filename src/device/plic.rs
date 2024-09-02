@@ -1,6 +1,6 @@
 use super::Device;
 use crate::memmap::page_table::PteFlag;
-use crate::memmap::{constant, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
 const DEVICE_FLAGS: [PteFlag; 5] = [
@@ -22,7 +22,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 /// Interrupt controller for global interrupts.
 #[derive(Debug)]
 pub struct Plic {
-    base_addr: usize,
+    base_addr: HostPhysicalAddress,
     size: usize,
 }
 
@@ -37,7 +37,7 @@ impl Device for Plic {
             .unwrap();
 
         Plic {
-            base_addr: region.starting_address as usize,
+            base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
         }
     }
@@ -46,25 +46,14 @@ impl Device for Plic {
         self.size
     }
 
-    fn paddr(&self) -> usize {
+    fn paddr(&self) -> HostPhysicalAddress {
         self.base_addr
     }
 
-    fn vaddr(&self) -> usize {
-        self.base_addr + constant::PA2VA_DEVICE_OFFSET
-    }
-
     fn memmap(&self) -> MemoryMap {
+        let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
-            self.vaddr()..self.vaddr() + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
-        )
-    }
-
-    fn identity_memmap(&self) -> MemoryMap {
-        MemoryMap::new(
-            self.paddr()..self.paddr() + self.size(),
+            vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
             &DEVICE_FLAGS,
         )

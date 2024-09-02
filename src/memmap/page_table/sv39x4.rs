@@ -7,88 +7,107 @@
 use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;
 
-use super::{PageTableEntry, PteFlag, PAGE_SIZE};
-use crate::memmap::MemoryMap;
+use super::{
+    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
+    PageTableAddress, PageTableEntry, PageTableLevel, PteFlag,
+};
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
+
+/// First page table size
+pub const FIRST_LV_PAGE_TABLE_LEN: usize = 2048;
+
+/// Device tree blob that is passed to guest
+#[link_section = ".root_page_table"]
+pub static ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
+    [PageTableEntry(0u64); FIRST_LV_PAGE_TABLE_LEN];
+
+/// Zero filling root page table
+pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
+    let first_lv_page_table: &mut [PageTableEntry] = unsafe {
+        from_raw_parts_mut(
+            root_table_start_addr.raw() as *mut PageTableEntry,
+            FIRST_LV_PAGE_TABLE_LEN,
+        )
+    };
+
+    // zero filling page table
+    first_lv_page_table.fill(PageTableEntry(0));
+}
 
 /// Generate third-level page table. (Sv39x4)
+///
+/// The number of address translation stages is determined by the size of the range.
 #[allow(clippy::module_name_repetitions)]
-pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
-    use crate::{print, println};
-
-    const FIRST_LV_PAGE_TABLE_SIZE: usize = 2048;
-    const PAGE_TABLE_SIZE: usize = 512;
+pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: &[MemoryMap]) {
+    use crate::memmap::AddressRangeUtil;
 
     assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
 
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
         from_raw_parts_mut(
-            root_table_start_addr as *mut PageTableEntry,
-            FIRST_LV_PAGE_TABLE_SIZE,
+            root_table_start_addr.raw() as *mut PageTableEntry,
+            FIRST_LV_PAGE_TABLE_LEN,
         )
     };
 
-    // zero filling page table
-    if initialize {
-        first_lv_page_table.fill(PageTableEntry(0));
-    }
-
-    println!(
-        "=========gen page table(Sv39x4): {:x}====================",
-        root_table_start_addr
-    );
     for memmap in memmaps {
-        println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
-
         assert!(memmap.virt.len() == memmap.phys.len());
-        assert!(memmap.virt.start % PAGE_SIZE == 0);
-        assert!(memmap.phys.start % PAGE_SIZE == 0);
 
-        for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
+        // decide page level from memory range
+        let trans_page_level = match memmap.virt.len() {
+            0x0..=0x001f_ffff => PageTableLevel::Lv4KB,
+            0x0020_0000..=0x3fff_ffff => PageTableLevel::Lv2MB,
+            0x4000_0000..=usize::MAX => PageTableLevel::Lv1GB,
+            _ => unreachable!(),
+        };
+
+        assert!(memmap.virt.start % trans_page_level.size() == 0);
+        assert!(memmap.phys.start % trans_page_level.size() == 0);
+
+        for offset in (0..memmap.virt.len()).step_by(trans_page_level.size()) {
             let v_start = memmap.virt.start + offset;
             let p_start = memmap.phys.start + offset;
 
-            // first level
-            let vpn2 = (v_start >> 30) & 0x7ff;
-            if !first_lv_page_table[vpn2].already_created() {
-                let second_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let second_pt_paddr = Box::into_raw(second_pt);
+            let mut next_table_addr: PageTableAddress = PageTableAddress(0);
+            for current_level in [
+                PageTableLevel::Lv1GB,
+                PageTableLevel::Lv2MB,
+                PageTableLevel::Lv4KB,
+            ] {
+                let vpn = v_start.vpn(current_level as usize);
+                let current_page_table = match current_level {
+                    PageTableLevel::Lv1GB => &mut *first_lv_page_table,
+                    PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
+                        from_raw_parts_mut(next_table_addr.to_pte_ptr(), PAGE_TABLE_LEN)
+                    },
+                };
 
-                first_lv_page_table[vpn2] = PageTableEntry::new(
-                    second_pt_paddr as u64 / PAGE_SIZE as u64,
-                    PteFlag::Valid as u8,
-                );
+                // End of translation
+                if current_level == trans_page_level {
+                    current_page_table[vpn] =
+                        PageTableEntry::new(p_start.page_number(), memmap.flags);
+
+                    break;
+                }
+
+                // Create next level page table
+                next_table_addr = if current_page_table[vpn].already_created() {
+                    PageTableAddress(
+                        usize::try_from(current_page_table[vpn].pte()).unwrap() * PAGE_SIZE,
+                    )
+                } else {
+                    let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_LEN]);
+                    let next_page_table_addr: PageTableAddress =
+                        Box::into_raw(next_page_table).into();
+
+                    current_page_table[vpn] = PageTableEntry::new(
+                        next_page_table_addr.page_number(),
+                        PteFlag::Valid as u8,
+                    );
+
+                    next_page_table_addr
+                };
             }
-
-            // second level
-            let vpn1 = (v_start >> 21) & 0x1ff;
-            let second_table_start_addr = first_lv_page_table[vpn2].pte() * PAGE_SIZE as u64;
-            let second_lv_page_table: &mut [PageTableEntry] = unsafe {
-                from_raw_parts_mut(
-                    second_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE,
-                )
-            };
-            if !second_lv_page_table[vpn1].already_created() {
-                let third_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let third_pt_paddr = Box::into_raw(third_pt);
-
-                second_lv_page_table[vpn1] = PageTableEntry::new(
-                    third_pt_paddr as u64 / PAGE_SIZE as u64,
-                    PteFlag::Valid as u8,
-                );
-            }
-
-            // third level
-            let vpn0 = (v_start >> 12) & 0x1ff;
-            let third_table_start_addr = second_lv_page_table[vpn1].pte() * PAGE_SIZE as u64;
-            let third_lv_page_table: &mut [PageTableEntry] = unsafe {
-                from_raw_parts_mut(
-                    third_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE,
-                )
-            };
-            third_lv_page_table[vpn0] =
-                PageTableEntry::new((p_start / PAGE_SIZE).try_into().unwrap(), memmap.flags);
         }
     }
 }

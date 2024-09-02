@@ -1,5 +1,4 @@
-use crate::memmap::constant::hypervisor;
-use core::mem::size_of;
+use crate::memmap::HostPhysicalAddress;
 
 /// Guest context on memory
 #[repr(C)]
@@ -17,14 +16,12 @@ pub struct ContextData {
 /// Guest context
 #[derive(Debug, Copy, Clone)]
 pub struct Context {
-    address: usize,
+    address: HostPhysicalAddress,
 }
 
-impl Default for Context {
-    fn default() -> Self {
-        Context {
-            address: (hypervisor::BASE_ADDR + hypervisor::STACK_OFFSET) - size_of::<ContextData>(),
-        }
+impl Context {
+    pub fn new(address: HostPhysicalAddress) -> Self {
+        Context { address }
     }
 }
 
@@ -33,7 +30,7 @@ impl Context {
     #[allow(clippy::mut_from_ref)]
     fn get_context(&self) -> &mut ContextData {
         unsafe {
-            (self.address as *mut ContextData)
+            (self.address.raw() as *mut ContextData)
                 .as_mut()
                 .expect("address of ContextData is invalid")
         }

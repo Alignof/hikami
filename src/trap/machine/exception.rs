@@ -39,8 +39,8 @@ pub unsafe fn trap_envcall(a0: usize, a1: usize, a2: usize, a6: usize, a7: usize
             }
             // Console Getchar (EID #0x02)
             legacy::LEGACY_CONSOLE_GETCHAR => {
-                let uart_addr = sbi_data.uart.paddr() as *mut u32;
-                let uart_lsr_addr = sbi_data.uart.lsr_addr() as *mut u32;
+                let uart_addr = sbi_data.uart.paddr().raw() as *mut u32;
+                let uart_lsr_addr = sbi_data.uart.lsr_addr().raw() as *mut u32;
 
                 while uart_lsr_addr.read_volatile() & 0x1 == 0 {}
                 let c = uart_addr.read_volatile() as u8;

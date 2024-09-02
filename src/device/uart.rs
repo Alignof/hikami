@@ -1,6 +1,6 @@
 use super::Device;
 use crate::memmap::page_table::PteFlag;
-use crate::memmap::{constant, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 use rustsbi::{Physical, SbiRet};
 
@@ -22,12 +22,12 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 /// UART: Universal asynchronous receiver-transmitter
 #[derive(Debug)]
 pub struct Uart {
-    base_addr: usize,
+    base_addr: HostPhysicalAddress,
     size: usize,
 }
 
 impl Uart {
-    pub fn lsr_addr(&self) -> usize {
+    pub fn lsr_addr(&self) -> HostPhysicalAddress {
         self.base_addr + register::LSR_OFFSET
     }
 }
@@ -43,7 +43,7 @@ impl Device for Uart {
             .unwrap();
 
         Uart {
-            base_addr: region.starting_address as usize,
+            base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
         }
     }
@@ -52,25 +52,14 @@ impl Device for Uart {
         self.size
     }
 
-    fn paddr(&self) -> usize {
+    fn paddr(&self) -> HostPhysicalAddress {
         self.base_addr
     }
 
-    fn vaddr(&self) -> usize {
-        self.base_addr + constant::PA2VA_DEVICE_OFFSET
-    }
-
     fn memmap(&self) -> MemoryMap {
+        let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
-            self.vaddr()..self.vaddr() + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
-        )
-    }
-
-    fn identity_memmap(&self) -> MemoryMap {
-        MemoryMap::new(
-            self.paddr()..self.paddr() + self.size(),
+            vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
             &DEVICE_FLAGS,
         )
@@ -83,15 +72,15 @@ impl Device for Uart {
 impl rustsbi::Console for Uart {
     /// Write bytes to the debug console from input memory.
     fn write(&self, bytes: Physical<&[u8]>) -> SbiRet {
-        let uart_addr = self.base_addr as *mut u32;
-        let uart_lsr_addr = self.lsr_addr() as *mut u32;
+        let uart_ptr = self.base_addr.raw() as *mut u32;
+        let uart_lsr_ptr = self.lsr_addr().raw() as *mut u32;
         let byte_data = unsafe {
             core::slice::from_raw_parts(bytes.phys_addr_lo() as *const u8, bytes.num_bytes())
         };
         for c in byte_data {
             unsafe {
-                while (uart_lsr_addr.read_volatile() >> 5 & 0x1) == 1 {}
-                uart_addr.write_volatile(u32::from(*c));
+                while (uart_lsr_ptr.read_volatile() >> 5 & 0x1) == 1 {}
+                uart_ptr.write_volatile(u32::from(*c));
             }
         }
         SbiRet::success(0)
@@ -100,8 +89,8 @@ impl rustsbi::Console for Uart {
     /// Read bytes from the debug console into an output memory.
     #[allow(clippy::cast_possible_truncation)]
     fn read(&self, bytes: Physical<&mut [u8]>) -> SbiRet {
-        let uart_addr = self.base_addr as *mut u32;
-        let uart_lsr_addr = self.lsr_addr() as *mut u32;
+        let uart_ptr = self.base_addr.raw() as *mut u32;
+        let uart_lsr_ptr = self.lsr_addr().raw() as *mut u32;
         let buffer = unsafe {
             core::slice::from_raw_parts_mut(bytes.phys_addr_lo() as *mut u8, bytes.num_bytes())
         };
@@ -109,8 +98,8 @@ impl rustsbi::Console for Uart {
         let mut count = 0usize;
         unsafe {
             for c in buffer {
-                if uart_lsr_addr.read_volatile() & 0x1 == 1 {
-                    *c = uart_addr.read_volatile() as u8;
+                if uart_lsr_ptr.read_volatile() & 0x1 == 1 {
+                    *c = uart_ptr.read_volatile() as u8;
                     count += 1;
                 } else {
                     break;
@@ -122,11 +111,11 @@ impl rustsbi::Console for Uart {
 
     /// Write a single byte to the debug console.
     fn write_byte(&self, byte: u8) -> SbiRet {
-        let uart_addr = self.base_addr as *mut u32;
-        let uart_lsr_addr = self.lsr_addr() as *mut u32;
+        let uart_ptr = self.base_addr.raw() as *mut u32;
+        let uart_lsr_ptr = self.lsr_addr().raw() as *mut u32;
         unsafe {
-            while (uart_lsr_addr.read_volatile() >> 5 & 0x1) == 1 {}
-            uart_addr.write_volatile(u32::from(byte));
+            while (uart_lsr_ptr.read_volatile() >> 5 & 0x1) == 1 {}
+            uart_ptr.write_volatile(u32::from(byte));
         }
         SbiRet::success(0)
     }

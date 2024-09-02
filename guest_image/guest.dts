@@ -1,0 +1,70 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <0x02>;
+	#size-cells = <0x02>;
+	compatible = "ucbbar,spike-bare-dev";
+	model = "ucbbar,spike-bare,qemu";
+
+	chosen {
+		stdout-path = "/htif";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x00 0x80000000 0x00 0x10000000>;
+	};
+
+	cpus {
+		#address-cells = <0x01>;
+		#size-cells = <0x00>;
+		timebase-frequency = <0x989680>;
+
+		cpu@0 {
+			phandle = <0x01>;
+			device_type = "cpu";
+			reg = <0x00>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa-extensions = "i\0m\0a\0f\0d\0c\0h\0zic64b\0zicbom\0zicbop\0zicboz\0ziccamoa\0ziccif\0zicclsm\0ziccrse\0zicntr\0zicsr\0zifencei\0zihintntl\0zihintpause\0zihpm\0za64rs\0zawrs\0zfa\0zca\0zcd\0zba\0zbb\0zbc\0zbs\0ssccptr\0sscounterenw\0sstc\0sstvala\0sstvecd\0svadu";
+			riscv,isa-base = "rv64i";
+			riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_za64rs_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_ssccptr_sscounterenw_sstc_sstvala_sstvecd_svadu";
+			mmu-type = "riscv,sv39";
+
+			interrupt-controller {
+				#interrupt-cells = <0x01>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+				phandle = <0x02>;
+			};
+		};
+
+		cpu-map {
+
+			cluster0 {
+
+				core0 {
+					cpu = <0x01>;
+				};
+			};
+		};
+	};
+
+	soc {
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
+		compatible = "simple-bus";
+		ranges;
+
+		clint@2000000 {
+			interrupts-extended = <0x02 0x03 0x02 0x07>;
+			reg = <0x00 0x2000000 0x00 0x10000>;
+			compatible = "sifive,clint0\0riscv,clint0";
+		};
+	};
+
+	htif {
+		reg = <0x00 0x1000000 0x00 0x1000>;
+		compatible = "ucb,htif0";
+	};
+};

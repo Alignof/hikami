@@ -6,7 +6,7 @@ mod plic;
 pub mod uart;
 mod virtio;
 
-use crate::memmap::{page_table, MemoryMap};
+use crate::memmap::{page_table, HostPhysicalAddress, MemoryMap};
 use crate::HypervisorData;
 use alloc::vec::Vec;
 use fdt::Fdt;
@@ -20,13 +20,9 @@ pub trait Device {
     /// Return size of memory region.
     fn size(&self) -> usize;
     /// Return address of physical memory
-    fn paddr(&self) -> usize;
-    /// Return address of virtual memory
-    fn vaddr(&self) -> usize;
-    /// Return memory map between virtual to physical
-    fn memmap(&self) -> MemoryMap;
+    fn paddr(&self) -> HostPhysicalAddress;
     /// Return memory map between physical to physical
-    fn identity_memmap(&self) -> MemoryMap;
+    fn memmap(&self) -> MemoryMap;
 }
 
 /// Manage devices sush as uart, plic, etc...
@@ -43,46 +39,27 @@ pub struct Devices {
 }
 
 impl Devices {
-    pub fn device_mapping(&self, page_table_start: usize) {
+    pub fn device_mapping(&self, page_table_start: HostPhysicalAddress) {
         let memory_map = self.create_device_map();
         page_table::sv39::generate_page_table(page_table_start, &memory_map, false);
     }
 
-    pub fn device_mapping_g_stage(&self, page_table_start: usize) {
-        let memory_map = self.create_device_identity_map();
-        page_table::sv39x4::generate_page_table(page_table_start, &memory_map, false);
+    pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
+        let memory_map = self.create_device_map();
+        page_table::sv39x4::generate_page_table(page_table_start, &memory_map);
     }
 
     fn create_device_map(&self) -> Vec<MemoryMap> {
         let mut device_mapping: Vec<MemoryMap> = self
             .virtio
             .iter()
-            .flat_map(|virt| [virt.memmap(), virt.identity_memmap()])
+            .flat_map(|virt| [virt.memmap(), virt.memmap()])
             .collect();
 
         device_mapping.extend_from_slice(&[
             self.uart.memmap(),
-            self.uart.identity_memmap(),
             self.initrd.memmap(),
-            self.initrd.identity_memmap(),
             self.plic.memmap(),
-            self.plic.identity_memmap(),
-        ]);
-
-        device_mapping
-    }
-
-    fn create_device_identity_map(&self) -> Vec<MemoryMap> {
-        let mut device_mapping: Vec<MemoryMap> = self
-            .virtio
-            .iter()
-            .flat_map(|virt| [virt.identity_memmap()])
-            .collect();
-
-        device_mapping.extend_from_slice(&[
-            self.uart.identity_memmap(),
-            self.initrd.identity_memmap(),
-            self.plic.identity_memmap(),
         ]);
 
         device_mapping
@@ -96,7 +73,7 @@ impl HypervisorData {
     ///
     /// # Panics
     /// It will be panic when parsing device tree failed.
-    pub fn init_devices(&mut self, device_tree: Fdt) {
+    pub fn register_devices(&mut self, device_tree: Fdt) {
         self.devices.replace(Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             virtio: virtio::VirtIO::new_all(&device_tree, "/soc/virtio_mmio"),

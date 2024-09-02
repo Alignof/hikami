@@ -4,6 +4,7 @@ mod interrupt;
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
+use crate::HYPERVISOR_DATA;
 use core::arch::asm;
 use riscv::register::scause::{self, Trap};
 
@@ -14,12 +15,18 @@ use riscv::register::scause::{self, Trap};
 #[inline(always)]
 #[allow(clippy::inline_always)]
 unsafe fn hstrap_exit() -> ! {
+    // aquire hypervisor data
+    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let stack_top = hypervisor_data.guest().stack_top();
+    // release HYPERVISOR_DATA lock
+    drop(hypervisor_data);
+
     asm!(
         ".align 4
         fence.i
 
         // set to stack top
-        li sp, 0x83000000
+        mv sp, {stack_top}  
         addi sp, sp, -272 // Size of ContextData = 8 * 34
 
         // restore sstatus 
@@ -68,6 +75,7 @@ unsafe fn hstrap_exit() -> ! {
 
         sret
         ",
+        stack_top = in(reg) stack_top.raw(),
         options(noreturn)
     );
 }

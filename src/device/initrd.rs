@@ -1,6 +1,6 @@
 use super::Device;
 use crate::memmap::page_table::PteFlag;
-use crate::memmap::{constant, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
 const DEVICE_FLAGS: [PteFlag; 5] = [
@@ -15,7 +15,7 @@ const DEVICE_FLAGS: [PteFlag; 5] = [
 /// to be used as part of the Linux startup process.
 #[derive(Debug)]
 pub struct Initrd {
-    base_addr: usize,
+    base_addr: HostPhysicalAddress,
     size: usize,
 }
 
@@ -30,7 +30,7 @@ impl Device for Initrd {
         let end = u32::from_be_bytes(end.try_into().unwrap()) as usize;
 
         Initrd {
-            base_addr: start,
+            base_addr: HostPhysicalAddress(start),
             size: end - start,
         }
     }
@@ -39,25 +39,14 @@ impl Device for Initrd {
         self.size
     }
 
-    fn paddr(&self) -> usize {
+    fn paddr(&self) -> HostPhysicalAddress {
         self.base_addr
     }
 
-    fn vaddr(&self) -> usize {
-        self.base_addr + constant::PA2VA_DEVICE_OFFSET
-    }
-
     fn memmap(&self) -> MemoryMap {
+        let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
-            self.vaddr()..self.vaddr() + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
-        )
-    }
-
-    fn identity_memmap(&self) -> MemoryMap {
-        MemoryMap::new(
-            self.paddr()..self.paddr() + self.size(),
+            vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
             &DEVICE_FLAGS,
         )

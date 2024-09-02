@@ -5,38 +5,17 @@ use crate::h_extension::csrs::{
     InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
-use crate::memmap::constant::{
-    guest::{self, BASE_OFFSET_PER_HART},
-    hypervisor::{self, PAGE_TABLE_OFFSET_PER_HART},
-    DRAM_BASE,
+use crate::memmap::{
+    constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
+    HostPhysicalAddress,
 };
-use crate::memmap::{page_table, page_table::PteFlag, MemoryMap};
 use crate::trap::hypervisor_supervisor::hstrap_vector;
-use crate::HYPERVISOR_DATA;
-use core::arch::asm;
-use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
+use crate::{GUEST_DTB, HYPERVISOR_DATA};
 
-/// Create page tables in G-stage address translation.
-///
-/// TODO: Automatic generation of page tables according to guest OS address translation map.
-fn setup_g_stage_page_table(page_table_start: usize) {
-    use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
-    let memory_map: [MemoryMap; 2] = [
-        // hypervisor RAM
-        MemoryMap::new(
-            0x9000_0000..0x9040_0000,
-            0x9000_0000..0x9040_0000,
-            &[Dirty, Accessed, Write, Read, User, Valid],
-        ),
-        // TEXT
-        MemoryMap::new(
-            0x9300_0000..0x9600_0000,
-            0x9300_0000..0x9600_0000,
-            &[Dirty, Accessed, Exec, Write, Read, User, Valid],
-        ),
-    ];
-    page_table::sv39x4::generate_page_table(page_table_start, &memory_map, true);
-}
+use core::arch::asm;
+
+use elf::{endian::AnyEndian, ElfBytes};
+use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
@@ -73,51 +52,66 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
     );
 
-    vsmode_setup(hart_id, dtb_addr);
+    vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr));
 }
 
 /// Setup for VS-mode
 ///
 /// * Parse DTB
 /// * Setup page table
-fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
+fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // aquire hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
 
     // create new guest data
-    let new_guest = Guest::new(hart_id);
+    let guest_id = hart_id + 1;
+    let guest_memory_begin = guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
+    let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
+    let new_guest = Guest::new(
+        hart_id,
+        &ROOT_PAGE_TABLE,
+        &GUEST_DTB,
+        guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
+    );
 
     // parse device tree
     let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+        match fdt::Fdt::from_ptr(dtb_addr.raw() as *const u8) {
             Ok(fdt) => fdt,
             Err(e) => panic!("{}", e),
         }
     };
-    // copy device tree
-    let guest_dtb_addr = unsafe { new_guest.copy_device_tree(dtb_addr, device_tree.total_size()) };
-
     // parsing and storing device data
-    hypervisor_data.init_devices(device_tree);
+    hypervisor_data.register_devices(device_tree);
 
-    // setup G-stage page table
-    let page_table_start = hypervisor::BASE_ADDR
-        + hypervisor::PAGE_TABLE_OFFSET
-        + hart_id * PAGE_TABLE_OFFSET_PER_HART;
-    setup_g_stage_page_table(page_table_start);
-    hypervisor_data
-        .devices()
-        .device_mapping_g_stage(page_table_start);
-
-    // enable two-level address translation
-    hgatp::set(HgatpMode::Sv39x4, 0, page_table_start >> 12);
-    hfence_gvma_all();
+    // load guest elf from address
+    let guest_elf = unsafe {
+        ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
+            hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
+            hypervisor_data.devices().initrd.size(),
+        ))
+        .unwrap()
+    };
 
     // load guest image
-    let guest_entry_point = new_guest.load_guest_elf(
-        hypervisor_data.devices().initrd.paddr() as *mut u8,
-        hypervisor_data.devices().initrd.size(),
+    let (guest_entry_point, elf_end_addr) = new_guest.load_guest_elf(
+        &guest_elf,
+        hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
     );
+
+    // filling remain memory region
+    new_guest.filling_memory_region(
+        elf_end_addr..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
+    );
+
+    // set device memory map
+    hypervisor_data
+        .devices()
+        .device_mapping_g_stage(root_page_table_addr);
+
+    // enable two-level address translation
+    hgatp::set(HgatpMode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hfence_gvma_all();
 
     // set new guest data
     hypervisor_data.register_guest(new_guest);
@@ -131,7 +125,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         hstatus::set_spv();
 
         // set entry point
-        sepc::write(guest_entry_point);
+        sepc::write(guest_entry_point.raw());
 
         // set trap vector
         assert!(hstrap_vector as *const fn() as usize % 4 == 0);
@@ -149,6 +143,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
         context.set_sstatus(sstatus_val);
     }
 
+    let guest_dtb_addr = hypervisor_data.guest().guest_dtb_addr();
+
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
@@ -157,19 +153,24 @@ fn vsmode_setup(hart_id: usize, dtb_addr: usize) -> ! {
 
 /// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
-    unsafe {
-        // set stack top value to sscratch
-        let guest_id = hart_id + 1;
-        sscratch::write(DRAM_BASE + guest_id * BASE_OFFSET_PER_HART + guest::STACK_OFFSET);
+fn hart_entry(_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
+    // aquire hypervisor data
+    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let stack_top = hypervisor_data.guest().stack_top();
+    // release HYPERVISOR_DATA lock
+    drop(hypervisor_data);
 
+    // init guest stack pointer is don't care
+    sscratch::write(0);
+
+    unsafe {
         // enter VS-mode
         asm!(
             ".align 4
             fence.i
 
-            // set to stack top
-            li sp, 0x83000000
+            // set sp to scratch stack top
+            mv sp, {stack_top}  
             addi sp, sp, -272 // Size of ContextData = 8 * 34
 
             // restore sstatus 
@@ -218,7 +219,8 @@ fn hart_entry(hart_id: usize, dtb_addr: usize) -> ! {
 
             sret
             ",
-            in("a1") dtb_addr,
+            in("a1") dtb_addr.raw(),
+            stack_top = in(reg) stack_top.raw(),
             options(noreturn)
         );
     }
