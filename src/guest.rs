@@ -86,7 +86,7 @@ impl Guest {
         page_table_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
     ) -> GuestPhysicalAddress {
-        use PteFlag::{Accessed, Dirty, Read, User, Valid};
+        use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
         assert!(guest_dtb.len() < guest_memory::GUEST_DTB_SIZE_PER_HART);
 
@@ -115,7 +115,8 @@ impl Guest {
                 &[MemoryMap::new(
                     guest_physical_addr..guest_physical_addr + PAGE_SIZE,
                     aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                    &[Dirty, Accessed, Read, User, Valid],
+                    // allow writing data to dtb to modify device tree on guest OS.
+                    &[Dirty, Accessed, Write, Read, User, Valid],
                 )],
             );
         }
