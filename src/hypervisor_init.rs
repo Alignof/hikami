@@ -19,6 +19,7 @@ use core::arch::asm;
 use elf::{endian::AnyEndian, ElfBytes};
 use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
+/// Entry point to HS-mode.
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // hart_id must be zero.
