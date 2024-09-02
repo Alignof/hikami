@@ -251,3 +251,24 @@ pub mod hgatp {
     read_csr_as!(Hgatp, 0x680);
     write_csr_as!(0x680);
 }
+
+pub mod henvcfg {
+    //! Hypervisor environment configuration register.
+    #![allow(dead_code)]
+
+    const HENVCFG: usize = 0x60a;
+    pub struct Henvcfg {
+        bits: usize,
+    }
+
+    pub fn set_stce() {
+        unsafe {
+            core::arch::asm!(
+                "
+            csrs henvcfg, {bits}
+            ",
+                bits = in(reg) 1u64 << 63
+            );
+        }
+    }
+}

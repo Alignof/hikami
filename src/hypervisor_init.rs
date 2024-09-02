@@ -1,8 +1,8 @@
 use crate::device::Device;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hedeleg, hedeleg::ExceptionKind, hgatp, hgatp::HgatpMode, hideleg, hstatus, hvip, vsatp,
-    InterruptKind,
+    hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hstatus, hvip,
+    vsatp, InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
@@ -30,6 +30,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // disable address translation.
     vsatp::write(0);
+
+    // enable Sstc extention
+    henvcfg::set_stce();
 
     // set sie = 0x222
     unsafe {
