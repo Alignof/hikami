@@ -1,3 +1,5 @@
+//! Trap VS-mode exception / interrupt.
+
 mod exception;
 mod interrupt;
 

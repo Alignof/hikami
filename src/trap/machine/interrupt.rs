@@ -1,3 +1,5 @@
+//! Trap machine interrupt.
+
 use super::mtrap_exit;
 use crate::memmap::constant::device::{CLINT_ADDR, MTIMECMP_ADDR};
 use riscv::register::mcause::Interrupt;

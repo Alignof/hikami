@@ -1,3 +1,5 @@
+//! Trap machine exception / interrupt.
+
 mod exception;
 mod interrupt;
 

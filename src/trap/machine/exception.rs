@@ -1,3 +1,5 @@
+//! Trap machine exception.
+
 use super::{mtrap_exit, mtrap_exit_sbi};
 use crate::device::Device;
 use crate::print;
