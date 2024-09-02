@@ -1,3 +1,5 @@
+//! Page table for address translation.
+
 pub mod sv39x4;
 
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
