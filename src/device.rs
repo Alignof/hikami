@@ -6,10 +6,21 @@ mod plic;
 pub mod uart;
 mod virtio;
 
+use crate::memmap::page_table::PteFlag;
 use crate::memmap::{page_table, HostPhysicalAddress, MemoryMap};
 use crate::HypervisorData;
 use alloc::vec::Vec;
 use fdt::Fdt;
+
+/// Page table for device
+const PTE_FLAGS_FOR_DEVICE: [PteFlag; 6] = [
+    PteFlag::Dirty,
+    PteFlag::Accessed,
+    PteFlag::Write,
+    PteFlag::Read,
+    PteFlag::User,
+    PteFlag::Valid,
+];
 
 /// A struct that implement Device trait **must** has `base_addr` and size member.
 pub trait Device {

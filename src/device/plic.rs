@@ -1,15 +1,6 @@
-use super::Device;
-use crate::memmap::page_table::PteFlag;
+use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
-
-const DEVICE_FLAGS: [PteFlag; 5] = [
-    PteFlag::Dirty,
-    PteFlag::Accessed,
-    PteFlag::Write,
-    PteFlag::Read,
-    PteFlag::Valid,
-];
 
 // unused constant for now
 // pub const ENABLE_BASE: usize = 0x2000;
@@ -55,7 +46,7 @@ impl Device for Plic {
         MemoryMap::new(
             vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
+            &PTE_FLAGS_FOR_DEVICE,
         )
     }
 }

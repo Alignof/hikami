@@ -1,16 +1,7 @@
-use super::Device;
-use crate::memmap::page_table::PteFlag;
+use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
 use fdt::Fdt;
-
-const DEVICE_FLAGS: [PteFlag; 5] = [
-    PteFlag::Dirty,
-    PteFlag::Accessed,
-    PteFlag::Write,
-    PteFlag::Read,
-    PteFlag::Valid,
-];
 
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
@@ -69,7 +60,7 @@ impl Device for VirtIO {
         MemoryMap::new(
             vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
+            &PTE_FLAGS_FOR_DEVICE,
         )
     }
 }

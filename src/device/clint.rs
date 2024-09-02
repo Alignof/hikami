@@ -1,7 +1,6 @@
 //! CLINT: Core Local `INTerrupt`
 
-use super::Device;
-use crate::memmap::page_table::PteFlag;
+use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{constant, GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 use rustsbi::{HartMask, SbiRet};
@@ -19,14 +18,6 @@ mod register {
     #[allow(dead_code)]
     pub const MTIME_OFFSET: usize = 0xbff8;
 }
-
-const DEVICE_FLAGS: [PteFlag; 5] = [
-    PteFlag::Dirty,
-    PteFlag::Accessed,
-    PteFlag::Write,
-    PteFlag::Read,
-    PteFlag::Valid,
-];
 
 #[allow(clippy::doc_markdown)]
 /// CLINT: Core Local INTerrupt
@@ -66,7 +57,7 @@ impl Device for Clint {
         MemoryMap::new(
             vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
+            &PTE_FLAGS_FOR_DEVICE,
         )
     }
 }

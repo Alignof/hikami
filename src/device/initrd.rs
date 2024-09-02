@@ -1,15 +1,6 @@
-use super::Device;
-use crate::memmap::page_table::PteFlag;
+use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
-
-const DEVICE_FLAGS: [PteFlag; 5] = [
-    PteFlag::Dirty,
-    PteFlag::Accessed,
-    PteFlag::Write,
-    PteFlag::Read,
-    PteFlag::Valid,
-];
 
 /// A scheme for loading a temporary root file system into memory,
 /// to be used as part of the Linux startup process.
@@ -48,7 +39,7 @@ impl Device for Initrd {
         MemoryMap::new(
             vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            &DEVICE_FLAGS,
+            &PTE_FLAGS_FOR_DEVICE,
         )
     }
 }
