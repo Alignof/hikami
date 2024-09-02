@@ -47,6 +47,7 @@ pub struct Devices {
     pub initrd: initrd::Initrd,
     pub plic: plic::Plic,
     pub plic_context: usize,
+    pub clint: clint::Clint,
 }
 
 impl Devices {
@@ -94,6 +95,7 @@ impl HypervisorData {
                 .property("phandle")
                 .unwrap()
                 .value[0] as usize,
+            clint: clint::Clint::new(&device_tree, "/soc/clint"),
         });
     }
 }
