@@ -261,6 +261,7 @@ pub mod henvcfg {
         bits: usize,
     }
 
+    /// set STCE (63 bit)
     pub fn set_stce() {
         unsafe {
             core::arch::asm!(
@@ -268,6 +269,18 @@ pub mod henvcfg {
             csrs henvcfg, {bits}
             ",
                 bits = in(reg) 1u64 << 63
+            );
+        }
+    }
+
+    /// set CBZE (7 bit)
+    pub fn set_cbze() {
+        unsafe {
+            core::arch::asm!(
+                "
+            csrs henvcfg, {bits}
+            ",
+                bits = in(reg) 1u64 << 7
             );
         }
     }
