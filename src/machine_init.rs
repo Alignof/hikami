@@ -78,7 +78,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         satp::set(satp::Mode::Bare, 0, 0);
 
         // enable Sstc and Zicboz extention
-        asm!("csrs menvcfg, {sstc_cbze}", sstc_cbze = in(reg) 1u64 << 63 | 1u64 << 7, options(nomem)); // deleg env call from VS-mode
+        asm!("csrs menvcfg, {sstc_cbze}", sstc_cbze = in(reg) (1u64 << 63) | (1u64 << 7) | (1u64 << 6), options(nomem)); // deleg env call from VS-mode
 
         // set `hstart` to jump after mret
         mepc::write(hypervisor_init::hstart as *const fn() as usize);

@@ -284,6 +284,18 @@ pub mod henvcfg {
             );
         }
     }
+
+    /// set CBCFE (6 bit)
+    pub fn set_cbcfe() {
+        unsafe {
+            core::arch::asm!(
+                "
+            csrs henvcfg, {bits}
+            ",
+                bits = in(reg) 1u64 << 6
+            );
+        }
+    }
 }
 
 pub mod hcounteren {
