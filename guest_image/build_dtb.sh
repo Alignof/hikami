@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function help() {
-    echo "get_dts: create dts from qemu dtb"
+    echo "create: create dts from qemu dtb"
     echo "build: build dtb from guest.dts"
 }
 
