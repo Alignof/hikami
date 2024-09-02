@@ -1,8 +1,7 @@
 //! Sv39x4: Page-Based 39-bit Virtual-Memory System **in G-stage**.  
 //! For guest physical address translation.
 //!
-//! [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf)
-//! p.151
+//! [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf) p.151
 
 use alloc::boxed::Box;
 use core::slice::from_raw_parts_mut;

@@ -39,11 +39,6 @@ pub struct Devices {
 }
 
 impl Devices {
-    pub fn device_mapping(&self, page_table_start: HostPhysicalAddress) {
-        let memory_map = self.create_device_map();
-        page_table::sv39::generate_page_table(page_table_start, &memory_map, false);
-    }
-
     pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
         let memory_map = self.create_device_map();
         page_table::sv39x4::generate_page_table(page_table_start, &memory_map);
