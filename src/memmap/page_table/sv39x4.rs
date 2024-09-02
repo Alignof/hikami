@@ -92,7 +92,9 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
 
                 // Create next level page table
                 next_table_addr = if current_page_table[vpn].already_created() {
-                    PageTableAddress(current_page_table[vpn].pte() as usize * PAGE_SIZE)
+                    PageTableAddress(
+                        usize::try_from(current_page_table[vpn].pte()).unwrap() * PAGE_SIZE,
+                    )
                 } else {
                     let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_LEN]);
                     let next_page_table_addr: PageTableAddress =

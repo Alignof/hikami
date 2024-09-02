@@ -105,7 +105,7 @@ impl Guest {
                 core::ptr::copy(
                     guest_dtb.as_ptr().byte_add(offset),
                     aligned_page_size_block_addr.raw() as *mut u8,
-                    usize::try_from(PAGE_SIZE).unwrap(),
+                    PAGE_SIZE,
                 );
             }
 
@@ -190,7 +190,7 @@ impl Guest {
                                 usize::try_from(prog_header.p_offset).unwrap() + offset,
                             ),
                             aligned_page_size_block_addr.raw() as *mut u8,
-                            usize::try_from(PAGE_SIZE).unwrap(),
+                            PAGE_SIZE,
                         );
                     }
 

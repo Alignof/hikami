@@ -16,6 +16,7 @@ pub mod constants {
 ///
 /// ref: The RISC-V Instruction Set Manual: Volume II p151.
 #[derive(Copy, Clone, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
 enum PageTableLevel {
     /// Page table level 0
     ///
@@ -98,13 +99,13 @@ impl PageTableAddress {
     }
 
     /// Convert self to `PageTableEntry` pointer.
-    fn to_pte_ptr(&self) -> *mut PageTableEntry {
+    fn to_pte_ptr(self) -> *mut PageTableEntry {
         self.0 as *mut PageTableEntry
     }
 }
 
 impl GuestPhysicalAddress {
-    fn vpn(&self, index: usize) -> usize {
+    fn vpn(self, index: usize) -> usize {
         match index {
             2 => (self.0 >> 30) & 0x7ff,
             1 => (self.0 >> 21) & 0x1ff,
