@@ -202,6 +202,7 @@ impl Guest {
                             aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
                             match prog_header.p_flags & 0b111 {
                                 0b100 => &[Dirty, Accessed, Read, User, Valid],
+                                #[allow(clippy::match_same_arms)]
                                 // for dynamic patch
                                 // ref: https://github.com/torvalds/linux/blob/67784a74e258a467225f0e68335df77acd67b7ab/arch/riscv/kernel/patch.c#L215C5-L215C21
                                 // TODO: switch enable/disable write permission corresponding to VS-stage page table.
