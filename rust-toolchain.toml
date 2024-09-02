@@ -1,3 +1,4 @@
 [toolchain]
-channel = "1.76.0-x86_64-unknown-linux-gnu"
+channel = "1.76.0"
+components = [ "rustfmt", "clippy" ]
 targets = [ "riscv64imac-unknown-none-elf" ]
