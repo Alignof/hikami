@@ -70,7 +70,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         mcounteren::set_hpm(30);
         mcounteren::set_hpm(31);
         mstatus::set_mpp(mstatus::MPP::Supervisor);
-        mscratch::write(&crate::_top_m_stack as *const u8 as usize + STACK_SIZE_PER_HART * hart_id);
+        mscratch::write(core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id);
         pmpaddr0::write(0xffff_ffff_ffff_ffff);
         pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
         satp::set(satp::Mode::Bare, 0, 0);
@@ -117,7 +117,7 @@ extern "C" fn enter_hypervisor_mode(hart_id: usize, dtb_addr: usize) -> ! {
             ",
             hart_id = in(reg) hart_id,
             dtb_addr = in(reg) dtb_addr,
-            machine_sp = in(reg) &crate::_top_m_stack as *const u8 as usize + STACK_SIZE_PER_HART * hart_id
+            machine_sp = in(reg) core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id
         );
         // enter HS-mode.
         asm!(
