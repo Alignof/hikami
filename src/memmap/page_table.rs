@@ -1,4 +1,3 @@
-pub mod sv39;
 pub mod sv39x4;
 
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
@@ -66,6 +65,7 @@ pub enum PteFlag {
 
 /// Page table entry
 #[derive(Copy, Clone, Default)]
+#[allow(clippy::module_name_repetitions)]
 pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
