@@ -76,11 +76,11 @@ macro_rules! set_csr_from_enum {
 
 pub enum InterruptKind {
     /// VS-level external interrupts (bit 10)
-    Vsei,
+    Vsei = 0b100_0000_0000,
     /// VS-level timer interrupts (bit 6)
-    Vsti,
+    Vsti = 0b100_0000,
     /// VS-level software interrupts (bit 2)
-    Vssi,
+    Vssi = 0b100,
 }
 
 pub mod vstvec {
