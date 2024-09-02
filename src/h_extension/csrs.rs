@@ -272,3 +272,15 @@ pub mod henvcfg {
         }
     }
 }
+
+pub mod hcounteren {
+    //! Hypervisor counter enable.
+    #![allow(dead_code)]
+
+    const HCOUNTEREN: usize = 0x606;
+    pub struct Hcounteren {
+        bits: usize,
+    }
+
+    set_csr_as!(0x606);
+}
