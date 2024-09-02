@@ -48,6 +48,19 @@ macro_rules! write_csr_as {
     };
 }
 
+/// Implement setting to CSR method to the struct.
+#[macro_export]
+macro_rules! set_csr_as {
+    ($csr_number:literal) => {
+        #[inline]
+        pub fn set(bits: usize) {
+            unsafe{
+                core::arch::asm!(concat!("csrrs x0, ", stringify!($csr_number), ", {0}"), in(reg) bits);
+            }
+        }
+    };
+}
+
 /// Set CSR bit from enum.
 #[macro_export]
 macro_rules! set_csr_from_enum {
