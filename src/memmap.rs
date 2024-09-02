@@ -6,7 +6,7 @@ pub mod page_table;
 use crate::memmap::page_table::PteFlag;
 use core::ops::Range;
 
-/// Utility for Range<Address>
+/// Utility for `Range<Address>`
 trait AddressRangeUtil {
     /// Return length of range.
     fn len(&self) -> usize;
