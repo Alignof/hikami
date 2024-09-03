@@ -19,6 +19,10 @@ pub struct Sbi {
     /// For debug console.
     #[rustsbi(console)]
     pub uart: uart::Uart,
+
+    /// Remote fence
+    #[rustsbi(fence)]
+    pub rfence: rfence::RemoteFence,
 }
 
 impl Sbi {
@@ -26,6 +30,7 @@ impl Sbi {
         Sbi {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
+            rfence: rfence::RemoteFence,
         }
     }
 }
