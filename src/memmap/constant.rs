@@ -23,7 +23,7 @@ pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 
 pub mod device {
     //! Device memory map
-    //! TODO?: parse device tree in machine_init.rs
+    //! TODO?: parse device tree in `machine_init.rs`
 
     use crate::memmap::HostPhysicalAddress;
 

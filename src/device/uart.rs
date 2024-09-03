@@ -7,6 +7,7 @@ use core::cell::OnceCell;
 use core::fmt::{self, Write};
 use fdt::Fdt;
 use rustsbi::{Physical, SbiRet};
+use spin::Mutex;
 
 mod register {
     //! Ref: [http://byterunner.com/16550.html](http://byterunner.com/16550.html)
@@ -35,7 +36,7 @@ pub fn _print(args: fmt::Arguments) {
 }
 
 /// Uart address for `UartWriter`.
-const UART_ADDR: OnceCell<HostPhysicalAddress> = OnceCell::new();
+static UART_ADDR: Mutex<OnceCell<HostPhysicalAddress>> = Mutex::new(OnceCell::new());
 
 /// Struct for `Write` trait.
 struct UartWriter;
@@ -44,7 +45,7 @@ impl Write for UartWriter {
     /// Write string to tty via UART.
     #[allow(clippy::cast_possible_wrap)]
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        let uart_addr = UART_ADDR.get().unwrap().raw() as *mut u32;
+        let uart_addr = UART_ADDR.lock().get().unwrap().raw() as *mut u32;
         for c in s.bytes() {
             unsafe {
                 while (uart_addr.read_volatile() as i32) < 0 {}
@@ -78,7 +79,9 @@ impl Device for Uart {
             .next()
             .unwrap();
 
-        UART_ADDR.get_or_init(|| HostPhysicalAddress(region.starting_address as usize));
+        UART_ADDR
+            .lock()
+            .get_or_init(|| HostPhysicalAddress(region.starting_address as usize));
 
         Uart {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
