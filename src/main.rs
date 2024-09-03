@@ -18,7 +18,6 @@ use core::panic::PanicInfo;
 use riscv_rt::entry;
 
 use linked_list_allocator::LockedHeap;
-use once_cell::unsync::Lazy;
 use spin::Mutex;
 
 use crate::guest::Guest;
@@ -34,8 +33,7 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 /// Singleton for this hypervisor.
 ///
 /// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
-static mut HYPERVISOR_DATA: Lazy<Mutex<HypervisorData>> =
-    Lazy::new(|| Mutex::new(HypervisorData::default()));
+static mut HYPERVISOR_DATA: Mutex<HypervisorData> = Mutex::new(HypervisorData::const_default());
 
 /// Singleton for SBI handler.
 static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
@@ -67,7 +65,7 @@ pub fn panic(info: &PanicInfo) -> ! {
 /// Global data for hypervisor.
 ///
 /// FIXME: Rename me!
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct HypervisorData {
     current_hart: usize,
     guest: [Option<guest::Guest>; MAX_HART_NUM],
@@ -75,6 +73,16 @@ pub struct HypervisorData {
 }
 
 impl HypervisorData {
+    /// Const default function for global variable
+    const fn const_default() -> Self {
+        const ARRAY_INIT_VALUE: Option<Guest> = None;
+        HypervisorData {
+            current_hart: 0,
+            guest: [ARRAY_INIT_VALUE; MAX_HART_NUM],
+            devices: None,
+        }
+    }
+
     /// # Panics
     /// It will be panic if devices are uninitialized.
     #[must_use]
