@@ -4,6 +4,7 @@ pub mod clint;
 mod initrd;
 mod pci;
 mod plic;
+mod rtc;
 pub mod uart;
 mod virtio;
 
@@ -50,6 +51,7 @@ pub struct Devices {
     pub plic_context: usize,
     pub clint: clint::Clint,
     pub pci: pci::Pci,
+    pub rtc: rtc::Rtc,
 }
 
 impl Devices {
@@ -71,6 +73,7 @@ impl Devices {
             self.plic.memmap(),
             self.clint.memmap(),
             self.pci.memmap(),
+            self.rtc.memmap(),
         ]);
 
         device_mapping
@@ -101,6 +104,7 @@ impl HypervisorData {
                 .value[0] as usize,
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             pci: pci::Pci::new(&device_tree, "/soc/pci"),
+            rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
         });
     }
 }

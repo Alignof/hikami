@@ -1,26 +1,18 @@
-//! PLIC: Platform-Level Interrupt Controller  
-//! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
+//! RTC: Real Time Clock.
 
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
-// unused constant for now
-// pub const ENABLE_BASE: usize = 0x2000;
-// pub const ENABLE_PER_HART: usize = 0x80;
-// pub const CONTEXT_BASE: usize = 0x20_0000;
-// pub const CONTEXT_PER_HART: usize = 0x1000;
-// pub const CONTEXT_CLAIM: usize = 0x4;
-
-/// PLIC: Platform-Level Interrupt Controller  
-/// Interrupt controller for global interrupts.
+/// RTC: Real Time Clock.
+/// An electronic device that measures the passage of time.
 #[derive(Debug)]
-pub struct Plic {
+pub struct Rtc {
     base_addr: HostPhysicalAddress,
     size: usize,
 }
 
-impl Device for Plic {
+impl Device for Rtc {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree
             .find_node(node_path)
@@ -30,7 +22,7 @@ impl Device for Plic {
             .next()
             .unwrap();
 
-        Plic {
+        Rtc {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
         }
