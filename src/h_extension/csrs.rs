@@ -61,7 +61,7 @@ macro_rules! set_csr_as {
     };
 }
 
-/// Set CSR bit from enum.
+/// Set CSR bit from enum variant.
 #[macro_export]
 macro_rules! set_csr_from_enum {
     ($enum: ident, $csr_number:literal) => {
@@ -69,6 +69,19 @@ macro_rules! set_csr_from_enum {
         pub fn set(field: $enum) {
             unsafe{
                 core::arch::asm!(concat!("csrrs x0, ", stringify!($csr_number), ", {0}"), in(reg) field as usize);
+            }
+        }
+    };
+}
+
+/// Clear CSR bit from enum variant.
+#[macro_export]
+macro_rules! clear_csr_from_enum {
+    ($enum: ident, $csr_number:literal) => {
+        #[inline]
+        pub fn clear(field: $enum) {
+            unsafe{
+                core::arch::asm!(concat!("csrrc x0, ", stringify!($csr_number), ", {0}"), in(reg) field as usize);
             }
         }
     };
@@ -223,6 +236,7 @@ pub mod hvip {
     }
 
     set_csr_from_enum!(InterruptKind, 0x645);
+    clear_csr_from_enum!(InterruptKind, 0x645);
 
     read_csr_as!(Hvip, 0x645);
     write_csr_as!(0x645);

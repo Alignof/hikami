@@ -29,7 +29,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     assert_ne!(dtb_addr, 0);
 
     // clear all hypervisor interrupts.
-    hvip::write(0);
+    hvip::clear(InterruptKind::Vsei);
+    hvip::clear(InterruptKind::Vsti);
+    hvip::clear(InterruptKind::Vssi);
 
     // disable address translation.
     vsatp::write(0);
