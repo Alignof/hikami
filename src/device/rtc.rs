@@ -4,8 +4,8 @@ use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
-//! RTC: Real Time Clock.
-/// An electronic device that measures the passage of time. 
+/// RTC: Real Time Clock.
+/// An electronic device that measures the passage of time.
 #[derive(Debug)]
 pub struct Rtc {
     base_addr: HostPhysicalAddress,
