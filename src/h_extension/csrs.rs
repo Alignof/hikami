@@ -88,13 +88,13 @@ macro_rules! clear_csr_from_enum {
 }
 
 /// VS-level interrupt kind.
-pub enum InterruptKind {
+pub enum VsInterruptKind {
     /// VS-level external interrupts (bit 10)
-    VsExternal = 0b100_0000_0000,
+    External = 0b100_0000_0000,
     /// VS-level timer interrupts (bit 6)
-    VsTimer = 0b100_0000,
+    Timer = 0b100_0000,
     /// VS-level software interrupts (bit 2)
-    VsSoftware = 0b100,
+    Software = 0b100,
 }
 
 pub mod vstvec {
@@ -228,14 +228,14 @@ pub mod hideleg {
 pub mod hie {
     //! Hypervisor interrupt-enable register.
     #![allow(dead_code)]
-    use super::InterruptKind;
+    use super::VsInterruptKind;
 
     const HIE: usize = 0x604;
     pub struct Hie {
         bits: usize,
     }
 
-    set_csr_from_enum!(InterruptKind, 0x604);
+    set_csr_from_enum!(VsInterruptKind, 0x604);
 }
 
 pub mod hcounteren {
@@ -253,15 +253,15 @@ pub mod hcounteren {
 pub mod hvip {
     //! Hypervisor virtual interrupt pending.
     #![allow(dead_code)]
-    use super::InterruptKind;
+    use super::VsInterruptKind;
 
     const HVIP: usize = 0x645;
     pub struct Hvip {
         bits: usize,
     }
 
-    set_csr_from_enum!(InterruptKind, 0x645);
-    clear_csr_from_enum!(InterruptKind, 0x645);
+    set_csr_from_enum!(VsInterruptKind, 0x645);
+    clear_csr_from_enum!(VsInterruptKind, 0x645);
 
     read_csr_as!(Hvip, 0x645);
     write_csr_as!(0x645);

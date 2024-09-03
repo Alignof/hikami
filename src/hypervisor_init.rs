@@ -4,7 +4,7 @@ use crate::device::Device;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hie,
-    hstatus, hvip, vsatp, InterruptKind,
+    hstatus, hvip, vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
@@ -29,9 +29,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     assert_ne!(dtb_addr, 0);
 
     // clear all hypervisor interrupts.
-    hvip::clear(InterruptKind::VsExternal);
-    hvip::clear(InterruptKind::VsTimer);
-    hvip::clear(InterruptKind::VsSoftware);
+    hvip::clear(VsInterruptKind::External);
+    hvip::clear(VsInterruptKind::Timer);
+    hvip::clear(VsInterruptKind::Software);
 
     // disable address translation.
     vsatp::write(0);
@@ -48,9 +48,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // set hie = 0x444
     // TODO?: trap VS-mode interrupt.
-    hie::set(InterruptKind::VsExternal);
-    hie::set(InterruptKind::VsTimer);
-    hie::set(InterruptKind::VsSoftware);
+    hie::set(VsInterruptKind::External);
+    hie::set(VsInterruptKind::Timer);
+    hie::set(VsInterruptKind::Software);
 
     // specify delegation exception kinds.
     hedeleg::write(
@@ -63,9 +63,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     );
     // specify delegation interrupt kinds.
     hideleg::write(
-        InterruptKind::VsExternal as usize
-            | InterruptKind::VsTimer as usize
-            | InterruptKind::VsSoftware as usize,
+        VsInterruptKind::External as usize
+            | VsInterruptKind::Timer as usize
+            | VsInterruptKind::Software as usize,
     );
 
     vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr));
