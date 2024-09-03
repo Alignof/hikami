@@ -1,77 +1,17 @@
-#![no_main]
-#![no_std]
+//! M-mode level initialization.
 
-extern crate alloc;
-mod memmap;
-mod supervisor_init;
-mod trap;
-mod util;
-
-use crate::memmap::constant::{DRAM_BASE, HEAP_BASE, HEAP_SIZE, STACK_BASE, STACK_SIZE_PER_HART};
+use crate::hypervisor_init;
+use crate::memmap::constant::STACK_SIZE_PER_HART;
 use crate::trap::machine::mtrap_vector;
+use crate::{sbi::Sbi, SBI};
 use core::arch::asm;
-use core::panic::PanicInfo;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
-    mcause, mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtval, mtvec, pmpaddr0,
-    pmpcfg0, satp, scause, sepc, stval, stvec,
+    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpcfg0, satp,
 };
-use riscv_rt::entry;
-use wild_screen_alloc::WildScreenAlloc;
-
-/// Panic handler
-#[panic_handler]
-pub fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
-    loop {
-        unsafe {
-            asm!("nop");
-        }
-    }
-}
-
-#[global_allocator]
-static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
-
-/// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
-/// * set stack pointer
-/// * init mtvec and stvec
-/// * jump to mstart
-#[entry]
-fn _start(hart_id: usize, dtb_addr: usize) -> ! {
-    // Initialize global allocator
-    unsafe {
-        ALLOCATOR.init(HEAP_BASE, HEAP_SIZE);
-    }
-
-    unsafe {
-        // set stack pointer
-        asm!(
-            "
-            mv a0, {hart_id}
-            mv a1, {dtb_addr}
-            mv t1, {stack_size_per_hart}
-            mul t0, a0, t1
-            mv sp, {stack_base}
-            add sp, sp, t0
-            csrw mtvec, {DRAM_BASE}
-            csrw stvec, {DRAM_BASE}
-            j {mstart}
-            ",
-            hart_id = in(reg) hart_id,
-            dtb_addr = in(reg) dtb_addr,
-            stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) STACK_BASE,
-            DRAM_BASE = in(reg) DRAM_BASE,
-            mstart = sym mstart,
-        );
-    }
-
-    unreachable!();
-}
 
 /// Machine start function
-fn mstart(hart_id: usize, dtb_addr: usize) {
+pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // mideleg = 0x0222
         mideleg::set_sext();
@@ -90,6 +30,10 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         medeleg::set_instruction_page_fault();
         medeleg::set_load_page_fault();
         medeleg::set_store_page_fault();
+        asm!("csrs medeleg, {vsmode_ecall}", vsmode_ecall = in(reg) 1 << 10, options(nomem)); // deleg env call from VS-mode
+        asm!("csrs medeleg, {virtual_instruction}", virtual_instruction = in(reg) 1 << 22, options(nomem)); // deleg env call from VS-mode
+        medeleg::clear_supervisor_env_call();
+
         // mie = 0x088
         mie::set_msoft();
         mie::set_mtimer();
@@ -128,12 +72,18 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         mcounteren::set_hpm(30);
         mcounteren::set_hpm(31);
         mstatus::set_mpp(mstatus::MPP::Supervisor);
-        mscratch::write(STACK_BASE + STACK_SIZE_PER_HART * hart_id);
+        mscratch::write(
+            core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id,
+        );
         pmpaddr0::write(0xffff_ffff_ffff_ffff);
         pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
         satp::set(satp::Mode::Bare, 0, 0);
 
-        mepc::write(supervisor_init::sstart as *const fn() as usize);
+        // enable Sstc and Zicboz extention
+        asm!("csrs menvcfg, {sstc_cbze}", sstc_cbze = in(reg) (1u64 << 63) | (1u64 << 7) | (1u64 << 6), options(nomem)); // deleg env call from VS-mode
+
+        // set `hstart` to jump after mret
+        mepc::write(hypervisor_init::hstart as *const fn() as usize);
 
         // set trap_vector in trap.S to mtvec
         mtvec::write(
@@ -144,40 +94,47 @@ fn mstart(hart_id: usize, dtb_addr: usize) {
         sfence_vma_all();
     }
 
-    enter_supervisor_mode(hart_id, dtb_addr);
+    SBI.lock().get_or_init(|| {
+        // parse device tree
+        let device_tree = unsafe {
+            match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+                Ok(fdt) => fdt,
+                Err(e) => panic!("{}", e),
+            }
+        };
+
+        Sbi::new(device_tree)
+    });
+
+    enter_hypervisor_mode(hart_id, dtb_addr);
 }
 
-/// Delegate exception to supervisor mode
-#[no_mangle]
-extern "C" fn forward_exception() {
-    unsafe {
-        sepc::write(mepc::read());
-        scause::write(mcause::read().bits());
-        stval::write(mtval::read());
-        mepc::write(stvec::read().bits() & !0x3);
-
-        if mstatus::read().sie() {
-            mstatus::set_spie();
-        } else {
-            // clear?
-        }
-
-        if mstatus::read().mpp() == mstatus::MPP::Supervisor {
-            mstatus::set_spp(mstatus::SPP::Supervisor);
-        } else {
-            mstatus::set_spp(mstatus::SPP::User);
-        }
-
-        mstatus::clear_sie();
-        mstatus::set_mpp(mstatus::MPP::Supervisor);
-    }
-}
-
-/// Enter supervisor. (just exec mret)
-/// Jump to sstart via mret.
+/// Enter hypervisor. (just exec mret)
+///
+/// Jump to hstart via mret.
 #[inline(never)]
-fn enter_supervisor_mode(_hart_id: usize, _dtb_addr: usize) {
+#[no_mangle]
+extern "C" fn enter_hypervisor_mode(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
-        asm!("mret");
+        // set stack pointer
+        asm!(
+            "
+            mv t0, {hart_id}
+            mv t1, {dtb_addr}
+            mv sp, {machine_sp}
+            ",
+            hart_id = in(reg) hart_id,
+            dtb_addr = in(reg) dtb_addr,
+            machine_sp = in(reg) core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id
+        );
+        // enter HS-mode.
+        asm!(
+            "
+            mv a0, t0
+            mv a1, t1
+            mret
+            ",
+            options(noreturn)
+        );
     }
 }

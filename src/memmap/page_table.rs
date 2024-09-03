@@ -1,8 +1,47 @@
-use alloc::boxed::Box;
-use core::slice::from_raw_parts_mut;
+//! Page table for address translation.
 
-use super::constant::PAGE_SIZE;
-use super::MemoryMap;
+pub mod sv39x4;
+
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
+
+pub mod constants {
+    /// Size of memory areathat a page can point to.
+    pub const PAGE_SIZE: usize = 4096;
+    /// Second or Third page table size
+    ///
+    /// vpn\[1\] == vpn\[0\] == 9 bit
+    pub const PAGE_TABLE_LEN: usize = 512;
+}
+
+/// Page table level.
+///
+/// ref: The RISC-V Instruction Set Manual: Volume II p151.
+#[derive(Copy, Clone, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
+enum PageTableLevel {
+    /// Page table level 0
+    ///
+    /// 1GB = 30 bit = vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
+    Lv1GB = 2,
+    /// Page table level 1
+    ///
+    /// 2MB = 21 bit = vpn\[0\] (9 bit) + offset (12 bit)
+    Lv2MB = 1,
+    /// Page table level 2
+    ///
+    /// 4KB = 12 bit = offset (12 bit)
+    Lv4KB = 0,
+}
+
+impl PageTableLevel {
+    pub fn size(self) -> usize {
+        match self {
+            Self::Lv1GB => 0x4000_0000,
+            Self::Lv2MB => 0x0020_0000,
+            Self::Lv4KB => 0x1000,
+        }
+    }
+}
 
 /// Each flags for page tables.
 #[allow(dead_code)]
@@ -27,8 +66,9 @@ pub enum PteFlag {
 }
 
 /// Page table entry
-#[derive(Copy, Clone)]
-struct PageTableEntry(u64);
+#[derive(Copy, Clone, Default)]
+#[allow(clippy::module_name_repetitions)]
+pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
     fn new(ppn: u64, flags: u8) -> Self {
@@ -44,82 +84,41 @@ impl PageTableEntry {
     }
 }
 
-/// Generate third-level page table.
-#[allow(clippy::module_name_repetitions)]
-pub fn generate_page_table(root_table_start_addr: usize, memmaps: &[MemoryMap], initialize: bool) {
-    use crate::{print, println};
+/// Page table address
+#[derive(Copy, Clone)]
+struct PageTableAddress(usize);
 
-    const PAGE_TABLE_SIZE: usize = 512;
+impl From<*mut [PageTableEntry; constants::PAGE_TABLE_LEN]> for PageTableAddress {
+    fn from(f: *mut [PageTableEntry; constants::PAGE_TABLE_LEN]) -> Self {
+        PageTableAddress(f as *const u64 as usize)
+    }
+}
 
-    let first_lv_page_table: &mut [PageTableEntry] = unsafe {
-        from_raw_parts_mut(
-            root_table_start_addr as *mut PageTableEntry,
-            PAGE_TABLE_SIZE,
-        )
-    };
-
-    // zero filling page table
-    if initialize {
-        first_lv_page_table.fill(PageTableEntry(0));
+impl PageTableAddress {
+    /// Return page number
+    fn page_number(self) -> u64 {
+        self.0 as u64 / constants::PAGE_SIZE as u64
     }
 
-    println!(
-        "=========gen page table: {:x}====================",
-        root_table_start_addr
-    );
-    for memmap in memmaps {
-        println!("{:x?} -> {:x?}", memmap.virt, memmap.phys);
+    /// Convert self to `PageTableEntry` pointer.
+    fn to_pte_ptr(self) -> *mut PageTableEntry {
+        self.0 as *mut PageTableEntry
+    }
+}
 
-        assert!(memmap.virt.len() == memmap.phys.len());
-        assert!(memmap.virt.start % PAGE_SIZE == 0);
-        assert!(memmap.phys.start % PAGE_SIZE == 0);
-
-        for offset in (0..memmap.virt.len()).step_by(PAGE_SIZE) {
-            let v_start = memmap.virt.start + offset;
-            let p_start = memmap.phys.start + offset;
-
-            // first level
-            let vpn2 = (v_start >> 30) & 0x1ff;
-            if !first_lv_page_table[vpn2].already_created() {
-                let second_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let second_pt_paddr = Box::into_raw(second_pt);
-
-                first_lv_page_table[vpn2] = PageTableEntry::new(
-                    second_pt_paddr as u64 / PAGE_SIZE as u64,
-                    PteFlag::Valid as u8,
-                );
-            }
-
-            // second level
-            let vpn1 = (v_start >> 21) & 0x1ff;
-            let second_table_start_addr = first_lv_page_table[vpn2].pte() * PAGE_SIZE as u64;
-            let second_lv_page_table: &mut [PageTableEntry] = unsafe {
-                from_raw_parts_mut(
-                    second_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE,
-                )
-            };
-            if !second_lv_page_table[vpn1].already_created() {
-                let third_pt = Box::new([0u64; PAGE_TABLE_SIZE]);
-                let third_pt_paddr = Box::into_raw(third_pt);
-
-                second_lv_page_table[vpn1] = PageTableEntry::new(
-                    third_pt_paddr as u64 / PAGE_SIZE as u64,
-                    PteFlag::Valid as u8,
-                );
-            }
-
-            // third level
-            let vpn0 = (v_start >> 12) & 0x1ff;
-            let third_table_start_addr = second_lv_page_table[vpn1].pte() * PAGE_SIZE as u64;
-            let third_lv_page_table: &mut [PageTableEntry] = unsafe {
-                from_raw_parts_mut(
-                    third_table_start_addr as *mut PageTableEntry,
-                    PAGE_TABLE_SIZE,
-                )
-            };
-            third_lv_page_table[vpn0] =
-                PageTableEntry::new((p_start / PAGE_SIZE).try_into().unwrap(), memmap.flags);
+impl GuestPhysicalAddress {
+    fn vpn(self, index: usize) -> usize {
+        match index {
+            2 => (self.0 >> 30) & 0x7ff,
+            1 => (self.0 >> 21) & 0x1ff,
+            0 => (self.0 >> 12) & 0x1ff,
+            _ => unreachable!(),
         }
+    }
+}
+
+impl HostPhysicalAddress {
+    fn page_number(self) -> u64 {
+        self.0 as u64 / constants::PAGE_SIZE as u64
     }
 }
