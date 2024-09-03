@@ -4,6 +4,7 @@ pub mod clint;
 mod initrd;
 mod pci;
 mod plic;
+mod rtc;
 pub mod uart;
 mod virtio;
 
