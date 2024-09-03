@@ -34,7 +34,7 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
 }
 
 /// sbi ecall handler for RFENCE Extension (EID: #0x52464E43)
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions, clippy::cast_possible_truncation)]
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     use rustsbi::HartMask;
     use sbi_spec::rfnc::{REMOTE_FENCE_I, REMOTE_SFENCE_VMA, REMOTE_SFENCE_VMA_ASID};
@@ -43,15 +43,15 @@ pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
             sbi_rt::remote_fence_i(HartMask::from_mask_base(args[0] as usize, args[1] as usize))
         }
         REMOTE_SFENCE_VMA => sbi_rt::remote_sfence_vma(
-            HartMask::from_mask_base(args[0].try_into().unwrap(), args[1].try_into().unwrap()),
-            args[2].try_into().unwrap(),
-            args[3].try_into().unwrap(),
+            HartMask::from_mask_base(args[0] as usize, args[1] as usize),
+            args[2] as usize,
+            args[3] as usize,
         ),
         REMOTE_SFENCE_VMA_ASID => sbi_rt::remote_sfence_vma_asid(
-            HartMask::from_mask_base(args[0].try_into().unwrap(), args[1].try_into().unwrap()),
-            args[2].try_into().unwrap(),
-            args[3].try_into().unwrap(),
-            args[4].try_into().unwrap(),
+            HartMask::from_mask_base(args[0] as usize, args[1] as usize),
+            args[2] as usize,
+            args[3] as usize,
+            args[4] as usize,
         ),
         _ => panic!("unsupported fid: {}", func_id),
     }
