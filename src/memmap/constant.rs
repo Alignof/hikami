@@ -31,10 +31,6 @@ pub mod device {
 
     use crate::memmap::HostPhysicalAddress;
 
-    /// Uart address
-    /// For println macro.
-    pub const UART_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x1000_0000);
-
     /// CLINT address
     /// For trap `SupervisorSoftware` interrupt
     pub const CLINT_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x200_0000);

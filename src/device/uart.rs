@@ -3,6 +3,7 @@
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
+use core::cell::OnceCell;
 use core::fmt::{self, Write};
 use fdt::Fdt;
 use rustsbi::{Physical, SbiRet};
@@ -17,7 +18,7 @@ mod register {
 /// Print to standard output.
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::util::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::device::uart::_print(format_args!($($arg)*)));
 }
 
 /// Print with linebreak to standard output.
@@ -33,13 +34,17 @@ pub fn _print(args: fmt::Arguments) {
     writer.write_fmt(args).unwrap();
 }
 
+/// Uart address for `UartWriter`.
+const UART_ADDR: OnceCell<HostPhysicalAddress> = OnceCell::new();
+
+/// Struct for `Write` trait.
 struct UartWriter;
 
 impl Write for UartWriter {
     /// Write string to tty via UART.
     #[allow(clippy::cast_possible_wrap)]
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        let uart_addr = UART_ADDR.raw() as *mut u32;
+        let uart_addr = UART_ADDR.get().unwrap().raw() as *mut u32;
         for c in s.bytes() {
             unsafe {
                 while (uart_addr.read_volatile() as i32) < 0 {}
@@ -72,6 +77,8 @@ impl Device for Uart {
             .unwrap()
             .next()
             .unwrap();
+
+        UART_ADDR.get_or_init(|| HostPhysicalAddress(region.starting_address as usize));
 
         Uart {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
