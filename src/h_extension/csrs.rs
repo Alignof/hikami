@@ -225,6 +225,31 @@ pub mod hideleg {
     write_csr_as!(0x603);
 }
 
+pub mod hie {
+    //! Hypervisor interrupt-enable register.
+    #![allow(dead_code)]
+    use super::InterruptKind;
+
+    const HIE: usize = 0x604;
+    pub struct Hie {
+        bits: usize,
+    }
+
+    set_csr_from_enum!(InterruptKind, 0x604);
+}
+
+pub mod hcounteren {
+    //! Hypervisor counter enable.
+    #![allow(dead_code)]
+
+    const HCOUNTEREN: usize = 0x606;
+    pub struct Hcounteren {
+        bits: usize,
+    }
+
+    set_csr_as!(0x606);
+}
+
 pub mod hvip {
     //! Hypervisor virtual interrupt pending.
     #![allow(dead_code)]
@@ -282,8 +307,8 @@ pub mod henvcfg {
         unsafe {
             core::arch::asm!(
                 "
-            csrs henvcfg, {bits}
-            ",
+                csrs henvcfg, {bits}
+                ",
                 bits = in(reg) 1u64 << 63
             );
         }
@@ -294,8 +319,8 @@ pub mod henvcfg {
         unsafe {
             core::arch::asm!(
                 "
-            csrs henvcfg, {bits}
-            ",
+                csrs henvcfg, {bits}
+                ",
                 bits = in(reg) 1u64 << 7
             );
         }
@@ -306,22 +331,10 @@ pub mod henvcfg {
         unsafe {
             core::arch::asm!(
                 "
-            csrs henvcfg, {bits}
-            ",
+                csrs henvcfg, {bits}
+                ",
                 bits = in(reg) 1u64 << 6
             );
         }
     }
-}
-
-pub mod hcounteren {
-    //! Hypervisor counter enable.
-    #![allow(dead_code)]
-
-    const HCOUNTEREN: usize = 0x606;
-    pub struct Hcounteren {
-        bits: usize,
-    }
-
-    set_csr_as!(0x606);
 }
