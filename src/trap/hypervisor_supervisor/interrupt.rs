@@ -24,7 +24,9 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             hvip::set(InterruptKind::Vsti);
             sie::clear_stimer();
         }
-        Interrupt::SupervisorExternal => riscv::asm::wfi(), // wait for interrupt
+        Interrupt::SupervisorExternal => {
+            hvip::set(InterruptKind::Vsei);
+        }
         Interrupt::Unknown => panic!("unknown interrupt type"),
     }
 
