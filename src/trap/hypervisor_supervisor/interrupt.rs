@@ -1,8 +1,8 @@
 //! Trap VS-mode interrupt.
 
 use super::hstrap_exit;
+use crate::device::Device;
 use crate::h_extension::csrs::{hvip, vsip, InterruptKind};
-use crate::memmap::constant::device::CLINT_ADDR;
 use crate::HYPERVISOR_DATA;
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
@@ -12,9 +12,12 @@ use riscv::register::sie;
 pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
-            let hart_id = HYPERVISOR_DATA.lock().guest().hart_id();
+            let mut hypervisor_data = HYPERVISOR_DATA.lock();
+            let hart_id = hypervisor_data.guest().hart_id();
+            let clint_addr = hypervisor_data.devices.as_ref().unwrap().clint.paddr();
+
             vsip::set_ssoft();
-            let interrupt_addr = (CLINT_ADDR.raw() + hart_id * 4) as *mut u64;
+            let interrupt_addr = (clint_addr.raw() + hart_id * 4) as *mut u64;
             interrupt_addr.write_volatile(0);
         }
         Interrupt::SupervisorTimer => {
