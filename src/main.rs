@@ -75,6 +75,16 @@ pub struct HypervisorData {
 }
 
 impl HypervisorData {
+    /// Const default function for global variable
+    const fn const_default() -> Self {
+        const ARRAY_INIT_VALUE: Option<Guest> = None;
+        HypervisorData {
+            current_hart: 0,
+            guest: [ARRAY_INIT_VALUE; MAX_HART_NUM],
+            devices: None,
+        }
+    }
+
     /// # Panics
     /// It will be panic if devices are uninitialized.
     #[must_use]
