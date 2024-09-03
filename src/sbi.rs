@@ -2,6 +2,8 @@
 //! Ref: [https://github.com/rustsbi/rustsbi-qemu](https://github.com/rustsbi/rustsbi-qemu)  
 //! Document: [https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/derive.RustSBI.html](https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/derive.RustSBI.html)  
 
+mod rfence;
+
 use crate::device::{clint, uart, Device};
 use fdt::Fdt;
 use rustsbi::RustSBI;
