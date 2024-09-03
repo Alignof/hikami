@@ -29,9 +29,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     assert_ne!(dtb_addr, 0);
 
     // clear all hypervisor interrupts.
-    hvip::clear(InterruptKind::Vsei);
-    hvip::clear(InterruptKind::Vsti);
-    hvip::clear(InterruptKind::Vssi);
+    hvip::clear(InterruptKind::VsExternal);
+    hvip::clear(InterruptKind::VsTimer);
+    hvip::clear(InterruptKind::VsSoftware);
 
     // disable address translation.
     vsatp::write(0);
@@ -62,7 +62,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     );
     // specify delegation interrupt kinds.
     hideleg::write(
-        InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
+        InterruptKind::VsExternal as usize
+            | InterruptKind::VsTimer as usize
+            | InterruptKind::VsSoftware as usize,
     );
 
     vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr));

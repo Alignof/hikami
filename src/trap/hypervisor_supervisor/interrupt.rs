@@ -21,12 +21,10 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             interrupt_addr.write_volatile(0);
         }
         Interrupt::SupervisorTimer => {
-            hvip::set(InterruptKind::Vsti);
+            hvip::set(InterruptKind::VsTimer);
             sie::clear_stimer();
         }
-        Interrupt::SupervisorExternal => {
-            hvip::set(InterruptKind::Vsei);
-        }
+        Interrupt::SupervisorExternal => hvip::set(InterruptKind::VsExternal),
         Interrupt::Unknown => panic!("unknown interrupt type"),
     }
 

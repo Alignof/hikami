@@ -90,11 +90,11 @@ macro_rules! clear_csr_from_enum {
 /// VS-level interrupt kind.
 pub enum InterruptKind {
     /// VS-level external interrupts (bit 10)
-    Vsei = 0b100_0000_0000,
+    VsExternal = 0b100_0000_0000,
     /// VS-level timer interrupts (bit 6)
-    Vsti = 0b100_0000,
+    VsTimer = 0b100_0000,
     /// VS-level software interrupts (bit 2)
-    Vssi = 0b100,
+    VsSoftware = 0b100,
 }
 
 pub mod vstvec {
