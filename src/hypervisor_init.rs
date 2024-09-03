@@ -3,8 +3,8 @@
 use crate::device::Device;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg,
-    hstatus, hvip, vsatp, InterruptKind,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hie,
+    hstatus, hvip, vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
@@ -17,7 +17,7 @@ use crate::{GUEST_DTB, HYPERVISOR_DATA};
 use core::arch::asm;
 
 use elf::{endian::AnyEndian, ElfBytes};
-use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
+use riscv::register::{sepc, sscratch, sstatus, stvec};
 
 /// Entry point to HS-mode.
 #[inline(never)]
@@ -29,10 +29,14 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     assert_ne!(dtb_addr, 0);
 
     // clear all hypervisor interrupts.
-    hvip::write(0);
+    hvip::clear(VsInterruptKind::External);
+    hvip::clear(VsInterruptKind::Timer);
+    hvip::clear(VsInterruptKind::Software);
 
     // disable address translation.
     vsatp::write(0);
+
+    // disable hypervisor external interrupt
 
     // enable Sstc extention
     henvcfg::set_stce();
@@ -42,12 +46,11 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
 
-    // set sie = 0x222
-    unsafe {
-        sie::set_ssoft();
-        sie::set_stimer();
-        sie::set_sext();
-    }
+    // set hie = 0x444
+    // TODO?: trap VS-mode interrupt.
+    hie::set(VsInterruptKind::External);
+    hie::set(VsInterruptKind::Timer);
+    hie::set(VsInterruptKind::Software);
 
     // specify delegation exception kinds.
     hedeleg::write(
@@ -60,7 +63,9 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     );
     // specify delegation interrupt kinds.
     hideleg::write(
-        InterruptKind::Vsei as usize | InterruptKind::Vsti as usize | InterruptKind::Vssi as usize,
+        VsInterruptKind::External as usize
+            | VsInterruptKind::Timer as usize
+            | VsInterruptKind::Software as usize,
     );
 
     vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr));

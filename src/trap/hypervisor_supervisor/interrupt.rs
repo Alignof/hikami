@@ -2,7 +2,7 @@
 
 use super::hstrap_exit;
 use crate::device::Device;
-use crate::h_extension::csrs::{hvip, vsip, InterruptKind};
+use crate::h_extension::csrs::{hvip, vsip, VsInterruptKind};
 use crate::HYPERVISOR_DATA;
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
@@ -21,10 +21,10 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             interrupt_addr.write_volatile(0);
         }
         Interrupt::SupervisorTimer => {
-            hvip::set(InterruptKind::Vsti);
+            hvip::set(VsInterruptKind::Timer);
             sie::clear_stimer();
         }
-        Interrupt::SupervisorExternal => riscv::asm::wfi(), // wait for interrupt
+        Interrupt::SupervisorExternal => hvip::set(VsInterruptKind::External),
         Interrupt::Unknown => panic!("unknown interrupt type"),
     }
 

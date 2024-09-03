@@ -61,7 +61,7 @@ macro_rules! set_csr_as {
     };
 }
 
-/// Set CSR bit from enum.
+/// Set CSR bit from enum variant.
 #[macro_export]
 macro_rules! set_csr_from_enum {
     ($enum: ident, $csr_number:literal) => {
@@ -74,14 +74,27 @@ macro_rules! set_csr_from_enum {
     };
 }
 
+/// Clear CSR bit from enum variant.
+#[macro_export]
+macro_rules! clear_csr_from_enum {
+    ($enum: ident, $csr_number:literal) => {
+        #[inline]
+        pub fn clear(field: $enum) {
+            unsafe{
+                core::arch::asm!(concat!("csrrc x0, ", stringify!($csr_number), ", {0}"), in(reg) field as usize);
+            }
+        }
+    };
+}
+
 /// VS-level interrupt kind.
-pub enum InterruptKind {
+pub enum VsInterruptKind {
     /// VS-level external interrupts (bit 10)
-    Vsei = 0b100_0000_0000,
+    External = 0b100_0000_0000,
     /// VS-level timer interrupts (bit 6)
-    Vsti = 0b100_0000,
+    Timer = 0b100_0000,
     /// VS-level software interrupts (bit 2)
-    Vssi = 0b100,
+    Software = 0b100,
 }
 
 pub mod vstvec {
@@ -212,17 +225,43 @@ pub mod hideleg {
     write_csr_as!(0x603);
 }
 
+pub mod hie {
+    //! Hypervisor interrupt-enable register.
+    #![allow(dead_code)]
+    use super::VsInterruptKind;
+
+    const HIE: usize = 0x604;
+    pub struct Hie {
+        bits: usize,
+    }
+
+    set_csr_from_enum!(VsInterruptKind, 0x604);
+}
+
+pub mod hcounteren {
+    //! Hypervisor counter enable.
+    #![allow(dead_code)]
+
+    const HCOUNTEREN: usize = 0x606;
+    pub struct Hcounteren {
+        bits: usize,
+    }
+
+    set_csr_as!(0x606);
+}
+
 pub mod hvip {
     //! Hypervisor virtual interrupt pending.
     #![allow(dead_code)]
-    use super::InterruptKind;
+    use super::VsInterruptKind;
 
     const HVIP: usize = 0x645;
     pub struct Hvip {
         bits: usize,
     }
 
-    set_csr_from_enum!(InterruptKind, 0x645);
+    set_csr_from_enum!(VsInterruptKind, 0x645);
+    clear_csr_from_enum!(VsInterruptKind, 0x645);
 
     read_csr_as!(Hvip, 0x645);
     write_csr_as!(0x645);
@@ -268,8 +307,8 @@ pub mod henvcfg {
         unsafe {
             core::arch::asm!(
                 "
-            csrs henvcfg, {bits}
-            ",
+                csrs henvcfg, {bits}
+                ",
                 bits = in(reg) 1u64 << 63
             );
         }
@@ -280,8 +319,8 @@ pub mod henvcfg {
         unsafe {
             core::arch::asm!(
                 "
-            csrs henvcfg, {bits}
-            ",
+                csrs henvcfg, {bits}
+                ",
                 bits = in(reg) 1u64 << 7
             );
         }
@@ -292,22 +331,10 @@ pub mod henvcfg {
         unsafe {
             core::arch::asm!(
                 "
-            csrs henvcfg, {bits}
-            ",
+                csrs henvcfg, {bits}
+                ",
                 bits = in(reg) 1u64 << 6
             );
         }
     }
-}
-
-pub mod hcounteren {
-    //! Hypervisor counter enable.
-    #![allow(dead_code)]
-
-    const HCOUNTEREN: usize = 0x606;
-    pub struct Hcounteren {
-        bits: usize,
-    }
-
-    set_csr_as!(0x606);
 }
