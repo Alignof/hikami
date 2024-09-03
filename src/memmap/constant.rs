@@ -1,20 +1,15 @@
 //! Constant for memory map.
 //!
 //! # Host physical address
-//! | start         | end           | region                            |
-//! |---------------|---------------|-----------------------------------|
-//! | `0x0200_0000` | `0x0210_0000` | QEMU CLINT                        |
-//! | `0x0c00_0000` | `0x0c60_0000` | QEMU PLIC                         |
-//! | `0x1000_0000` | `0x1000_0100` | QEMU UART                         |
-//! | `0x1000_1000` | `0x1000_8000` | QEMU `VirtIO`                     |
+//! See `memory.x`.
+//! | start         | end           | region              |
+//! |---------------|---------------|---------------------|
+//! | `0x8000_0000` | `0x8000_XXXX` | text data of hikami |
 //!
 //! # Guest physical address
 //! | start         | end           | region                 |
 //! |---------------|---------------|------------------------|
-//! | `0x0200_0000` | `0x0210_0000` | QEMU CLINT             |
-//! | `0x0c00_0000` | `0x0c60_0000` | QEMU PLIC              |
-//! | `0x1000_0000` | `0x1000_0100` | QEMU UART              |
-//! | `0x1000_1000` | `0x1000_8000` | QEMU VirtIO            |
+//! | `0xXXXX_XXXX` | `0xXXXX_XXXX` | device identity map    |
 //! |               |               |                        |
 //! | `0x8000_0000` | `0x8000_2000` | device tree of guest 1 |
 //! | `0x9000_0000` | `0xa000_0000` | text data of guest 1   |
@@ -28,12 +23,9 @@ pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 
 pub mod device {
     //! Device memory map
+    //! TODO?: parse device tree in `machine_init.rs`
 
     use crate::memmap::HostPhysicalAddress;
-
-    /// Uart address
-    /// For println macro.
-    pub const UART_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x1000_0000);
 
     /// CLINT address
     /// For trap `SupervisorSoftware` interrupt

@@ -2,14 +2,58 @@
 
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+
+use core::cell::OnceCell;
+use core::fmt::{self, Write};
 use fdt::Fdt;
 use rustsbi::{Physical, SbiRet};
+use spin::Mutex;
 
 mod register {
     //! Ref: [http://byterunner.com/16550.html](http://byterunner.com/16550.html)
 
     /// LSR register offset.
     pub const LSR_OFFSET: usize = 3;
+}
+
+/// Print to standard output.
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::device::uart::_print(format_args!($($arg)*)));
+}
+
+/// Print with linebreak to standard output.
+#[macro_export]
+macro_rules! println {
+    ($fmt:expr) => (print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
+}
+
+/// Print function calling from print macro
+pub fn _print(args: fmt::Arguments) {
+    let mut writer = UartWriter {};
+    writer.write_fmt(args).unwrap();
+}
+
+/// Uart address for `UartWriter`.
+static UART_ADDR: Mutex<OnceCell<HostPhysicalAddress>> = Mutex::new(OnceCell::new());
+
+/// Struct for `Write` trait.
+struct UartWriter;
+
+impl Write for UartWriter {
+    /// Write string to tty via UART.
+    #[allow(clippy::cast_possible_wrap)]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let uart_addr = UART_ADDR.lock().get().unwrap().raw() as *mut u32;
+        for c in s.bytes() {
+            unsafe {
+                while (uart_addr.read_volatile() as i32) < 0 {}
+                uart_addr.write_volatile(u32::from(c));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// UART: Universal asynchronous receiver-transmitter
@@ -34,6 +78,10 @@ impl Device for Uart {
             .unwrap()
             .next()
             .unwrap();
+
+        UART_ADDR
+            .lock()
+            .get_or_init(|| HostPhysicalAddress(region.starting_address as usize));
 
         Uart {
             base_addr: HostPhysicalAddress(region.starting_address as usize),

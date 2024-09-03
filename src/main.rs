@@ -10,7 +10,6 @@ mod machine_init;
 mod memmap;
 mod sbi;
 mod trap;
-mod util;
 
 use core::arch::asm;
 use core::cell::OnceCell;
