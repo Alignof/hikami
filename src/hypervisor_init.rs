@@ -3,7 +3,7 @@
 use crate::device::Device;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hie,
     hstatus, hvip, vsatp, InterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
@@ -17,7 +17,7 @@ use crate::{GUEST_DTB, HYPERVISOR_DATA};
 use core::arch::asm;
 
 use elf::{endian::AnyEndian, ElfBytes};
-use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
+use riscv::register::{sepc, sscratch, sstatus, stvec};
 
 /// Entry point to HS-mode.
 #[inline(never)]
@@ -36,6 +36,8 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // disable address translation.
     vsatp::write(0);
 
+    // disable hypervisor external interrupt
+
     // enable Sstc extention
     henvcfg::set_stce();
     henvcfg::set_cbze();
@@ -44,12 +46,11 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
 
-    // set sie = 0x222
-    unsafe {
-        sie::set_ssoft();
-        sie::set_stimer();
-        sie::set_sext();
-    }
+    // set hie = 0x444
+    // TODO?: trap VS-mode interrupt.
+    hie::set(InterruptKind::VsExternal);
+    hie::set(InterruptKind::VsTimer);
+    hie::set(InterruptKind::VsSoftware);
 
     // specify delegation exception kinds.
     hedeleg::write(
