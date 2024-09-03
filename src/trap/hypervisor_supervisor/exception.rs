@@ -1,6 +1,6 @@
 //! Trap VS-mode exception.
 
-mod sbi;
+mod sbi_handler;
 
 use super::hstrap_exit;
 use crate::guest;
@@ -12,7 +12,7 @@ use riscv::register::{
     scause::{self, Exception},
     stval,
 };
-use sbi::{sbi_base_handler, sbi_rfnc_handler};
+use sbi_handler::{sbi_base_handler, sbi_rfnc_handler};
 
 /// Delegate exception to supervisor mode from VS-mode.
 #[no_mangle]
