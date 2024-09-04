@@ -250,49 +250,6 @@ pub mod hcounteren {
     set_csr_as!(0x606);
 }
 
-pub mod hvip {
-    //! Hypervisor virtual interrupt pending.
-    #![allow(dead_code)]
-    use super::VsInterruptKind;
-
-    const HVIP: usize = 0x645;
-    pub struct Hvip {
-        bits: usize,
-    }
-
-    set_csr_from_enum!(VsInterruptKind, 0x645);
-    clear_csr_from_enum!(VsInterruptKind, 0x645);
-
-    read_csr_as!(Hvip, 0x645);
-    write_csr_as!(0x645);
-}
-
-pub mod hgatp {
-    //! Hypervisor guest address translation and protection.
-    #![allow(dead_code)]
-
-    const HGATP: usize = 0x680;
-    pub struct Hgatp {
-        bits: usize,
-    }
-
-    /// Translation mode in G-stage.
-    #[allow(clippy::module_name_repetitions)]
-    pub enum HgatpMode {
-        Bare = 0,
-        Sv39x4 = 8,
-        Sv48x4 = 9,
-        Sv57x4 = 10,
-    }
-
-    pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
-        write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
-    }
-
-    read_csr_as!(Hgatp, 0x680);
-    write_csr_as!(0x680);
-}
-
 pub mod henvcfg {
     //! Hypervisor environment configuration register.
     #![allow(dead_code)]
@@ -337,4 +294,60 @@ pub mod henvcfg {
             );
         }
     }
+}
+
+pub mod hvip {
+    //! Hypervisor virtual interrupt pending.
+    #![allow(dead_code)]
+    use super::VsInterruptKind;
+
+    const HVIP: usize = 0x645;
+    pub struct Hvip {
+        bits: usize,
+    }
+
+    set_csr_from_enum!(VsInterruptKind, 0x645);
+    clear_csr_from_enum!(VsInterruptKind, 0x645);
+
+    read_csr_as!(Hvip, 0x645);
+    write_csr_as!(0x645);
+}
+
+pub mod htinst {
+    //! Hypervisor trap instruction (transformed).
+    #![allow(dead_code)]
+
+    const HTINST: usize = 0x64a;
+    pub struct Htinst {
+        pub bits: usize,
+    }
+
+    read_csr_as!(Htinst, 0x64a);
+    write_csr_as!(0x64a);
+}
+
+pub mod hgatp {
+    //! Hypervisor guest address translation and protection.
+    #![allow(dead_code)]
+
+    const HGATP: usize = 0x680;
+    pub struct Hgatp {
+        bits: usize,
+    }
+
+    /// Translation mode in G-stage.
+    #[allow(clippy::module_name_repetitions)]
+    pub enum HgatpMode {
+        Bare = 0,
+        Sv39x4 = 8,
+        Sv48x4 = 9,
+        Sv57x4 = 10,
+    }
+
+    pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
+        write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
+    }
+
+    read_csr_as!(Hgatp, 0x680);
+    write_csr_as!(0x680);
 }
