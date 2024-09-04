@@ -4,7 +4,7 @@ mod sbi_handler;
 
 use super::hstrap_exit;
 use crate::guest;
-use crate::h_extension::csrs::vstvec;
+use crate::h_extension::{csrs::vstvec, HvException};
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
 use raki::{Decode, Isa::Rv64, OpcodeKind, ZicntrOpcode};
@@ -88,21 +88,17 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
         // Enum not found in `riscv` crate.
-        Exception::Unknown => {
-            match scause::read().code() {
-                // Ecall from VS-mode
-                10 => {
-                    sbi_vs_mode_handler(&mut context);
-                    context.set_sepc(context.sepc() + 4);
-                }
-                // Virtual Instruction
-                22 => {
-                    virtual_instruction_handler(stval::read() as u32, &mut context);
-                    context.set_sepc(context.sepc() + 4);
-                }
-                _ => unreachable!(),
+        Exception::Unknown => match HvException::from(scause::read().code()) {
+            HvException::EcallFromVsMode => {
+                sbi_vs_mode_handler(&mut context);
+                context.set_sepc(context.sepc() + 4);
             }
-        }
+            HvException::VirtualInstruction => {
+                virtual_instruction_handler(stval::read() as u32, &mut context);
+                context.set_sepc(context.sepc() + 4);
+            }
+            _ => unreachable!(),
+        },
         _ => hs_forward_exception(),
     }
 
