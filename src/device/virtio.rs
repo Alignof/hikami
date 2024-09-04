@@ -30,7 +30,7 @@ impl VirtIoList {
         )
     }
 
-    /// Return VirtIO list iterator
+    /// Return Virt IO list iterator
     pub fn iter(&self) -> Iter<'_, VirtIo> {
         self.0.iter()
     }
