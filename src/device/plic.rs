@@ -11,6 +11,10 @@ use fdt::Fdt;
 // pub const CONTEXT_BASE: usize = 0x20_0000;
 // pub const CONTEXT_PER_HART: usize = 0x1000;
 // pub const CONTEXT_CLAIM: usize = 0x4;
+/// PLIC emulation result.
+pub enum PlicEmulateError {
+    InvalidAddress,
+}
 
 /// PLIC: Platform-Level Interrupt Controller  
 /// Interrupt controller for global interrupts.
