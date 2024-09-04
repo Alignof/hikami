@@ -1,17 +1,5 @@
 [target.riscv64imac-unknown-none-elf]
-runner = """
-qemu-system-riscv64
--S -gdb tcp::10000
--machine virt
--bios none
--nographic
--m 2G
--initrd vmlinux_debug
--drive file=rootfs.img,format=raw,id=hd0
--device virtio-blk-device,drive=hd0
--append root=/dev/vda,rw,console=ttyS0
--kernel
-"""
+runner = "qemu-system-riscv64 -S -gdb tcp::10000 -machine virt -bios none -nographic -m 2G -initrd vmlinux_debug -kernel"
 #runner = "qemu-system-riscv64 -S -gdb tcp::10000 -d int,in_asm,cpu_reset,mmu,page,guest_errors  -machine virt -bios none -nographic -m 2G -initrd vmlinux -kernel"
 #runner = "qemu-system-riscv64 -machine virt -bios none -nographic -m 2G -initrd vmlinux -kernel"
 
