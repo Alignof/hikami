@@ -30,19 +30,28 @@ impl VirtIO {
             })
             .collect()
     }
+}
 
+#[derive(Debug)]
+pub struct VirtIoMap {
+    base_addr: HostPhysicalAddress,
+    size: usize,
+    irq: u8,
+}
+
+impl VirtIoMap {
     pub fn irq(&self) -> u8 {
         self.irq
     }
 }
 
-impl Device for VirtIO {
+impl Device for VirtIoMap {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let node = device_tree.find_all_nodes(node_path).next().unwrap();
         let region = node.reg().unwrap().next().unwrap();
         let irq = node.property("interrupts").unwrap().value[0];
 
-        VirtIO {
+        VirtIoMap {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             irq,
