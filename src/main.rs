@@ -85,8 +85,8 @@ impl HypervisorData {
     /// # Panics
     /// It will be panic if devices are uninitialized.
     #[must_use]
-    pub fn devices(&self) -> &device::Devices {
-        self.devices.as_ref().expect("device data is uninitialized")
+    pub fn devices(&mut self) -> &mut device::Devices {
+        self.devices.as_mut().expect("device data is uninitialized")
     }
 
     /// # Panics
