@@ -10,9 +10,9 @@ use fdt::Fdt;
 // unused constant for now
 // pub const ENABLE_BASE: usize = 0x2000;
 // pub const ENABLE_PER_HART: usize = 0x80;
-// pub const CONTEXT_CLAIM: usize = 0x4;
 const CONTEXT_BASE: usize = 0x20_0000;
 const CONTEXT_PER_HART: usize = 0x1000;
+const CONTEXT_CLAIM: usize = 0x4;
 
 /// PLIC emulation result.
 pub enum PlicEmulateError {
@@ -29,6 +29,14 @@ pub struct Plic {
 }
 
 impl Plic {
+    /// Read plic claim/update register and reflect to `claim_complete`.
+    pub fn update_claim_complete(&mut self, hart_id: usize) {
+        let claim_complete_addr =
+            self.base_addr + CONTEXT_BASE + CONTEXT_PER_HART * hart_id + CONTEXT_CLAIM;
+        let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
+        self.claim_complete[hart_id] = irq;
+    }
+
     /// Emulate reading plic register.
     pub fn emulate_read(
         &self,
