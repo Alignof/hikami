@@ -55,6 +55,7 @@ pub struct Devices {
 }
 
 impl Devices {
+    /// Identity map for devices.
     pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
         let memory_map = self.create_device_map();
         page_table::sv39x4::generate_page_table(page_table_start, &memory_map);
@@ -62,7 +63,7 @@ impl Devices {
 
     fn create_device_map(&self) -> Vec<MemoryMap> {
         let mut device_mapping: Vec<MemoryMap> = self
-            .virtio
+            .virtio_list
             .iter()
             .flat_map(|virt| [virt.memmap(), virt.memmap()])
             .collect();

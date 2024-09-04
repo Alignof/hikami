@@ -3,20 +3,19 @@
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
+use core::slice::Iter;
 use fdt::Fdt;
 
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
 #[derive(Debug)]
-pub struct VirtIoList {
-    virtio_map: Vec<VirtIo>,
-}
+pub struct VirtIoList(Vec<VirtIo>);
 
 impl VirtIoList {
     /// Create each Virt IO data when device has multiple IOs.
     pub fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        VirtIoList {
-            virtio_map: device_tree
+        VirtIoList(
+            device_tree
                 .find_all_nodes(node_path)
                 .map(|node| {
                     let region = node.reg().unwrap().next().unwrap();
@@ -28,7 +27,12 @@ impl VirtIoList {
                     }
                 })
                 .collect(),
-        }
+        )
+    }
+
+    /// Return VirtIO list iterator
+    pub fn iter(&self) -> Iter<'_, VirtIo> {
+        self.0.iter()
     }
 }
 
