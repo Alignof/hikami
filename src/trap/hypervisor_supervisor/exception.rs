@@ -9,7 +9,7 @@ use crate::h_extension::{
     csrs::{htinst, vstvec},
     HvException,
 };
-use crate::memmap::HostPhysicalAddress;
+use crate::memmap::GuestPhysicalAddress;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
@@ -108,7 +108,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 match hypervisor_data
                     .devices()
                     .plic
-                    .emulate_read(HostPhysicalAddress(fault_addr))
+                    .emulate_read(GuestPhysicalAddress(fault_addr))
                 {
                     Ok(value) => {
                         let mut context = hypervisor_data.guest().context;
@@ -132,7 +132,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 if let Err(PlicEmulateError::InvalidAddress) = hypervisor_data
                     .devices()
                     .plic
-                    .emulate_write(HostPhysicalAddress(fault_addr), store_value)
+                    .emulate_write(GuestPhysicalAddress(fault_addr), store_value)
                 {
                     hs_forward_exception();
                 }
