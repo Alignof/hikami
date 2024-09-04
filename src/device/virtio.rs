@@ -8,27 +8,27 @@ use fdt::Fdt;
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
 #[derive(Debug)]
-pub struct VirtIO {
-    base_addr: HostPhysicalAddress,
-    size: usize,
-    irq: u8,
+pub struct VirtIo {
+    virtio_map: Vec<VirtIoMap>,
 }
 
-impl VirtIO {
+impl VirtIo {
     /// Create each Virt IO data when device has multiple IOs.
-    pub fn new_all(device_tree: &Fdt, node_path: &str) -> Vec<Self> {
-        device_tree
-            .find_all_nodes(node_path)
-            .map(|node| {
-                let region = node.reg().unwrap().next().unwrap();
-                let irq = node.property("interrupts").unwrap().value[0];
-                VirtIO {
-                    base_addr: HostPhysicalAddress(region.starting_address as usize),
-                    size: region.size.unwrap(),
-                    irq,
-                }
-            })
-            .collect()
+    pub fn new(device_tree: &Fdt, node_path: &str) -> Self {
+        VirtIo {
+            virtio_map: device_tree
+                .find_all_nodes(node_path)
+                .map(|node| {
+                    let region = node.reg().unwrap().next().unwrap();
+                    let irq = node.property("interrupts").unwrap().value[0];
+                    VirtIoMap {
+                        base_addr: HostPhysicalAddress(region.starting_address as usize),
+                        size: region.size.unwrap(),
+                        irq,
+                    }
+                })
+                .collect(),
+        }
     }
 }
 

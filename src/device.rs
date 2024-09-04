@@ -45,7 +45,7 @@ pub trait Device {
 #[derive(Debug)]
 pub struct Devices {
     pub uart: uart::Uart,
-    pub virtio: Vec<virtio::VirtIO>,
+    pub virtio: virtio::VirtIo,
     pub initrd: initrd::Initrd,
     pub plic: plic::Plic,
     pub plic_context: usize,
@@ -90,7 +90,7 @@ impl HypervisorData {
     pub fn register_devices(&mut self, device_tree: Fdt) {
         self.devices.replace(Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
-            virtio: virtio::VirtIO::new_all(&device_tree, "/soc/virtio_mmio"),
+            virtio: virtio::VirtIo::new(&device_tree, "/soc/virtio_mmio"),
             initrd: initrd::Initrd::new(&device_tree, "/chosen"),
             plic: plic::Plic::new(&device_tree, "/soc/plic"),
             plic_context: device_tree
