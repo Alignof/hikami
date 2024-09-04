@@ -2,6 +2,7 @@
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use crate::h_extension::csrs::{hvip, VsInterruptKind};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
@@ -28,6 +29,7 @@ pub struct Plic {
 }
 
 impl Plic {
+    /// Emulate reading plic register.
     pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<usize, PlicEmulateError> {
         let offset = self.base_addr.raw() - dst_addr.raw();
         if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_PER_HART * MAX_HART_NUM {
@@ -36,6 +38,43 @@ impl Plic {
 
         let hart = (offset - CONTEXT_BASE) / CONTEXT_PER_HART;
         Ok(self.claim_complete[hart] as usize)
+    }
+
+    /// Emulate writing plic register.
+    pub fn emulate_write(
+        &mut self,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) -> Result<(), PlicEmulateError> {
+        let offset = self.base_addr.raw() - dst_addr.raw();
+        if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_PER_HART * MAX_HART_NUM {
+            return Err(PlicEmulateError::InvalidAddress);
+        }
+        let offset_per_context = offset % CONTEXT_PER_HART;
+        let hart = (offset - CONTEXT_BASE) / CONTEXT_PER_HART;
+
+        match offset_per_context {
+            // threshold
+            0 => {
+                let dst_ptr = dst_addr.raw() as *mut u32;
+                unsafe {
+                    dst_ptr.write_volatile(value);
+                }
+            }
+            // claim/complete
+            4 => {
+                let dst_ptr = dst_addr.raw() as *mut u32;
+                unsafe {
+                    dst_ptr.write_volatile(value);
+                }
+                self.claim_complete[hart] = 0;
+                hvip::clear(VsInterruptKind::External);
+            }
+            8 => panic!("offset 8 is reserved"),
+            _ => return Err(PlicEmulateError::InvalidAddress),
+        }
+
+        Ok(())
     }
 }
 
