@@ -18,6 +18,7 @@ use fdt::Fdt;
 pub struct Plic {
     base_addr: HostPhysicalAddress,
     size: usize,
+    claim_complete: [u32; MAX_HART_NUM],
 }
 
 impl Device for Plic {
@@ -33,6 +34,7 @@ impl Device for Plic {
         Plic {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
+            claim_complete: [0u32; MAX_HART_NUM],
         }
     }
 
