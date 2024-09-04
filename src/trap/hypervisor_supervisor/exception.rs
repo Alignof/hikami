@@ -13,7 +13,7 @@ use crate::memmap::HostPhysicalAddress;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
-use raki::{Decode, Isa::Rv64, OpcodeKind, ZicntrOpcode};
+use raki::{Decode, Instruction, Isa::Rv64, OpcodeKind, ZicntrOpcode};
 use riscv::register::{
     scause::{self, Exception},
     stval,
@@ -101,6 +101,9 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
             HvException::LoadGuestPageFault => {
                 let fault_addr = stval::read();
                 let fault_inst_value = htinst::read().bits;
+                let fault_inst = Instruction::try_from(fault_inst_value)
+                    .expect("decoding load fault instruction failed");
+
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
                 match hypervisor_data
                     .devices()
@@ -108,19 +111,8 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .emulate_read(HostPhysicalAddress(fault_addr))
                 {
                     Ok(value) => {
-                        let inst = if fault_inst_value & 0b11 == 0b11 {
-                            u32::try_from(fault_inst_value)
-                                .unwrap()
-                                .decode(Rv64)
-                                .expect("decoding htinst failed")
-                        } else {
-                            u16::try_from(fault_inst_value)
-                                .unwrap()
-                                .decode(Rv64)
-                                .expect("decoding htinst failed")
-                        };
                         let mut context = hypervisor_data.guest().context;
-                        context.set_xreg(inst.rs2.expect("rs2 is not found"), value as u64);
+                        context.set_xreg(fault_inst.rs2.expect("rs2 is not found"), value as u64);
                     }
                     Err(PlicEmulateError::InvalidAddress) => hs_forward_exception(),
                 }
