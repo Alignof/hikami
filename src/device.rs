@@ -55,23 +55,28 @@ pub struct Devices {
 }
 
 impl Devices {
-    /// Create device identity map.
     pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
         let memory_map = self.create_device_map();
         page_table::sv39x4::generate_page_table(page_table_start, &memory_map);
     }
 
-    /// Create identity map for devices.  
-    /// VirtIO devices is excluded for emulation.
     fn create_device_map(&self) -> Vec<MemoryMap> {
-        alloc::vec![
+        let mut device_mapping: Vec<MemoryMap> = self
+            .virtio
+            .iter()
+            .flat_map(|virt| [virt.memmap(), virt.memmap()])
+            .collect();
+
+        device_mapping.extend_from_slice(&[
             self.uart.memmap(),
             self.initrd.memmap(),
             self.plic.memmap(),
             self.clint.memmap(),
             self.pci.memmap(),
             self.rtc.memmap(),
-        ]
+        ]);
+
+        device_mapping
     }
 }
 
