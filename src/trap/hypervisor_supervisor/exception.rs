@@ -117,7 +117,26 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     Err(PlicEmulateError::InvalidAddress) => hs_forward_exception(),
                 }
             }
-            HvException::StoreAmoGuestPageFault => todo!(),
+            HvException::StoreAmoGuestPageFault => {
+                let fault_addr = stval::read();
+                let fault_inst_value = htinst::read().bits;
+                let fault_inst = Instruction::try_from(fault_inst_value)
+                    .expect("decoding load fault instruction failed");
+
+                let mut hypervisor_data = HYPERVISOR_DATA.lock();
+                let context = hypervisor_data.guest().context;
+                let store_value = context
+                    .xreg(fault_inst.rs2.expect("rs2 is not found"))
+                    .try_into()
+                    .unwrap();
+                if let Err(PlicEmulateError::InvalidAddress) = hypervisor_data
+                    .devices()
+                    .plic
+                    .emulate_write(HostPhysicalAddress(fault_addr), store_value)
+                {
+                    hs_forward_exception();
+                }
+            }
             HvException::VirtualInstruction => {
                 let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
                 virtual_instruction_handler(stval::read() as u32, &mut context);
