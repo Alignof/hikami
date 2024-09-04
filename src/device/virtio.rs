@@ -8,20 +8,20 @@ use fdt::Fdt;
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
 #[derive(Debug)]
-pub struct VirtIo {
-    virtio_map: Vec<VirtIoMap>,
+pub struct VirtIoList {
+    virtio_map: Vec<VirtIo>,
 }
 
-impl VirtIo {
+impl VirtIoList {
     /// Create each Virt IO data when device has multiple IOs.
     pub fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        VirtIo {
+        VirtIoList {
             virtio_map: device_tree
                 .find_all_nodes(node_path)
                 .map(|node| {
                     let region = node.reg().unwrap().next().unwrap();
                     let irq = node.property("interrupts").unwrap().value[0];
-                    VirtIoMap {
+                    VirtIo {
                         base_addr: HostPhysicalAddress(region.starting_address as usize),
                         size: region.size.unwrap(),
                         irq,
@@ -33,25 +33,25 @@ impl VirtIo {
 }
 
 #[derive(Debug)]
-pub struct VirtIoMap {
+pub struct VirtIo {
     base_addr: HostPhysicalAddress,
     size: usize,
     irq: u8,
 }
 
-impl VirtIoMap {
+impl VirtIo {
     pub fn irq(&self) -> u8 {
         self.irq
     }
 }
 
-impl Device for VirtIoMap {
+impl Device for VirtIo {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let node = device_tree.find_all_nodes(node_path).next().unwrap();
         let region = node.reg().unwrap().next().unwrap();
         let irq = node.property("interrupts").unwrap().value[0];
 
-        VirtIoMap {
+        VirtIo {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             irq,
