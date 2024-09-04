@@ -43,6 +43,11 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         sie::set_stimer();
     }
 
+    // set hie = 0x444
+    hie::set(VsInterruptKind::External);
+    hie::set(VsInterruptKind::Timer);
+    hie::set(VsInterruptKind::Software);
+
     // enable Sstc extention
     henvcfg::set_stce();
     henvcfg::set_cbze();
@@ -50,12 +55,6 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
-
-    // set hie = 0x444
-    // TODO?: trap VS-mode interrupt.
-    hie::set(VsInterruptKind::External);
-    hie::set(VsInterruptKind::Timer);
-    hie::set(VsInterruptKind::Software);
 
     // specify delegation exception kinds.
     hedeleg::write(
