@@ -3,7 +3,7 @@
 pub mod clint;
 mod initrd;
 mod pci;
-mod plic;
+pub mod plic;
 mod rtc;
 pub mod uart;
 mod virtio;
