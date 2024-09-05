@@ -11,8 +11,9 @@ use fdt::Fdt;
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
 
 // unused constant for now
-// pub const ENABLE_BASE: usize = 0x2000;
-// pub const ENABLE_PER_HART: usize = 0x80;
+const ENABLE_BASE: usize = 0x2000;
+const ENABLE_REGS_SIZE: usize = 0x80;
+const ENABLE_END: usize = ENABLE_BASE * ENABLE_REGS_SIZE * MAX_CONTEXT_NUM;
 const CONTEXT_BASE: usize = 0x20_0000;
 const CONTEXT_REGS_SIZE: usize = 0x1000;
 const CONTEXT_CLAIM: usize = 0x4;
@@ -34,6 +35,7 @@ pub enum PlicEmulateError {
 pub struct Plic {
     base_addr: HostPhysicalAddress,
     size: usize,
+    enable: [u32; MAX_CONTEXT_NUM],
     claim_complete: [u32; MAX_CONTEXT_NUM],
 }
 
@@ -127,6 +129,7 @@ impl Device for Plic {
         Plic {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
+            enable: [0u32; MAX_CONTEXT_NUM],
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         }
     }
