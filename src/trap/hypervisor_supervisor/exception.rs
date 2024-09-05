@@ -111,13 +111,13 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 match hypervisor_data.devices().plic.emulate_read(fault_addr) {
                     Ok(value) => {
                         let mut context = hypervisor_data.guest().context;
-                        context.set_xreg(fault_inst.rd.expect("rd is not found"), value as u64);
+                        context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
                         if (fault_inst_value & 0b10) >> 1 == 0 {
                             // compressed instruction
-                            context.set_sepc(context.sepc() + 2)
+                            context.set_sepc(context.sepc() + 2);
                         } else {
                             // normal size instruction
-                            context.set_sepc(context.sepc() + 4)
+                            context.set_sepc(context.sepc() + 4);
                         }
                     }
                     Err(
@@ -150,10 +150,10 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     Ok(()) => {
                         if (fault_inst_value & 0b10) >> 1 == 0 {
                             // compressed instruction
-                            context.set_sepc(context.sepc() + 2)
+                            context.set_sepc(context.sepc() + 2);
                         } else {
                             // normal size instruction
-                            context.set_sepc(context.sepc() + 4)
+                            context.set_sepc(context.sepc() + 4);
                         }
                     }
                     Err(

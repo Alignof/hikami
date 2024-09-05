@@ -20,6 +20,7 @@ const CONTEXT_CLAIM: usize = 0x4;
 const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
 
 /// PLIC emulation result.
+#[allow(clippy::module_name_repetitions)]
 pub enum PlicEmulateError {
     /// Invalid plic address.
     InvalidAddress,
