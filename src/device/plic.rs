@@ -23,6 +23,8 @@ const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
 pub enum PlicEmulateError {
     /// Invalid plic address.
     InvalidAddress,
+    /// Enable ID is out of range.
+    InvalidEnableId,
     /// Context ID is out of range.
     InvalidContextId,
     /// Accessed register is reserved.
