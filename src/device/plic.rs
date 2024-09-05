@@ -38,14 +38,8 @@ impl Plic {
     }
 
     /// Emulate reading plic register.
-    pub fn emulate_read(
-        &self,
-        fault_addr: GuestPhysicalAddress,
-    ) -> Result<usize, PlicEmulateError> {
-        // PLIC map is always identity map.
-        let dst_addr = HostPhysicalAddress(fault_addr.raw());
-
-        let offset = self.base_addr.raw() - dst_addr.raw();
+    pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<usize, PlicEmulateError> {
+        let offset = dst_addr.raw() - self.base_addr.raw();
         if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_PER_HART * MAX_HART_NUM {
             return Err(PlicEmulateError::InvalidAddress);
         }
@@ -57,13 +51,10 @@ impl Plic {
     /// Emulate writing plic register.
     pub fn emulate_write(
         &mut self,
-        fault_addr: GuestPhysicalAddress,
+        dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), PlicEmulateError> {
-        // PLIC map is always identity map.
-        let dst_addr = HostPhysicalAddress(fault_addr.raw());
-
-        let offset = self.base_addr.raw() - dst_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr.raw();
         if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_PER_HART * MAX_HART_NUM {
             return Err(PlicEmulateError::InvalidAddress);
         }

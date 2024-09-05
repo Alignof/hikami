@@ -6,10 +6,10 @@ use super::hstrap_exit;
 use crate::device::plic::PlicEmulateError;
 use crate::guest;
 use crate::h_extension::{
-    csrs::{htinst, vstvec},
+    csrs::{htinst, htval, vstvec},
     HvException,
 };
-use crate::memmap::GuestPhysicalAddress;
+use crate::memmap::HostPhysicalAddress;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
@@ -99,17 +99,13 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 context.set_sepc(context.sepc() + 4);
             }
             HvException::LoadGuestPageFault => {
-                let fault_addr = stval::read();
+                let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
                 let fault_inst_value = htinst::read().bits;
                 let fault_inst = Instruction::try_from(fault_inst_value)
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                match hypervisor_data
-                    .devices()
-                    .plic
-                    .emulate_read(GuestPhysicalAddress(fault_addr))
-                {
+                match hypervisor_data.devices().plic.emulate_read(fault_addr) {
                     Ok(value) => {
                         let mut context = hypervisor_data.guest().context;
                         context.set_xreg(fault_inst.rs2.expect("rs2 is not found"), value as u64);
@@ -118,7 +114,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 }
             }
             HvException::StoreAmoGuestPageFault => {
-                let fault_addr = stval::read();
+                let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
                 let fault_inst_value = htinst::read().bits;
                 let fault_inst = Instruction::try_from(fault_inst_value)
                     .expect("decoding load fault instruction failed");
@@ -132,7 +128,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 if let Err(PlicEmulateError::InvalidAddress) = hypervisor_data
                     .devices()
                     .plic
-                    .emulate_write(GuestPhysicalAddress(fault_addr), store_value)
+                    .emulate_write(fault_addr, store_value)
                 {
                     hs_forward_exception();
                 }
