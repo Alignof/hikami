@@ -58,6 +58,16 @@ impl Plic {
         self.claim_complete[hart_id] = irq;
     }
 
+    /// Pass through reading plic enable register.
+    fn enable_read(&self, offset: usize) -> Result<usize, PlicEmulateError> {
+        let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
+        if enable_block_id / ENABLE_REG_BIT_WIDTH > MAX_CONTEXT_NUM {
+            Err(PlicEmulateError::InvalidEnableId)
+        } else {
+            Ok(self.enable[enable_block_id] as usize)
+        }
+    }
+
     /// Pass through reading plic context register
     fn context_read(&self, offset: usize) -> Result<usize, PlicEmulateError> {
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
@@ -65,16 +75,6 @@ impl Plic {
             Err(PlicEmulateError::InvalidContextId)
         } else {
             Ok(self.claim_complete[context_id] as usize)
-        }
-    }
-
-    /// Pass through reading plic enable register.
-    fn enable_read(&self, offset: usize) -> Result<usize, PlicEmulateError> {
-        let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
-        if enable_block_id > MAX_CONTEXT_NUM / ENABLE_REG_BIT_WIDTH {
-            Err(PlicEmulateError::InvalidEnableId)
-        } else {
-            Ok(self.enable[enable_block_id] as usize)
         }
     }
 
@@ -96,7 +96,7 @@ impl Plic {
     ) -> Result<(), PlicEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
         let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
-        if enable_block_id > MAX_CONTEXT_NUM / ENABLE_REG_BIT_WIDTH {
+        if enable_block_id / ENABLE_REG_BIT_WIDTH > MAX_CONTEXT_NUM {
             Err(PlicEmulateError::InvalidEnableId)
         } else {
             let dst_ptr = dst_addr.raw() as *mut u32;
