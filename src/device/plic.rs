@@ -187,10 +187,12 @@ impl Device for Plic {
     }
 
     fn memmap(&self) -> MemoryMap {
+        // Pass through 0x0 - 0x20_0000.
+        // Disallow 0x20_0000 - for emulation.
         let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
+            vaddr..vaddr + CONTEXT_BASE,
+            self.paddr()..self.paddr() + CONTEXT_BASE,
             &PTE_FLAGS_FOR_DEVICE,
         )
     }
