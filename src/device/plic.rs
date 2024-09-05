@@ -44,15 +44,23 @@ impl Plic {
         self.claim_complete[hart_id] = irq;
     }
 
+    /// Emulate reading plic context register
+    fn context_read(&self, offset: usize) -> Result<usize, PlicEmulateError> {
+        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
+        if context_id > MAX_CONTEXT_NUM {
+            Err(PlicEmulateError::InvalidContextId)
+        } else {
+            Ok(self.claim_complete[context_id] as usize)
+        }
+    }
+
     /// Emulate reading plic register.
     pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<usize, PlicEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
-        if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM {
-            return Err(PlicEmulateError::InvalidAddress);
+        match offset {
+            CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
+            _ => Err(PlicEmulateError::InvalidAddress),
         }
-
-        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
-        Ok(self.claim_complete[context_id] as usize)
     }
 
     /// Emulate writing plic register.
@@ -106,7 +114,7 @@ impl Device for Plic {
         Plic {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-            claim_complete: [0u32; MAX_HART_NUM],
+            claim_complete: [0u32; MAX_CONTEXT_NUM],
         }
     }
 
