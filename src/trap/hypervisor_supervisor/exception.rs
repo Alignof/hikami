@@ -112,6 +112,10 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     Ok(value) => {
                         let mut context = hypervisor_data.guest().context;
                         context.set_xreg(fault_inst.rd.expect("rd is not found"), value as u64);
+                        match fault_inst.opc {
+                            OpcodeKind::C(_) => context.set_sepc(context.sepc() + 2),
+                            _ => context.set_sepc(context.sepc() + 4),
+                        }
                     }
                     Err(
                         PlicEmulateError::InvalidAddress
@@ -131,7 +135,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                let context = hypervisor_data.guest().context;
+                let mut context = hypervisor_data.guest().context;
                 let store_value = context
                     .xreg(fault_inst.rs2.expect("rs2 is not found"))
                     .try_into()
@@ -142,6 +146,11 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .emulate_write(fault_addr, store_value)
                 {
                     hs_forward_exception();
+                } else {
+                    match fault_inst.opc {
+                        OpcodeKind::C(_) => context.set_sepc(context.sepc() + 2),
+                        _ => context.set_sepc(context.sepc() + 4),
+                    }
                 }
             }
             HvException::VirtualInstruction => {
