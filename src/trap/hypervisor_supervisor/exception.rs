@@ -112,9 +112,12 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     Ok(value) => {
                         let mut context = hypervisor_data.guest().context;
                         context.set_xreg(fault_inst.rd.expect("rd is not found"), value as u64);
-                        match fault_inst.opc {
-                            OpcodeKind::C(_) => context.set_sepc(context.sepc() + 2),
-                            _ => context.set_sepc(context.sepc() + 4),
+                        if (fault_inst_value & 0b10) >> 1 == 0 {
+                            // compressed instruction
+                            context.set_sepc(context.sepc() + 2)
+                        } else {
+                            // normal size instruction
+                            context.set_sepc(context.sepc() + 4)
                         }
                     }
                     Err(
@@ -140,17 +143,26 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .xreg(fault_inst.rs2.expect("rs2 is not found"))
                     .try_into()
                     .unwrap();
-                if let Err(PlicEmulateError::InvalidAddress) = hypervisor_data
+                match hypervisor_data
                     .devices()
                     .plic
                     .emulate_write(fault_addr, store_value)
                 {
-                    hs_forward_exception();
-                } else {
-                    match fault_inst.opc {
-                        OpcodeKind::C(_) => context.set_sepc(context.sepc() + 2),
-                        _ => context.set_sepc(context.sepc() + 4),
+                    Ok(()) => {
+                        if (fault_inst_value & 0b10) >> 1 == 0 {
+                            // compressed instruction
+                            context.set_sepc(context.sepc() + 2)
+                        } else {
+                            // normal size instruction
+                            context.set_sepc(context.sepc() + 4)
+                        }
                     }
+                    Err(
+                        PlicEmulateError::InvalidAddress
+                        | PlicEmulateError::InvalidEnableId
+                        | PlicEmulateError::InvalidContextId
+                        | PlicEmulateError::ReservedRegister,
+                    ) => hs_forward_exception(),
                 }
             }
             HvException::VirtualInstruction => {
