@@ -101,7 +101,10 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
             HvException::LoadGuestPageFault => {
                 let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
                 let fault_inst_value = htinst::read().bits;
-                let fault_inst = Instruction::try_from(fault_inst_value)
+                // htinst bit 1 replaced with a 0.
+                // thus it needed to flip bit 1.
+                // ref: vol. II p.161
+                let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
@@ -121,7 +124,10 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
             HvException::StoreAmoGuestPageFault => {
                 let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
                 let fault_inst_value = htinst::read().bits;
-                let fault_inst = Instruction::try_from(fault_inst_value)
+                // htinst bit 1 replaced with a 0.
+                // thus it needed to flip bit 1.
+                // ref: vol. II p.161
+                let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
