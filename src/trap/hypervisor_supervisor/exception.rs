@@ -111,7 +111,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 match hypervisor_data.devices().plic.emulate_read(fault_addr) {
                     Ok(value) => {
                         let mut context = hypervisor_data.guest().context;
-                        context.set_xreg(fault_inst.rs2.expect("rs2 is not found"), value as u64);
+                        context.set_xreg(fault_inst.rd.expect("rd is not found"), value as u64);
                     }
                     Err(
                         PlicEmulateError::InvalidAddress
