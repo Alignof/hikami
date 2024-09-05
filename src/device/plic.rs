@@ -16,10 +16,14 @@ pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
 const CONTEXT_BASE: usize = 0x20_0000;
 const CONTEXT_REGS_SIZE: usize = 0x1000;
 const CONTEXT_CLAIM: usize = 0x4;
+const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
 
 /// PLIC emulation result.
 pub enum PlicEmulateError {
+    /// Invalid plic address.
     InvalidAddress,
+    /// Context ID is out of range.
+    InvalidContextId,
 }
 
 /// PLIC: Platform-Level Interrupt Controller  
