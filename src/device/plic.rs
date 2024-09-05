@@ -58,7 +58,7 @@ impl Plic {
         self.claim_complete[hart_id] = irq;
     }
 
-    /// Emulate reading plic context register
+    /// Pass through reading plic context register
     fn context_read(&self, offset: usize) -> Result<usize, PlicEmulateError> {
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
         if context_id > MAX_CONTEXT_NUM {
@@ -68,7 +68,7 @@ impl Plic {
         }
     }
 
-    /// Emulate reading plic enable register.
+    /// Pass through reading plic enable register.
     fn enable_read(&self, offset: usize) -> Result<usize, PlicEmulateError> {
         let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
         if enable_block_id > MAX_CONTEXT_NUM / ENABLE_REG_BIT_WIDTH {
@@ -85,6 +85,26 @@ impl Plic {
             CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
             ENABLE_BASE..=ENABLE_END => self.enable_read(offset),
             _ => Err(PlicEmulateError::InvalidAddress),
+        }
+    }
+
+    /// Pass through writing plic enable register.
+    fn enable_write(
+        &mut self,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) -> Result<(), PlicEmulateError> {
+        let offset = dst_addr.raw() - self.base_addr.raw();
+        let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
+        if enable_block_id > MAX_CONTEXT_NUM / ENABLE_REG_BIT_WIDTH {
+            Err(PlicEmulateError::InvalidEnableId)
+        } else {
+            let dst_ptr = dst_addr.raw() as *mut u32;
+            unsafe {
+                dst_ptr.write_volatile(value);
+            }
+
+            Ok(())
         }
     }
 
@@ -132,6 +152,7 @@ impl Plic {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
+            ENABLE_BASE..=ENABLE_END => self.enable_write(dst_addr, value),
             _ => Err(PlicEmulateError::InvalidAddress),
         }
     }
