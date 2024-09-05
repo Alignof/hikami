@@ -122,7 +122,6 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     }
                     Err(
                         PlicEmulateError::InvalidAddress
-                        | PlicEmulateError::InvalidEnableId
                         | PlicEmulateError::InvalidContextId
                         | PlicEmulateError::ReservedRegister,
                     ) => hs_forward_exception(),
@@ -159,7 +158,6 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     }
                     Err(
                         PlicEmulateError::InvalidAddress
-                        | PlicEmulateError::InvalidEnableId
                         | PlicEmulateError::InvalidContextId
                         | PlicEmulateError::ReservedRegister,
                     ) => hs_forward_exception(),
