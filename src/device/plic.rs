@@ -7,11 +7,14 @@ use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
+/// Max number of PLIC context.
+pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
+
 // unused constant for now
 // pub const ENABLE_BASE: usize = 0x2000;
 // pub const ENABLE_PER_HART: usize = 0x80;
 const CONTEXT_BASE: usize = 0x20_0000;
-const CONTEXT_PER_HART: usize = 0x1000;
+const CONTEXT_REGS_SIZE: usize = 0x1000;
 const CONTEXT_CLAIM: usize = 0x4;
 
 /// PLIC emulation result.
@@ -25,14 +28,14 @@ pub enum PlicEmulateError {
 pub struct Plic {
     base_addr: HostPhysicalAddress,
     size: usize,
-    claim_complete: [u32; MAX_HART_NUM],
+    claim_complete: [u32; MAX_CONTEXT_NUM],
 }
 
 impl Plic {
     /// Read plic claim/update register and reflect to `claim_complete`.
     pub fn update_claim_complete(&mut self, hart_id: usize) {
         let claim_complete_addr =
-            self.base_addr + CONTEXT_BASE + CONTEXT_PER_HART * hart_id + CONTEXT_CLAIM;
+            self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * hart_id + CONTEXT_CLAIM;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
         self.claim_complete[hart_id] = irq;
     }
@@ -40,12 +43,12 @@ impl Plic {
     /// Emulate reading plic register.
     pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<usize, PlicEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
-        if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_PER_HART * MAX_HART_NUM {
+        if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM {
             return Err(PlicEmulateError::InvalidAddress);
         }
 
-        let hart = (offset - CONTEXT_BASE) / CONTEXT_PER_HART;
-        Ok(self.claim_complete[hart] as usize)
+        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
+        Ok(self.claim_complete[context_id] as usize)
     }
 
     /// Emulate writing plic register.
@@ -55,12 +58,12 @@ impl Plic {
         value: u32,
     ) -> Result<(), PlicEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
-        if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_PER_HART * MAX_HART_NUM {
+        if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM {
             return Err(PlicEmulateError::InvalidAddress);
         }
-        let offset_per_context = offset % CONTEXT_PER_HART;
+        let offset_per_context = offset % CONTEXT_REGS_SIZE;
 
-        let hart = (offset - CONTEXT_BASE) / CONTEXT_PER_HART;
+        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
         match offset_per_context {
             // threshold
             0 => {
@@ -75,7 +78,7 @@ impl Plic {
                 unsafe {
                     dst_ptr.write_volatile(value);
                 }
-                self.claim_complete[hart] = 0;
+                self.claim_complete[context_id] = 0;
                 hvip::clear(VsInterruptKind::External);
             }
             8 => panic!("offset 8 is reserved"),
