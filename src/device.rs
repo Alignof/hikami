@@ -34,7 +34,7 @@ pub trait Device {
     fn size(&self) -> usize;
     /// Return address of physical memory
     fn paddr(&self) -> HostPhysicalAddress;
-    /// Return memory map between physical to physical
+    /// Return memory map between physical to physical (identity map) for crate page table.
     fn memmap(&self) -> MemoryMap;
 }
 
@@ -67,12 +67,13 @@ impl Devices {
         let mut device_mapping: Vec<MemoryMap> = self
             .virtio_list
             .iter()
-            .flat_map(|virt| [virt.memmap(), virt.memmap()])
+            .flat_map(|virt| [virt.memmap()])
             .collect();
 
         device_mapping.extend_from_slice(&[
             self.uart.memmap(),
             self.initrd.memmap(),
+            self.plic.memmap(),
             self.clint.memmap(),
             self.pci.memmap(),
             self.rtc.memmap(),

@@ -10,14 +10,6 @@ use fdt::Fdt;
 /// Max number of PLIC context.
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
 
-/// Base offset of enable.
-const ENABLE_BASE: usize = 0x2000;
-/// Enable registers region size.
-const ENABLE_REGS_SIZE: usize = 0x80;
-/// Bit width of enable register.
-const ENABLE_REG_BIT_WIDTH: usize = 32;
-/// End of enable registers region.
-const ENABLE_END: usize = ENABLE_BASE * ENABLE_REGS_SIZE * MAX_CONTEXT_NUM;
 /// Base offset of context.
 const CONTEXT_BASE: usize = 0x20_0000;
 /// Context registers region size.
@@ -28,11 +20,10 @@ const CONTEXT_CLAIM: usize = 0x4;
 const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
 
 /// PLIC emulation result.
+#[allow(clippy::module_name_repetitions)]
 pub enum PlicEmulateError {
     /// Invalid plic address.
     InvalidAddress,
-    /// Enable ID is out of range.
-    InvalidEnableId,
     /// Context ID is out of range.
     InvalidContextId,
     /// Accessed register is reserved.
@@ -45,7 +36,6 @@ pub enum PlicEmulateError {
 pub struct Plic {
     base_addr: HostPhysicalAddress,
     size: usize,
-    enable: [u32; MAX_CONTEXT_NUM],
     claim_complete: [u32; MAX_CONTEXT_NUM],
 }
 
@@ -56,18 +46,6 @@ impl Plic {
             self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * hart_id + CONTEXT_CLAIM;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
         self.claim_complete[hart_id] = irq;
-    }
-
-    /// Pass through reading plic enable register.
-    fn enable_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, PlicEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
-        let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
-        if enable_block_id / ENABLE_REG_BIT_WIDTH > MAX_CONTEXT_NUM {
-            Err(PlicEmulateError::InvalidEnableId)
-        } else {
-            let dst_ptr = dst_addr.raw() as *mut u32;
-            unsafe { Ok(dst_ptr.read_volatile()) }
-        }
     }
 
     /// Emulate reading plic context register
@@ -85,28 +63,7 @@ impl Plic {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
-            ENABLE_BASE..=ENABLE_END => self.enable_read(dst_addr),
             _ => Err(PlicEmulateError::InvalidAddress),
-        }
-    }
-
-    /// Pass through writing plic enable register.
-    fn enable_write(
-        &mut self,
-        dst_addr: HostPhysicalAddress,
-        value: u32,
-    ) -> Result<(), PlicEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
-        let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
-        if enable_block_id / ENABLE_REG_BIT_WIDTH > MAX_CONTEXT_NUM {
-            Err(PlicEmulateError::InvalidEnableId)
-        } else {
-            let dst_ptr = dst_addr.raw() as *mut u32;
-            unsafe {
-                dst_ptr.write_volatile(value);
-            }
-
-            Ok(())
         }
     }
 
@@ -154,7 +111,6 @@ impl Plic {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
-            ENABLE_BASE..=ENABLE_END => self.enable_write(dst_addr, value),
             _ => Err(PlicEmulateError::InvalidAddress),
         }
     }
@@ -173,7 +129,6 @@ impl Device for Plic {
         Plic {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-            enable: [0u32; MAX_CONTEXT_NUM],
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         }
     }
@@ -187,10 +142,12 @@ impl Device for Plic {
     }
 
     fn memmap(&self) -> MemoryMap {
+        // Pass through 0x0 - 0x20_0000.
+        // Disallow 0x20_0000 - for emulation.
         let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
+            vaddr..vaddr + CONTEXT_BASE,
+            self.paddr()..self.paddr() + CONTEXT_BASE,
             &PTE_FLAGS_FOR_DEVICE,
         )
     }
