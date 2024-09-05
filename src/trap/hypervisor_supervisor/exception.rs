@@ -110,9 +110,11 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                         let mut context = hypervisor_data.guest().context;
                         context.set_xreg(fault_inst.rs2.expect("rs2 is not found"), value as u64);
                     }
-                    Err(PlicEmulateError::InvalidAddress | PlicEmulateError::InvalidContextId) => {
-                        hs_forward_exception()
-                    }
+                    Err(
+                        PlicEmulateError::InvalidAddress
+                        | PlicEmulateError::InvalidContextId
+                        | PlicEmulateError::ReservedRegister,
+                    ) => hs_forward_exception(),
                 }
             }
             HvException::StoreAmoGuestPageFault => {

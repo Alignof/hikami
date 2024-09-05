@@ -65,19 +65,15 @@ impl Plic {
         }
     }
 
-    /// Emulate writing plic register.
-    pub fn emulate_write(
+    /// Emulate writing plic context register.
+    fn context_write(
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), PlicEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
-        if offset < CONTEXT_BASE || offset > CONTEXT_BASE + CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM {
-            return Err(PlicEmulateError::InvalidAddress);
-        }
-        let offset_per_context = offset % CONTEXT_REGS_SIZE;
-
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
+        let offset_per_context = offset % CONTEXT_REGS_SIZE;
         match offset_per_context {
             // threshold
             0 => {
@@ -85,6 +81,8 @@ impl Plic {
                 unsafe {
                     dst_ptr.write_volatile(value);
                 }
+
+                Ok(())
             }
             // claim/complete
             4 => {
@@ -94,12 +92,25 @@ impl Plic {
                 }
                 self.claim_complete[context_id] = 0;
                 hvip::clear(VsInterruptKind::External);
-            }
-            8 => panic!("offset 8 is reserved"),
-            _ => return Err(PlicEmulateError::InvalidAddress),
-        }
 
-        Ok(())
+                Ok(())
+            }
+            8 => Err(PlicEmulateError::ReservedRegister),
+            _ => Err(PlicEmulateError::InvalidAddress),
+        }
+    }
+
+    /// Emulate writing plic register.
+    pub fn emulate_write(
+        &mut self,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) -> Result<(), PlicEmulateError> {
+        let offset = dst_addr.raw() - self.base_addr.raw();
+        match offset {
+            CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
+            _ => Err(PlicEmulateError::InvalidAddress),
+        }
     }
 }
 
