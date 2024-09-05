@@ -10,14 +10,6 @@ use fdt::Fdt;
 /// Max number of PLIC context.
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
 
-/// Base offset of enable.
-const ENABLE_BASE: usize = 0x2000;
-/// Enable registers region size.
-const ENABLE_REGS_SIZE: usize = 0x80;
-/// Bit width of enable register.
-const ENABLE_REG_BIT_WIDTH: usize = 32;
-/// End of enable registers region.
-const ENABLE_END: usize = ENABLE_BASE * ENABLE_REGS_SIZE * MAX_CONTEXT_NUM;
 /// Base offset of context.
 const CONTEXT_BASE: usize = 0x20_0000;
 /// Context registers region size.
@@ -57,18 +49,6 @@ impl Plic {
         self.claim_complete[hart_id] = irq;
     }
 
-    /// Pass through reading plic enable register.
-    fn enable_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, PlicEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
-        let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
-        if enable_block_id / ENABLE_REG_BIT_WIDTH > MAX_CONTEXT_NUM {
-            Err(PlicEmulateError::InvalidEnableId)
-        } else {
-            let dst_ptr = dst_addr.raw() as *mut u32;
-            unsafe { Ok(dst_ptr.read_volatile()) }
-        }
-    }
-
     /// Emulate reading plic context register
     fn context_read(&self, offset: usize) -> Result<u32, PlicEmulateError> {
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
@@ -84,28 +64,7 @@ impl Plic {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
-            ENABLE_BASE..=ENABLE_END => self.enable_read(dst_addr),
             _ => Err(PlicEmulateError::InvalidAddress),
-        }
-    }
-
-    /// Pass through writing plic enable register.
-    fn enable_write(
-        &mut self,
-        dst_addr: HostPhysicalAddress,
-        value: u32,
-    ) -> Result<(), PlicEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
-        let enable_block_id = (offset - ENABLE_BASE) / ENABLE_REGS_SIZE;
-        if enable_block_id / ENABLE_REG_BIT_WIDTH > MAX_CONTEXT_NUM {
-            Err(PlicEmulateError::InvalidEnableId)
-        } else {
-            let dst_ptr = dst_addr.raw() as *mut u32;
-            unsafe {
-                dst_ptr.write_volatile(value);
-            }
-
-            Ok(())
         }
     }
 
@@ -153,7 +112,6 @@ impl Plic {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
-            ENABLE_BASE..=ENABLE_END => self.enable_write(dst_addr, value),
             _ => Err(PlicEmulateError::InvalidAddress),
         }
     }
