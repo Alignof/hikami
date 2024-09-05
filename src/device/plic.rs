@@ -45,7 +45,6 @@ pub enum PlicEmulateError {
 pub struct Plic {
     base_addr: HostPhysicalAddress,
     size: usize,
-    enable: [u32; MAX_CONTEXT_NUM],
     claim_complete: [u32; MAX_CONTEXT_NUM],
 }
 
@@ -173,7 +172,6 @@ impl Device for Plic {
         Plic {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-            enable: [0u32; MAX_CONTEXT_NUM],
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         }
     }
