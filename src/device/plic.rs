@@ -10,13 +10,21 @@ use fdt::Fdt;
 /// Max number of PLIC context.
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
 
-// unused constant for now
+/// Base offset of enable.
 const ENABLE_BASE: usize = 0x2000;
+/// Enable registers region size.
 const ENABLE_REGS_SIZE: usize = 0x80;
+/// Bit width of enable register.
+const ENABLE_REG_BIT_WIDTH: usize = 32;
+/// End of enable registers region.
 const ENABLE_END: usize = ENABLE_BASE * ENABLE_REGS_SIZE * MAX_CONTEXT_NUM;
+/// Base offset of context.
 const CONTEXT_BASE: usize = 0x20_0000;
+/// Context registers region size.
 const CONTEXT_REGS_SIZE: usize = 0x1000;
+/// Claim/complete register offset from `CONTEXT_BASE` + `CONTEXT_REGS_SIZE` * `CONTEXT_REGS_SIZE`.
 const CONTEXT_CLAIM: usize = 0x4;
+/// End of context registers region.
 const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
 
 /// PLIC emulation result.
