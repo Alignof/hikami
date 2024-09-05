@@ -296,6 +296,18 @@ pub mod henvcfg {
     }
 }
 
+pub mod htval {
+    //! Hypervisor bad guest physical address.
+    #![allow(dead_code)]
+
+    const HTVAL: usize = 0x643;
+    pub struct Htval {
+        pub bits: usize,
+    }
+
+    read_csr_as!(Htval, 0x643);
+}
+
 pub mod hvip {
     //! Hypervisor virtual interrupt pending.
     #![allow(dead_code)]
