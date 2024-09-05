@@ -24,6 +24,8 @@ pub enum PlicEmulateError {
     InvalidAddress,
     /// Context ID is out of range.
     InvalidContextId,
+    /// Accessed register is reserved.
+    ReservedRegister,
 }
 
 /// PLIC: Platform-Level Interrupt Controller  
