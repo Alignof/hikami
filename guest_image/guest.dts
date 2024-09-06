@@ -89,6 +89,7 @@
 	};
 
 	chosen {
+		bootargs = "root=/dev/vda rw console=ttyS0";
 		stdout-path = "/soc/serial@10000000";
 		rng-seed = <0x84243e45 0x3047b358 0xbacf5c32 0x578c88fe 0x89c61300 0x205ccc21 0x650e0486 0xf27a7c6f>;
 	};
