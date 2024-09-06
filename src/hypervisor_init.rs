@@ -140,6 +140,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         // sstatus.SUM = 1, sstatus.SPP = 0
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::Supervisor);
+        // sstatus.sie = 1
+        sstatus::set_sie();
 
         // hstatus.spv = 1 (enable V bit when sret executed)
         hstatus::set_spv();
