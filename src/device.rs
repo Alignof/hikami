@@ -15,14 +15,8 @@ use alloc::vec::Vec;
 use fdt::Fdt;
 
 /// Page table for device
-const PTE_FLAGS_FOR_DEVICE: [PteFlag; 6] = [
-    PteFlag::Dirty,
-    PteFlag::Accessed,
-    PteFlag::Write,
-    PteFlag::Read,
-    PteFlag::User,
-    PteFlag::Valid,
-];
+const PTE_FLAGS_FOR_DEVICE: [PteFlag; 4] =
+    [PteFlag::Write, PteFlag::Read, PteFlag::User, PteFlag::Valid];
 
 /// A struct that implement Device trait **must** has `base_addr` and size member.
 pub trait Device {
