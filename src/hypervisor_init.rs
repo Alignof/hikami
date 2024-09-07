@@ -146,6 +146,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         // hstatus.spv = 1 (enable V bit when sret executed)
         hstatus::set_spv();
 
+        // vsstatus.sie = 1
+        asm!("csrsi vsstatus, 0x2");
+
         // set entry point
         sepc::write(guest_entry_point.raw());
 

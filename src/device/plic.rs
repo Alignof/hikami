@@ -117,6 +117,7 @@ impl Plic {
 }
 
 impl Device for Plic {
+    #[allow(clippy::cast_ptr_alignment)]
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree
             .find_node(node_path)
