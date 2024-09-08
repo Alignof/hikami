@@ -1,9 +1,11 @@
 //! Trap VS-mode interrupt.
 
 use super::hstrap_exit;
+use crate::device::plic::ContextId;
 use crate::device::Device;
 use crate::h_extension::csrs::{hvip, vsip, VsInterruptKind};
 use crate::HYPERVISOR_DATA;
+
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
 
@@ -28,12 +30,13 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
         Interrupt::SupervisorExternal => {
             let mut hypervisor_data = HYPERVISOR_DATA.lock();
             let hart_id = hypervisor_data.guest().hart_id();
+            let context_id = ContextId::new(hart_id, true);
 
             // read plic claim/update register and reflect to plic.claim_complete.
             hypervisor_data
                 .devices()
                 .plic
-                .update_claim_complete(hart_id);
+                .update_claim_complete(context_id);
 
             hvip::set(VsInterruptKind::External);
         }

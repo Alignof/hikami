@@ -19,6 +19,19 @@ const CONTEXT_CLAIM: usize = 0x4;
 /// End of context registers region.
 const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
 
+/// PLIC context ID.
+pub struct ContextId(usize);
+
+impl ContextId {
+    pub fn new(hart_id: usize, is_supervisor: bool) -> Self {
+        ContextId(2 * hart_id + is_supervisor as usize)
+    }
+
+    pub fn raw(&self) -> usize {
+        self.0
+    }
+}
+
 /// PLIC emulation result.
 #[allow(clippy::module_name_repetitions)]
 pub enum PlicEmulateError {
@@ -41,12 +54,11 @@ pub struct Plic {
 
 impl Plic {
     /// Read plic claim/update register and reflect to `claim_complete`.
-    pub fn update_claim_complete(&mut self, hart_id: usize) {
-        let context_id = 2 * hart_id + 1; // machine/supervisor * hart_id + (is_supervisor as usize)
+    pub fn update_claim_complete(&mut self, context_id: ContextId) {
         let claim_complete_addr =
-            self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id + CONTEXT_CLAIM;
+            self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id.raw() + CONTEXT_CLAIM;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
-        self.claim_complete[hart_id] = irq;
+        self.claim_complete[context_id.raw()] = irq;
     }
 
     /// Emulate reading plic context register
