@@ -42,8 +42,9 @@ pub struct Plic {
 impl Plic {
     /// Read plic claim/update register and reflect to `claim_complete`.
     pub fn update_claim_complete(&mut self, hart_id: usize) {
+        let context_id = 2 * hart_id + 1; // machine/supervisor * hart_id + (is_supervisor as usize)
         let claim_complete_addr =
-            self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * hart_id + CONTEXT_CLAIM;
+            self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id + CONTEXT_CLAIM;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
         self.claim_complete[hart_id] = irq;
     }
