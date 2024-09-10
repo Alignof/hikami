@@ -1,6 +1,7 @@
 //! A virtualization standard for network and disk device drivers.
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::Device;
+use crate::memmap::page_table::PteFlag;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
 use core::slice::Iter;
@@ -75,7 +76,8 @@ impl Device for VirtIo {
         MemoryMap::new(
             vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
+            // deny write permission for emulation.
+            &[PteFlag::Read, PteFlag::User, PteFlag::Valid],
         )
     }
 }
