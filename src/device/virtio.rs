@@ -1,6 +1,6 @@
 //! A virtualization standard for network and disk device drivers.
 
-use super::Device;
+use super::{Device, DeviceEmulateError};
 use crate::memmap::page_table::PteFlag;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
@@ -29,6 +29,23 @@ impl VirtIoList {
                 })
                 .collect(),
         )
+    }
+
+    /// Emulate wrting to memory mapped register
+    pub fn emulate_write(
+        &mut self,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) -> Result<(), DeviceEmulateError> {
+        let vio = self
+            .0
+            .iter()
+            .find(|vio| vio.memmap().phys.contains(&dst_addr));
+
+        match vio {
+            Some(vio) => vio.emulate_write(dst_addr, value),
+            None => Err(DeviceEmulateError::InvalidAddress),
+        }
     }
 
     /// Return Virt IO list iterator
