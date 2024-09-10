@@ -11,6 +11,8 @@ pub mod constants {
     ///
     /// vpn\[1\] == vpn\[0\] == 9 bit
     pub const PAGE_TABLE_LEN: usize = 512;
+    /// Page table entry size
+    pub const PTE_SIZE: usize = 8; // 8 bytes in rv64
 }
 
 /// Page table level.
