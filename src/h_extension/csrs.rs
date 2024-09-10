@@ -349,17 +349,18 @@ pub mod hgatp {
 
     impl Hgatp {
         /// Return ppn.
-        pub fn ppn(self) -> usize {
+        pub fn ppn(&self) -> usize {
             self.bits & 0xfff_ffff_ffff // 44 bit
         }
 
         /// Return translation mode.
-        pub fn mode(self) -> HgatpMode {
+        pub fn mode(&self) -> HgatpMode {
             match (self.bits >> 60) & 0b1111 {
                 0 => HgatpMode::Bare,
                 8 => HgatpMode::Sv39x4,
                 9 => HgatpMode::Sv48x4,
                 10 => HgatpMode::Sv57x4,
+                _ => unreachable!(),
             }
         }
     }
