@@ -137,7 +137,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                let mut context = hypervisor_data.guest().context;
+                let context = hypervisor_data.guest().context;
                 let update_epc = |fault_inst_value: usize, mut context: guest::context::Context| {
                     if (fault_inst_value & 0b10) >> 1 == 0 {
                         // compressed instruction
@@ -147,27 +147,26 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                         context.set_sepc(context.sepc() + 4);
                     }
                 };
-                let store_value = context
-                    .xreg(fault_inst.rs2.expect("rs2 is not found"))
-                    .try_into()
-                    .unwrap();
+                let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
 
                 if let Ok(()) = hypervisor_data
                     .devices()
                     .plic
-                    .emulate_write(fault_addr, store_value)
+                    .emulate_write(fault_addr, store_value.try_into().unwrap())
                 {
                     update_epc(fault_inst_value, context);
-                    hstrap_exit();
+                    drop(hypervisor_data);
+                    hstrap_exit(); // exit handler
                 }
 
                 if let Ok(()) = hypervisor_data
                     .devices()
                     .virtio_list
-                    .emulate_write(fault_addr, store_value)
+                    .emulate_write(fault_addr, store_value as usize)
                 {
                     update_epc(fault_inst_value, context);
-                    hstrap_exit();
+                    drop(hypervisor_data);
+                    hstrap_exit(); // exit handler
                 }
 
                 hs_forward_exception();

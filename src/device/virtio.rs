@@ -1,11 +1,15 @@
 //! A virtualization standard for network and disk device drivers.
 
 use super::{Device, DeviceEmulateError};
+use crate::memmap::page_table::sv39x4;
 use crate::memmap::page_table::PteFlag;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
 use core::slice::Iter;
 use fdt::Fdt;
+
+/// Base offset of context.
+const QUEUE_PFN: usize = 0x40;
 
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
@@ -35,11 +39,11 @@ impl VirtIoList {
     pub fn emulate_write(
         &mut self,
         dst_addr: HostPhysicalAddress,
-        value: u32,
+        value: usize,
     ) -> Result<(), DeviceEmulateError> {
         let vio = self
             .0
-            .iter()
+            .iter_mut()
             .find(|vio| vio.memmap().phys.contains(&dst_addr));
 
         match vio {
@@ -64,6 +68,36 @@ pub struct VirtIo {
 impl VirtIo {
     pub fn irq(&self) -> u8 {
         self.irq
+    }
+}
+
+impl VirtIo {
+    /// Emulate wrting to `QUEUE_PFN`
+    pub fn emulate_write(
+        &mut self,
+        dst_addr: HostPhysicalAddress,
+        value: usize,
+    ) -> Result<(), DeviceEmulateError> {
+        let offset = dst_addr.raw() - self.base_addr.raw();
+        match offset {
+            // TODO replace IOMMU implementation.
+            QUEUE_PFN => {
+                let gpa: GuestPhysicalAddress = GuestPhysicalAddress(value);
+                let hpa: HostPhysicalAddress = sv39x4::trans_addr(gpa);
+                unsafe {
+                    core::ptr::write_volatile(dst_addr.raw() as *mut usize, hpa.raw());
+                }
+
+                Ok(())
+            }
+            _ => {
+                unsafe {
+                    core::ptr::write_volatile(dst_addr.raw() as *mut usize, value);
+                }
+
+                Ok(())
+            }
+        }
     }
 }
 
