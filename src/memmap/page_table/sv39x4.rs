@@ -3,14 +3,15 @@
 //!
 //! [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf) p.151
 
-use alloc::boxed::Box;
-use core::slice::from_raw_parts_mut;
-
 use super::{
-    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
+    constants::{PAGE_SIZE, PAGE_TABLE_LEN, PTE_SIZE},
     PageTableAddress, PageTableEntry, PageTableLevel, PteFlag,
 };
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use crate::h_extension::csrs::{hgatp, hgatp::HgatpMode};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+
+use alloc::boxed::Box;
+use core::slice::from_raw_parts_mut;
 
 /// First page table size
 pub const FIRST_LV_PAGE_TABLE_LEN: usize = 2048;
@@ -109,4 +110,60 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
             }
         }
     }
+}
+
+/// Translate gpa to hpa in sv39x4
+pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
+    let hgatp = hgatp::read();
+    let mut page_table_addr = PageTableAddress(hgatp.ppn() << 12);
+    assert!(matches!(hgatp.mode(), HgatpMode::Sv39x4));
+    for level in [
+        PageTableLevel::Lv1GB,
+        PageTableLevel::Lv2MB,
+        PageTableLevel::Lv4KB,
+    ] {
+        let page_table = match level {
+            PageTableLevel::Lv1GB => unsafe {
+                from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
+            },
+            PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
+                from_raw_parts_mut(page_table_addr.to_pte_ptr(), PAGE_TABLE_LEN)
+            },
+        };
+        let pte = page_table[gpa.vpn(level as usize)];
+        if pte.is_leaf() {
+            match level {
+                PageTableLevel::Lv1GB => {
+                    if pte.ppn(0) != 0 {
+                        panic!("Address translation failed: pte.ppn[0] != 0");
+                    }
+                    if pte.ppn(1) != 0 {
+                        panic!("Address translation failed: pte.ppn[1] != 0");
+                    }
+                    return HostPhysicalAddress(
+                        pte.ppn(2) << 30 | gpa.vpn(1) << 21 | gpa.vpn(0) << 12 | gpa.page_offset(),
+                    );
+                }
+                PageTableLevel::Lv2MB => {
+                    if pte.ppn(0) != 0 {
+                        panic!("Address translation failed: pte.ppn[0] != 0");
+                    }
+                    return HostPhysicalAddress(
+                        pte.ppn(2) << 30 | pte.ppn(1) << 21 | gpa.vpn(0) << 12 | gpa.page_offset(),
+                    );
+                }
+                PageTableLevel::Lv4KB => {
+                    return HostPhysicalAddress(
+                        pte.ppn(2) << 30 | pte.ppn(1) << 21 | pte.ppn(0) << 12 | gpa.page_offset(),
+                    )
+                }
+            }
+        }
+
+        page_table_addr = PageTableAddress(
+            pte.ppn(level as usize) * PAGE_SIZE + gpa.vpn(level as usize) * PTE_SIZE,
+        );
+    }
+
+    unreachable!();
 }

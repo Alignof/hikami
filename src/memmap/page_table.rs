@@ -91,6 +91,7 @@ impl PageTableEntry {
             2 => (self.0 as usize >> 28) & 0x3ff_ffff, // 26 bit
             1 => (self.0 as usize >> 19) & 0x1ff,      // 9 bit
             0 => (self.0 as usize >> 10) & 0x1ff,      // 9 bit
+            _ => unreachable!(),
         }
     }
 
