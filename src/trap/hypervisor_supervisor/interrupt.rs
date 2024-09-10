@@ -36,7 +36,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             hypervisor_data
                 .devices()
                 .plic
-                .update_claim_complete(context_id);
+                .update_claim_complete(&context_id);
 
             hvip::set(VsInterruptKind::External);
         }

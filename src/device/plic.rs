@@ -24,7 +24,7 @@ pub struct ContextId(usize);
 
 impl ContextId {
     pub fn new(hart_id: usize, is_supervisor: bool) -> Self {
-        ContextId(2 * hart_id + is_supervisor as usize)
+        ContextId(2 * hart_id + usize::from(is_supervisor))
     }
 
     pub fn raw(&self) -> usize {
@@ -54,7 +54,7 @@ pub struct Plic {
 
 impl Plic {
     /// Read plic claim/update register and reflect to `claim_complete`.
-    pub fn update_claim_complete(&mut self, context_id: ContextId) {
+    pub fn update_claim_complete(&mut self, context_id: &ContextId) {
         let claim_complete_addr =
             self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id.raw() + CONTEXT_CLAIM;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
