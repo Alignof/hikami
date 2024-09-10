@@ -7,7 +7,8 @@ use crate::{sbi::Sbi, SBI};
 use core::arch::asm;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
-    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpcfg0, satp,
+    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpaddr1,
+    pmpaddr2, pmpcfg0, satp, Permission, Range,
 };
 
 /// Machine start function
@@ -31,7 +32,9 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         medeleg::set_load_page_fault();
         medeleg::set_store_page_fault();
         asm!("csrs medeleg, {vsmode_ecall}", vsmode_ecall = in(reg) 1 << 10, options(nomem)); // deleg env call from VS-mode
-        asm!("csrs medeleg, {virtual_instruction}", virtual_instruction = in(reg) 1 << 22, options(nomem)); // deleg env call from VS-mode
+        asm!("csrs medeleg, {load_guest_page_fault}", load_guest_page_fault = in(reg) 1 << 21, options(nomem)); // deleg load guest page fault
+        asm!("csrs medeleg, {virtual_instruction}", virtual_instruction = in(reg) 1 << 22, options(nomem)); // deleg virtual instruction
+        asm!("csrs medeleg, {store_amo_guest_page_fault}", store_amo_guest_page_fault = in(reg) 1 << 23, options(nomem)); // deleg store/amo guest page fault
         medeleg::clear_supervisor_env_call();
 
         // mie = 0x088
@@ -71,12 +74,26 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         mcounteren::set_hpm(29);
         mcounteren::set_hpm(30);
         mcounteren::set_hpm(31);
+
+        // switch to S-mode when mret executed.
         mstatus::set_mpp(mstatus::MPP::Supervisor);
+
+        // set M-mode stack pointer
         mscratch::write(
             core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id,
         );
-        pmpaddr0::write(0xffff_ffff_ffff_ffff);
-        pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
+
+        // pmp settings
+        pmpcfg0::set_pmp(0, Range::OFF, Permission::NONE, false);
+        pmpaddr0::write(0);
+        // 0x0 - 0x8000_0000 = RW
+        pmpcfg0::set_pmp(1, Range::TOR, Permission::RW, false);
+        pmpaddr1::write(0x8000_0000 >> 2);
+        // 0x8000_0000 - 0xffff_ffff = RWX
+        pmpcfg0::set_pmp(2, Range::TOR, Permission::RWX, false);
+        pmpaddr2::write(0xffff_ffff);
+
+        // no address translation
         satp::set(satp::Mode::Bare, 0, 0);
 
         // enable Sstc and Zicboz extention

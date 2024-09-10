@@ -50,7 +50,7 @@
 			riscv,isa-extensions = "i\0m\0a\0f\0d\0c\0h\0zic64b\0zicbom\0zicbop\0zicboz\0ziccamoa\0ziccif\0zicclsm\0ziccrse\0zicntr\0zicsr\0zifencei\0zihintntl\0zihintpause\0zihpm\0za64rs\0zawrs\0zfa\0zca\0zcd\0zba\0zbb\0zbc\0zbs\0ssccptr\0sscounterenw\0sstc\0sstvala\0sstvecd\0svadu";
 			riscv,isa-base = "rv64i";
 			riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_za64rs_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_ssccptr_sscounterenw_sstc_sstvala_sstvecd_svadu";
-			mmu-type = "riscv,sv39";
+			mmu-type = "riscv,sv57";
 
 			interrupt-controller {
 				#interrupt-cells = <0x01>;
@@ -89,8 +89,9 @@
 	};
 
 	chosen {
+		bootargs = "root=/dev/vda rw console=ttyS0";
 		stdout-path = "/soc/serial@10000000";
-		rng-seed = <0x84243e45 0x3047b358 0xbacf5c32 0x578c88fe 0x89c61300 0x205ccc21 0x650e0486 0xf27a7c6f>;
+		rng-seed = <0x5928c8bf 0xc7eb872c 0x2e3937b6 0x849a66b1 0xb0d1fe4b 0x1cb76d6d 0x1835df5a 0xd2d9aa89>;
 	};
 
 	soc {

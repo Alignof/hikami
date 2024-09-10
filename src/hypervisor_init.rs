@@ -17,7 +17,7 @@ use crate::{GUEST_DTB, HYPERVISOR_DATA};
 use core::arch::asm;
 
 use elf::{endian::AnyEndian, ElfBytes};
-use riscv::register::{sepc, sscratch, sstatus, stvec};
+use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
 
 /// Entry point to HS-mode.
 #[inline(never)]
@@ -28,7 +28,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // dtb_addr test and hint for register usage.
     assert_ne!(dtb_addr, 0);
 
-    // clear all hypervisor interrupts.
+    // clear all hs-mode to vs-mode interrupts.
     hvip::clear(VsInterruptKind::External);
     hvip::clear(VsInterruptKind::Timer);
     hvip::clear(VsInterruptKind::Software);
@@ -36,7 +36,17 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // disable address translation.
     vsatp::write(0);
 
-    // disable hypervisor external interrupt
+    // enable all hs-mode interrupts
+    unsafe {
+        sie::set_sext();
+        sie::set_ssoft();
+        sie::set_stimer();
+    }
+
+    // set hie = 0x444
+    hie::set(VsInterruptKind::External);
+    hie::set(VsInterruptKind::Timer);
+    hie::set(VsInterruptKind::Software);
 
     // enable Sstc extention
     henvcfg::set_stce();
@@ -45,12 +55,6 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
-
-    // set hie = 0x444
-    // TODO?: trap VS-mode interrupt.
-    hie::set(VsInterruptKind::External);
-    hie::set(VsInterruptKind::Timer);
-    hie::set(VsInterruptKind::Software);
 
     // specify delegation exception kinds.
     hedeleg::write(
@@ -136,6 +140,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         // sstatus.SUM = 1, sstatus.SPP = 0
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::Supervisor);
+        // sstatus.sie = 1
+        sstatus::set_sie();
 
         // hstatus.spv = 1 (enable V bit when sret executed)
         hstatus::set_spv();

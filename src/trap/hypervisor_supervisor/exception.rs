@@ -3,11 +3,17 @@
 mod sbi_handler;
 
 use super::hstrap_exit;
+use crate::device::plic::PlicEmulateError;
 use crate::guest;
-use crate::h_extension::csrs::vstvec;
+use crate::h_extension::{
+    csrs::{htinst, htval, vstvec},
+    HvException,
+};
+use crate::memmap::HostPhysicalAddress;
 use crate::HYPERVISOR_DATA;
+
 use core::arch::asm;
-use raki::{Decode, Isa::Rv64, OpcodeKind, ZicntrOpcode};
+use raki::{Decode, Instruction, Isa::Rv64, OpcodeKind, ZicntrOpcode};
 use riscv::register::{
     scause::{self, Exception},
     stval,
@@ -83,26 +89,86 @@ fn virtual_instruction_handler(inst_bytes: u32, context: &mut guest::context::Co
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
-    let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
-
     match exception_cause {
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
         // Enum not found in `riscv` crate.
-        Exception::Unknown => {
-            match scause::read().code() {
-                // Ecall from VS-mode
-                10 => {
-                    sbi_vs_mode_handler(&mut context);
-                    context.set_sepc(context.sepc() + 4);
-                }
-                // Virtual Instruction
-                22 => {
-                    virtual_instruction_handler(stval::read() as u32, &mut context);
-                    context.set_sepc(context.sepc() + 4);
-                }
-                _ => unreachable!(),
+        Exception::Unknown => match HvException::from(scause::read().code()) {
+            HvException::EcallFromVsMode => {
+                let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
+                sbi_vs_mode_handler(&mut context);
+                context.set_sepc(context.sepc() + 4);
             }
-        }
+            HvException::LoadGuestPageFault => {
+                let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
+                let fault_inst_value = htinst::read().bits;
+                // htinst bit 1 replaced with a 0.
+                // thus it needed to flip bit 1.
+                // ref: vol. II p.161
+                let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
+                    .expect("decoding load fault instruction failed");
+
+                let mut hypervisor_data = HYPERVISOR_DATA.lock();
+                match hypervisor_data.devices().plic.emulate_read(fault_addr) {
+                    Ok(value) => {
+                        let mut context = hypervisor_data.guest().context;
+                        context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
+                        if (fault_inst_value & 0b10) >> 1 == 0 {
+                            // compressed instruction
+                            context.set_sepc(context.sepc() + 2);
+                        } else {
+                            // normal size instruction
+                            context.set_sepc(context.sepc() + 4);
+                        }
+                    }
+                    Err(
+                        PlicEmulateError::InvalidAddress
+                        | PlicEmulateError::InvalidContextId
+                        | PlicEmulateError::ReservedRegister,
+                    ) => hs_forward_exception(),
+                }
+            }
+            HvException::StoreAmoGuestPageFault => {
+                let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
+                let fault_inst_value = htinst::read().bits;
+                // htinst bit 1 replaced with a 0.
+                // thus it needed to flip bit 1.
+                // ref: vol. II p.161
+                let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
+                    .expect("decoding load fault instruction failed");
+
+                let mut hypervisor_data = HYPERVISOR_DATA.lock();
+                let mut context = hypervisor_data.guest().context;
+                let store_value = context
+                    .xreg(fault_inst.rs2.expect("rs2 is not found"))
+                    .try_into()
+                    .unwrap();
+                match hypervisor_data
+                    .devices()
+                    .plic
+                    .emulate_write(fault_addr, store_value)
+                {
+                    Ok(()) => {
+                        if (fault_inst_value & 0b10) >> 1 == 0 {
+                            // compressed instruction
+                            context.set_sepc(context.sepc() + 2);
+                        } else {
+                            // normal size instruction
+                            context.set_sepc(context.sepc() + 4);
+                        }
+                    }
+                    Err(
+                        PlicEmulateError::InvalidAddress
+                        | PlicEmulateError::InvalidContextId
+                        | PlicEmulateError::ReservedRegister,
+                    ) => hs_forward_exception(),
+                }
+            }
+            HvException::VirtualInstruction => {
+                let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
+                virtual_instruction_handler(stval::read() as u32, &mut context);
+                context.set_sepc(context.sepc() + 4);
+            }
+        },
         _ => hs_forward_exception(),
     }
 
