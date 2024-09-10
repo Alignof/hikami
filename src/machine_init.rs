@@ -7,7 +7,8 @@ use crate::{sbi::Sbi, SBI};
 use core::arch::asm;
 use riscv::asm::sfence_vma_all;
 use riscv::register::{
-    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpcfg0, satp,
+    mcounteren, medeleg, mepc, mideleg, mie, mscratch, mstatus, mtvec, pmpaddr0, pmpaddr1,
+    pmpaddr2, pmpcfg0, satp,
 };
 
 /// Machine start function
@@ -77,8 +78,13 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         mscratch::write(
             core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id,
         );
-        pmpaddr0::write(0xffff_ffff_ffff_ffff);
-        pmpcfg0::write(pmpcfg0::read().bits | 0x1f);
+        use riscv::register::{Permission, Range};
+        pmpcfg0::set_pmp(0, Range::OFF, Permission::NONE, false);
+        pmpaddr0::write(0);
+        pmpcfg0::set_pmp(1, Range::TOR, Permission::RW, false);
+        pmpaddr1::write(0x8000_0000 >> 2);
+        pmpcfg0::set_pmp(2, Range::TOR, Permission::RWX, false);
+        pmpaddr2::write(0xffff_ffff);
         satp::set(satp::Mode::Bare, 0, 0);
 
         // enable Sstc and Zicboz extention
