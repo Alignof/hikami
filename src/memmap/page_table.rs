@@ -128,6 +128,7 @@ impl PageTableAddress {
 }
 
 impl GuestPhysicalAddress {
+    /// Return vpn value with index.
     fn vpn(self, index: usize) -> usize {
         match index {
             2 => (self.0 >> 30) & 0x7ff,
@@ -135,6 +136,11 @@ impl GuestPhysicalAddress {
             0 => (self.0 >> 12) & 0x1ff,
             _ => unreachable!(),
         }
+    }
+
+    /// Return page offset.
+    fn page_offset(self) -> usize {
+        (self.0 & 0xfff).try_into().unwrap()
     }
 }
 
