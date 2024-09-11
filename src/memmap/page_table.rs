@@ -76,6 +76,7 @@ impl PageTableEntry {
     }
 
     /// Is leaf page table entry
+    #[allow(dead_code)]
     fn is_leaf(self) -> bool {
         let pte_r = self.0 >> 1 & 0x1;
         let pte_x = self.0 >> 3 & 0x1;
@@ -85,6 +86,7 @@ impl PageTableEntry {
 
     /// Return ppn
     #[allow(clippy::cast_possible_truncation)]
+    #[allow(dead_code)]
     fn ppn(self, index: usize) -> usize {
         match index {
             2 => (self.0 as usize >> 28) & 0x3ff_ffff, // 26 bit
@@ -139,6 +141,7 @@ impl GuestPhysicalAddress {
     }
 
     /// Return page offset.
+    #[allow(dead_code)]
     fn page_offset(self) -> usize {
         self.0 & 0xfff
     }
