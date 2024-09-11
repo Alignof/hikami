@@ -73,30 +73,29 @@ impl VirtIo {
 
 impl VirtIo {
     /// Emulate wrting to `QUEUE_PFN`
+    #[allow(clippy::similar_names)]
+    #[allow(clippy::unnecessary_wraps)]
     pub fn emulate_write(
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: usize,
     ) -> Result<(), DeviceEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
-        match offset {
-            // TODO replace IOMMU implementation.
-            QUEUE_PFN => {
-                let gpa: GuestPhysicalAddress = GuestPhysicalAddress(value << 12);
-                let hpa: HostPhysicalAddress = sv39x4::trans_addr(gpa);
-                unsafe {
-                    core::ptr::write_volatile(dst_addr.raw() as *mut usize, hpa.raw() >> 12);
-                }
-
-                Ok(())
+        // TODO replace IOMMU implementation.
+        if offset == QUEUE_PFN {
+            let gpa: GuestPhysicalAddress = GuestPhysicalAddress(value << 12);
+            let hpa: HostPhysicalAddress = sv39x4::trans_addr(gpa);
+            unsafe {
+                core::ptr::write_volatile(dst_addr.raw() as *mut usize, hpa.raw() >> 12);
             }
-            _ => {
-                unsafe {
-                    core::ptr::write_volatile(dst_addr.raw() as *mut usize, value);
-                }
 
-                Ok(())
+            Ok(())
+        } else {
+            unsafe {
+                core::ptr::write_volatile(dst_addr.raw() as *mut usize, value);
             }
+
+            Ok(())
         }
     }
 }

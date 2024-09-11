@@ -84,6 +84,7 @@ impl PageTableEntry {
     }
 
     /// Return ppn
+    #[allow(clippy::cast_possible_truncation)]
     fn ppn(self, index: usize) -> usize {
         match index {
             2 => (self.0 as usize >> 28) & 0x3ff_ffff, // 26 bit
@@ -139,7 +140,7 @@ impl GuestPhysicalAddress {
 
     /// Return page offset.
     fn page_offset(self) -> usize {
-        (self.0 & 0xfff).try_into().unwrap()
+        self.0 & 0xfff
     }
 }
 

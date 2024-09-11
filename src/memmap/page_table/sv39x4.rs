@@ -113,6 +113,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
 }
 
 /// Translate gpa to hpa in sv39x4
+#[allow(clippy::cast_possible_truncation)]
 pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
     let hgatp = hgatp::read();
     let mut page_table_addr = PageTableAddress(hgatp.ppn() << 12);
@@ -134,20 +135,23 @@ pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
         if pte.is_leaf() {
             match level {
                 PageTableLevel::Lv1GB => {
-                    if pte.ppn(0) != 0 {
-                        panic!("Address translation failed: pte.ppn[0] != 0");
-                    }
-                    if pte.ppn(1) != 0 {
-                        panic!("Address translation failed: pte.ppn[1] != 0");
-                    }
+                    assert!(
+                        pte.ppn(0) == 0,
+                        "Address translation failed: pte.ppn[0] != 0"
+                    );
+                    assert!(
+                        pte.ppn(1) == 0,
+                        "Address translation failed: pte.ppn[1] != 0"
+                    );
                     return HostPhysicalAddress(
                         pte.ppn(2) << 30 | gpa.vpn(1) << 21 | gpa.vpn(0) << 12 | gpa.page_offset(),
                     );
                 }
                 PageTableLevel::Lv2MB => {
-                    if pte.ppn(0) != 0 {
-                        panic!("Address translation failed: pte.ppn[0] != 0");
-                    }
+                    assert!(
+                        pte.ppn(0) == 0,
+                        "Address translation failed: pte.ppn[0] != 0"
+                    );
                     return HostPhysicalAddress(
                         pte.ppn(2) << 30 | pte.ppn(1) << 21 | gpa.vpn(0) << 12 | gpa.page_offset(),
                     );
