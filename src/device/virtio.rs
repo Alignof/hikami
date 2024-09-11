@@ -1,10 +1,15 @@
 //! A virtualization standard for network and disk device drivers.
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{Device, DeviceEmulateError};
+use crate::memmap::page_table::sv39x4;
+use crate::memmap::page_table::PteFlag;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
 use core::slice::Iter;
 use fdt::Fdt;
+
+/// Base offset of context.
+const QUEUE_PFN: usize = 0x40;
 
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
@@ -30,6 +35,23 @@ impl VirtIoList {
         )
     }
 
+    /// Emulate wrting to memory mapped register
+    pub fn emulate_write(
+        &mut self,
+        dst_addr: HostPhysicalAddress,
+        value: usize,
+    ) -> Result<(), DeviceEmulateError> {
+        let vio = self
+            .0
+            .iter_mut()
+            .find(|vio| vio.memmap().phys.contains(&dst_addr));
+
+        match vio {
+            Some(vio) => vio.emulate_write(dst_addr, value),
+            None => Err(DeviceEmulateError::InvalidAddress),
+        }
+    }
+
     /// Return Virt IO list iterator
     pub fn iter(&self) -> Iter<'_, VirtIo> {
         self.0.iter()
@@ -46,6 +68,35 @@ pub struct VirtIo {
 impl VirtIo {
     pub fn irq(&self) -> u8 {
         self.irq
+    }
+}
+
+impl VirtIo {
+    /// Emulate wrting to `QUEUE_PFN`
+    #[allow(clippy::similar_names)]
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn emulate_write(
+        &mut self,
+        dst_addr: HostPhysicalAddress,
+        value: usize,
+    ) -> Result<(), DeviceEmulateError> {
+        let offset = dst_addr.raw() - self.base_addr.raw();
+        // TODO replace IOMMU implementation.
+        if offset == QUEUE_PFN {
+            let gpa: GuestPhysicalAddress = GuestPhysicalAddress(value << 12);
+            let hpa: HostPhysicalAddress = sv39x4::trans_addr(gpa);
+            unsafe {
+                core::ptr::write_volatile(dst_addr.raw() as *mut usize, hpa.raw() >> 12);
+            }
+
+            Ok(())
+        } else {
+            unsafe {
+                core::ptr::write_volatile(dst_addr.raw() as *mut usize, value);
+            }
+
+            Ok(())
+        }
     }
 }
 
@@ -75,7 +126,8 @@ impl Device for VirtIo {
         MemoryMap::new(
             vaddr..vaddr + self.size(),
             self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
+            // deny write permission for emulation.
+            &[PteFlag::Read, PteFlag::User, PteFlag::Valid],
         )
     }
 }

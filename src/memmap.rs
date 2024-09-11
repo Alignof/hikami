@@ -85,7 +85,7 @@ pub struct MemoryMap {
     /// Guest physical address
     virt: Range<GuestPhysicalAddress>,
     /// Host physical address
-    phys: Range<HostPhysicalAddress>,
+    pub phys: Range<HostPhysicalAddress>,
     /// Page table entry flags
     flags: u8,
 }

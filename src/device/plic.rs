@@ -1,7 +1,7 @@
 //! PLIC: Platform-Level Interrupt Controller  
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{Device, DeviceEmulateError, PTE_FLAGS_FOR_DEVICE};
 use crate::h_extension::csrs::{hvip, VsInterruptKind};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
@@ -32,17 +32,6 @@ impl ContextId {
     }
 }
 
-/// PLIC emulation result.
-#[allow(clippy::module_name_repetitions)]
-pub enum PlicEmulateError {
-    /// Invalid plic address.
-    InvalidAddress,
-    /// Context ID is out of range.
-    InvalidContextId,
-    /// Accessed register is reserved.
-    ReservedRegister,
-}
-
 /// PLIC: Platform-Level Interrupt Controller  
 /// Interrupt controller for global interrupts.
 #[derive(Debug)]
@@ -62,21 +51,21 @@ impl Plic {
     }
 
     /// Emulate reading plic context register
-    fn context_read(&self, offset: usize) -> Result<u32, PlicEmulateError> {
+    fn context_read(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
         if context_id > MAX_CONTEXT_NUM {
-            Err(PlicEmulateError::InvalidContextId)
+            Err(DeviceEmulateError::InvalidContextId)
         } else {
             Ok(self.claim_complete[context_id])
         }
     }
 
     /// Emulate reading plic register.
-    pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, PlicEmulateError> {
+    pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
-            _ => Err(PlicEmulateError::InvalidAddress),
+            _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
 
@@ -85,7 +74,7 @@ impl Plic {
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
-    ) -> Result<(), PlicEmulateError> {
+    ) -> Result<(), DeviceEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
         let offset_per_context = offset % CONTEXT_REGS_SIZE;
@@ -110,8 +99,8 @@ impl Plic {
 
                 Ok(())
             }
-            8 => Err(PlicEmulateError::ReservedRegister),
-            _ => Err(PlicEmulateError::InvalidAddress),
+            8 => Err(DeviceEmulateError::ReservedRegister),
+            _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
 
@@ -120,11 +109,11 @@ impl Plic {
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
-    ) -> Result<(), PlicEmulateError> {
+    ) -> Result<(), DeviceEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
-            _ => Err(PlicEmulateError::InvalidAddress),
+            _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
 }

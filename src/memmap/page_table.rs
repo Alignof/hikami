@@ -34,7 +34,7 @@ enum PageTableLevel {
 }
 
 impl PageTableLevel {
-    pub fn size(self) -> usize {
+    fn size(self) -> usize {
         match self {
             Self::Lv1GB => 0x4000_0000,
             Self::Lv2MB => 0x0020_0000,
@@ -75,12 +75,33 @@ impl PageTableEntry {
         Self(ppn << 10 | u64::from(flags))
     }
 
-    fn already_created(self) -> bool {
-        self.0 & PteFlag::Valid as u64 == 1
+    /// Is leaf page table entry
+    fn is_leaf(self) -> bool {
+        let pte_r = self.0 >> 1 & 0x1;
+        let pte_x = self.0 >> 3 & 0x1;
+
+        pte_r == 1 || pte_x == 1
     }
 
-    fn pte(self) -> u64 {
-        self.0 >> 10
+    /// Return ppn
+    #[allow(clippy::cast_possible_truncation)]
+    fn ppn(self, index: usize) -> usize {
+        match index {
+            2 => (self.0 as usize >> 28) & 0x3ff_ffff, // 26 bit
+            1 => (self.0 as usize >> 19) & 0x1ff,      // 9 bit
+            0 => (self.0 as usize >> 10) & 0x1ff,      // 9 bit
+            _ => unreachable!(),
+        }
+    }
+
+    /// Return entire ppn
+    fn entire_ppn(self) -> u64 {
+        (self.0 >> 10) & 0xfff_ffff_ffff // 44 bit
+    }
+
+    /// Is it has already been created
+    fn already_created(self) -> bool {
+        self.0 & PteFlag::Valid as u64 == 1
     }
 }
 
@@ -107,6 +128,7 @@ impl PageTableAddress {
 }
 
 impl GuestPhysicalAddress {
+    /// Return vpn value with index.
     fn vpn(self, index: usize) -> usize {
         match index {
             2 => (self.0 >> 30) & 0x7ff,
@@ -114,6 +136,11 @@ impl GuestPhysicalAddress {
             0 => (self.0 >> 12) & 0x1ff,
             _ => unreachable!(),
         }
+    }
+
+    /// Return page offset.
+    fn page_offset(self) -> usize {
+        self.0 & 0xfff
     }
 }
 

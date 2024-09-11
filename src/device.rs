@@ -18,6 +18,17 @@ use fdt::Fdt;
 const PTE_FLAGS_FOR_DEVICE: [PteFlag; 4] =
     [PteFlag::Write, PteFlag::Read, PteFlag::User, PteFlag::Valid];
 
+/// Device emulation error.
+#[allow(clippy::module_name_repetitions)]
+pub enum DeviceEmulateError {
+    /// Invalid plic address.
+    InvalidAddress,
+    /// Context ID is out of range.
+    InvalidContextId,
+    /// Accessed register is reserved.
+    ReservedRegister,
+}
+
 /// A struct that implement Device trait **must** has `base_addr` and size member.
 pub trait Device {
     /// Create self instance.

@@ -3,7 +3,7 @@
 mod sbi_handler;
 
 use super::hstrap_exit;
-use crate::device::plic::PlicEmulateError;
+use crate::device::DeviceEmulateError;
 use crate::guest;
 use crate::h_extension::{
     csrs::{htinst, htval, vstvec},
@@ -121,9 +121,9 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                         }
                     }
                     Err(
-                        PlicEmulateError::InvalidAddress
-                        | PlicEmulateError::InvalidContextId
-                        | PlicEmulateError::ReservedRegister,
+                        DeviceEmulateError::InvalidAddress
+                        | DeviceEmulateError::InvalidContextId
+                        | DeviceEmulateError::ReservedRegister,
                     ) => hs_forward_exception(),
                 }
             }
@@ -137,31 +137,39 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                let mut context = hypervisor_data.guest().context;
-                let store_value = context
-                    .xreg(fault_inst.rs2.expect("rs2 is not found"))
-                    .try_into()
-                    .unwrap();
-                match hypervisor_data
+                let context = hypervisor_data.guest().context;
+                let update_epc = |fault_inst_value: usize, mut context: guest::context::Context| {
+                    if (fault_inst_value & 0b10) >> 1 == 0 {
+                        // compressed instruction
+                        context.set_sepc(context.sepc() + 2);
+                    } else {
+                        // normal size instruction
+                        context.set_sepc(context.sepc() + 4);
+                    }
+                };
+                let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
+
+                if let Ok(()) = hypervisor_data
                     .devices()
                     .plic
-                    .emulate_write(fault_addr, store_value)
+                    .emulate_write(fault_addr, store_value.try_into().unwrap())
                 {
-                    Ok(()) => {
-                        if (fault_inst_value & 0b10) >> 1 == 0 {
-                            // compressed instruction
-                            context.set_sepc(context.sepc() + 2);
-                        } else {
-                            // normal size instruction
-                            context.set_sepc(context.sepc() + 4);
-                        }
-                    }
-                    Err(
-                        PlicEmulateError::InvalidAddress
-                        | PlicEmulateError::InvalidContextId
-                        | PlicEmulateError::ReservedRegister,
-                    ) => hs_forward_exception(),
+                    update_epc(fault_inst_value, context);
+                    drop(hypervisor_data);
+                    hstrap_exit(); // exit handler
                 }
+
+                if let Ok(()) = hypervisor_data
+                    .devices()
+                    .virtio_list
+                    .emulate_write(fault_addr, store_value as usize)
+                {
+                    update_epc(fault_inst_value, context);
+                    drop(hypervisor_data);
+                    hstrap_exit(); // exit handler
+                }
+
+                hs_forward_exception();
             }
             HvException::VirtualInstruction => {
                 let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
