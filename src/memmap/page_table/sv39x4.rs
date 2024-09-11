@@ -114,6 +114,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
 
 /// Translate gpa to hpa in sv39x4
 #[allow(clippy::cast_possible_truncation)]
+#[allow(dead_code)]
 pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
     let hgatp = hgatp::read();
     let mut page_table_addr = PageTableAddress(hgatp.ppn() << 12);

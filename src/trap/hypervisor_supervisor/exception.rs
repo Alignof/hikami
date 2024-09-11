@@ -159,16 +159,6 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     hstrap_exit(); // exit handler
                 }
 
-                if let Ok(()) = hypervisor_data
-                    .devices()
-                    .virtio_list
-                    .emulate_write(fault_addr, store_value as usize)
-                {
-                    update_epc(fault_inst_value, context);
-                    drop(hypervisor_data);
-                    hstrap_exit(); // exit handler
-                }
-
                 hs_forward_exception();
             }
             HvException::VirtualInstruction => {
