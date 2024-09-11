@@ -82,10 +82,10 @@ impl VirtIo {
         match offset {
             // TODO replace IOMMU implementation.
             QUEUE_PFN => {
-                let gpa: GuestPhysicalAddress = GuestPhysicalAddress(value);
+                let gpa: GuestPhysicalAddress = GuestPhysicalAddress(value << 12);
                 let hpa: HostPhysicalAddress = sv39x4::trans_addr(gpa);
                 unsafe {
-                    core::ptr::write_volatile(dst_addr.raw() as *mut usize, hpa.raw());
+                    core::ptr::write_volatile(dst_addr.raw() as *mut usize, hpa.raw() >> 12);
                 }
 
                 Ok(())
