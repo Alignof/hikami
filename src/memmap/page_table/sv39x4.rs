@@ -93,7 +93,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
                 // Create next level page table
                 next_table_addr = if current_page_table[vpn].already_created() {
                     PageTableAddress(
-                        usize::try_from(current_page_table[vpn].pte()).unwrap() * PAGE_SIZE,
+                        usize::try_from(current_page_table[vpn].entire_ppn()).unwrap() * PAGE_SIZE,
                     )
                 } else {
                     let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_LEN]);
@@ -160,9 +160,7 @@ pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
             }
         }
 
-        page_table_addr = PageTableAddress(
-            pte.ppn(level as usize) * PAGE_SIZE + gpa.vpn(level as usize) * PTE_SIZE,
-        );
+        page_table_addr = PageTableAddress(pte.entire_ppn() as usize * PAGE_SIZE);
     }
 
     unreachable!();

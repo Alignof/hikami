@@ -11,8 +11,6 @@ pub mod constants {
     ///
     /// vpn\[1\] == vpn\[0\] == 9 bit
     pub const PAGE_TABLE_LEN: usize = 512;
-    /// Page table entry size
-    pub const PTE_SIZE: usize = 8; // 8 bytes in rv64
 }
 
 /// Page table level.
@@ -95,14 +93,14 @@ impl PageTableEntry {
         }
     }
 
+    /// Return entire ppn
+    fn entire_ppn(self) -> u64 {
+        (self.0 >> 10) & 0xfff_ffff_ffff // 44 bit
+    }
+
     /// Is it has already been created
     fn already_created(self) -> bool {
         self.0 & PteFlag::Valid as u64 == 1
-    }
-
-    /// Return PTE
-    fn pte(self) -> u64 {
-        self.0 >> 10
     }
 }
 
