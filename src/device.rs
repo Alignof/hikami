@@ -59,6 +59,27 @@ pub struct Devices {
 }
 
 impl Devices {
+    pub fn new(device_tree: Fdt) -> Self {
+        Devices {
+            uart: uart::Uart::new(&device_tree, "/soc/serial"),
+            virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
+            initrd: initrd::Initrd::new(&device_tree, "/chosen"),
+            plic: plic::Plic::new(&device_tree, "/soc/plic"),
+            plic_context: device_tree
+                .find_node("/cpus/cpu")
+                .unwrap()
+                .children()
+                .next() // interrupt-controller
+                .unwrap()
+                .property("phandle")
+                .unwrap()
+                .value[0] as usize,
+            clint: clint::Clint::new(&device_tree, "/soc/clint"),
+            pci: pci::Pci::new(&device_tree, "/soc/pci"),
+            rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
+        }
+    }
+
     /// Identity map for devices.
     pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
         let memory_map = self.create_device_map();
