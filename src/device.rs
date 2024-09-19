@@ -10,7 +10,6 @@ mod virtio;
 
 use crate::memmap::page_table::PteFlag;
 use crate::memmap::{page_table, HostPhysicalAddress, MemoryMap};
-use crate::HypervisorData;
 use alloc::vec::Vec;
 use fdt::Fdt;
 
@@ -85,34 +84,5 @@ impl Devices {
         ]);
 
         device_mapping
-    }
-}
-
-impl HypervisorData {
-    /// Set device data.
-    ///
-    /// It replace None (uninit value) to `Some(init_device)`.
-    ///
-    /// # Panics
-    /// It will be panic when parsing device tree failed.
-    pub fn register_devices(&mut self, device_tree: Fdt) {
-        self.devices.replace(Devices {
-            uart: uart::Uart::new(&device_tree, "/soc/serial"),
-            virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
-            initrd: initrd::Initrd::new(&device_tree, "/chosen"),
-            plic: plic::Plic::new(&device_tree, "/soc/plic"),
-            plic_context: device_tree
-                .find_node("/cpus/cpu")
-                .unwrap()
-                .children()
-                .next() // interrupt-controller
-                .unwrap()
-                .property("phandle")
-                .unwrap()
-                .value[0] as usize,
-            clint: clint::Clint::new(&device_tree, "/soc/clint"),
-            pci: pci::Pci::new(&device_tree, "/soc/pci"),
-            rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
-        });
     }
 }
