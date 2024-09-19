@@ -18,8 +18,8 @@ use riscv::register::scause::{self, Trap};
 #[allow(clippy::inline_always)]
 unsafe fn hstrap_exit() -> ! {
     // aquire hypervisor data
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    let stack_top = hypervisor_data.guest().stack_top();
+    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 

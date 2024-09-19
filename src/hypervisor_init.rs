@@ -12,7 +12,7 @@ use crate::memmap::{
     HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
-use crate::{GUEST_DTB, HYPERVISOR_DATA};
+use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
 
 use core::arch::asm;
 
@@ -80,9 +80,6 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Parse DTB
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
-    // aquire hypervisor data
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-
     // create new guest data
     let guest_id = hart_id + 1;
     let guest_memory_begin = guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
@@ -101,23 +98,24 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
             Err(e) => panic!("{}", e),
         }
     };
-    // parsing and storing device data
-    hypervisor_data.register_devices(device_tree);
+
+    // initialize hypervisor data
+    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    hypervisor_data.get_or_init(|| HypervisorData::new(device_tree));
 
     // load guest elf from address
+    let initrd = &hypervisor_data.get_mut().unwrap().devices().initrd;
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
-            hypervisor_data.devices().initrd.size(),
+            initrd.paddr().raw() as *mut u8,
+            initrd.size(),
         ))
         .unwrap()
     };
 
     // load guest image
-    let (guest_entry_point, elf_end_addr) = new_guest.load_guest_elf(
-        &guest_elf,
-        hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
-    );
+    let (guest_entry_point, elf_end_addr) =
+        new_guest.load_guest_elf(&guest_elf, initrd.paddr().raw() as *mut u8);
 
     // filling remain memory region
     new_guest.filling_memory_region(
@@ -126,6 +124,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // set device memory map
     hypervisor_data
+        .get_mut()
+        .unwrap()
         .devices()
         .device_mapping_g_stage(root_page_table_addr);
 
@@ -134,7 +134,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hfence_gvma_all();
 
     // set new guest data
-    hypervisor_data.register_guest(new_guest);
+    hypervisor_data.get_mut().unwrap().register_guest(new_guest);
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0
@@ -156,7 +156,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
             stvec::TrapMode::Direct,
         );
 
-        let mut context = hypervisor_data.guest().context;
+        let mut context = hypervisor_data.get().unwrap().guest().context;
         context.set_sepc(sepc::read());
 
         // set sstatus value to context
@@ -165,7 +165,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         context.set_sstatus(sstatus_val);
     }
 
-    let guest_dtb_addr = hypervisor_data.guest().guest_dtb_addr();
+    let guest_dtb_addr = hypervisor_data.get().unwrap().guest().guest_dtb_addr();
 
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
@@ -177,8 +177,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 #[inline(never)]
 fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // aquire hypervisor data
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    let stack_top = hypervisor_data.guest().stack_top();
+    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
