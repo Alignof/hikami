@@ -57,6 +57,7 @@ pub struct Devices {
     pub clint: clint::Clint,
     pub pci: pci::Pci,
     pub rtc: rtc::Rtc,
+    pub iommu: iommu::IoMmu,
 }
 
 impl Devices {
@@ -78,6 +79,7 @@ impl Devices {
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             pci: pci::Pci::new(&device_tree, "/soc/pci"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
+            iommu: iommu::IoMmu::new(&device_tree, "/soc/pci/iommu"),
         }
     }
 
