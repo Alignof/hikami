@@ -2,6 +2,7 @@
 
 pub mod clint;
 mod initrd;
+pub mod iommu;
 mod pci;
 pub mod plic;
 mod rtc;
