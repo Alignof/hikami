@@ -62,6 +62,10 @@ impl Device for IoMmu {
         // Let k=log2(N) and B be the physical page number (PPN) of the allocated memory buffer.
         // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
         let command_queue = PageBlock::alloc();
+        let command_queue_ptr = command_queue.0 as *mut [u8; 0x1000];
+        unsafe {
+            core::ptr::write_bytes(command_queue_ptr, 0u8, 0x1000);
+        }
         registers.cqb.set(command_queue, 4096);
         // cqt = 0
         registers.cqt.write(0);
@@ -75,8 +79,12 @@ impl Device for IoMmu {
         // Allocate a N x 32-bytes sized memory buffer that is naturally aligned to the greater of 4-KiB or N x 32-bytes.
         // Let k=log2(N) and B be the PPN of the allocated memory buffer.
         // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
-        let command_queue = PageBlock::alloc();
-        registers.fqb.set(command_queue, 4096);
+        let fault_queue = PageBlock::alloc();
+        let fault_queue_ptr = fault_queue.0 as *mut [u8; 0x1000];
+        unsafe {
+            core::ptr::write_bytes(fault_queue_ptr, 0u8, 0x1000);
+        }
+        registers.fqb.set(fault_queue, 4096);
         // fqt = 0
         registers.fqt.write(0);
         // fqcsr.fqen = 1
@@ -89,8 +97,12 @@ impl Device for IoMmu {
         // Allocate a N x 16-bytes sized buffer that is naturally aligned to the greater of 4-KiB or N x 16-bytes.
         // Let k=log2(N) and B be the PPN of the allocated memory buffer.
         // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
-        let command_queue = PageBlock::alloc();
-        registers.pqb.set(command_queue, 4096);
+        let page_request_queue = PageBlock::alloc();
+        let page_request_queue_ptr = page_request_queue.0 as *mut [u8; 0x1000];
+        unsafe {
+            core::ptr::write_bytes(page_request_queue_ptr, 0u8, 0x1000);
+        }
+        registers.fqb.set(page_request_queue, 4096);
         // pqt = 0
         registers.pqt.write(0);
         // pqcsr.pqen = 1
