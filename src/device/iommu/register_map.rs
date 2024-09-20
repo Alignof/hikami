@@ -12,7 +12,7 @@ pub struct IoMmuRegisters {
     /// Designated For custom use
     _custom: u32,
     /// Device directory table pointer
-    _ddtp: u64,
+    pub ddtp: Ddtp,
 
     /// Command-queue base
     pub cqb: Cqb,
@@ -163,5 +163,29 @@ impl PqCsr {
     pub fn pqon(&self) -> bool {
         const FIELD_PQCSR_PQON: usize = 0x10;
         self.0 >> FIELD_PQCSR_PQON & 0x1 == 1
+    }
+}
+
+/// For `ddtp.iommu_mode`.
+#[allow(dead_code)]
+pub enum IoMmuMode {
+    /// No inbound memory transactions are allowed by the IOMMU.
+    Off,
+    /// No translation or protection. All inbound memory accesses are passed through.
+    Bare,
+    /// One-level device-directory-table
+    Lv1,
+    /// Two-level device-directory-table
+    Lv2,
+    /// Three-level device-directory-table
+    Lv3,
+}
+
+/// Device-directory-table pointer
+pub struct Ddtp(u64);
+impl Ddtp {
+    pub fn set(&mut self, mode: IoMmuMode, ddt_addr: HostPhysicalAddress) {
+        const FIELD_DDTP_PPN: usize = 10;
+        self.0 = (ddt_addr.0 as u64 >> 12) << FIELD_DDTP_PPN | mode as u64;
     }
 }

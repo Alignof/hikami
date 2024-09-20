@@ -6,23 +6,9 @@ mod register_map;
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use crate::PageBlock;
-use register_map::IoMmuRegisters;
+use register_map::{IoMmuMode, IoMmuRegisters};
 
 use fdt::Fdt;
-
-/// For `ddtp.iommu_mode`.
-enum IoMmuMode {
-    /// No inbound memory transactions are allowed by the IOMMU.
-    Off,
-    /// No translation or protection. All inbound memory accesses are passed through.
-    Bare,
-    /// One-level device-directory-table
-    Lv1,
-    /// Two-level device-directory-table
-    Lv2,
-    /// Three-level device-directory-table
-    Lv3,
-}
 
 /// IOMMU: I/O memory management unit.
 #[derive(Debug)]
@@ -109,6 +95,14 @@ impl Device for IoMmu {
         registers.pqcsr.set_pqen();
         // Poll on pqcsr.pqon until it reads 1
         while !registers.pqcsr.pqon() {}
+
+        // 15. To program the DDT pointer, first determine the supported device_id width Dw and the format of the device-context data structure.
+        let ddt_addr = PageBlock::alloc();
+        let ddt_ptr = ddt_addr.0 as *mut [u8; 0x1000];
+        unsafe {
+            core::ptr::write_bytes(ddt_ptr, 0u8, 0x1000);
+        }
+        registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
 
         IoMmu {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
