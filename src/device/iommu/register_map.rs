@@ -35,7 +35,7 @@ pub struct IoMmuRegisters {
     pqt: u32,
 
     /// Command-queue CSR
-    cqcsr: u32,
+    pub cqcsr: CqCsr,
     /// Fault-queue CSR
     fqcsr: u32,
     /// Page-request-queue CSR
@@ -75,5 +75,20 @@ pub struct Cqt(u32);
 impl Cqt {
     pub fn write(&mut self, value: u32) {
         self.0 = value;
+    }
+}
+
+/// Command-queue CSR
+pub struct CqCsr(u32);
+impl CqCsr {
+    /// set cqen (offset: 0) bit
+    pub fn set_cqen(&mut self) {
+        self.0 = self.0 | 1
+    }
+
+    /// cqon (offset: 16)
+    pub fn cqon(&self) -> bool {
+        const FIELD_CQCSR_CQON: usize = 0x10;
+        self.0 >> FIELD_CQCSR_CQON & 0x1 == 1
     }
 }

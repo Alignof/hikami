@@ -122,14 +122,9 @@ impl Device for IoMmu {
             // cqt = 0
             registers.cqt.write(0);
             // cqcsr.cqen = 1
-            let cqcsr_value = core::ptr::read_volatile(base_ptr.byte_add(constants::REG_CQCSR));
-            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_CQCSR), cqcsr_value | 1);
+            registers.cqcsr.set_cqen();
             // Poll on cqcsr.cqon until it reads 1
-            while base_ptr.byte_add(constants::REG_CQCSR).read_volatile()
-                >> constants::FIELD_CQCSR_CQON
-                & 0x1
-                == 0
-            {}
+            while !registers.cqcsr.cqon() {}
         }
 
         // 13. To program the fault queue, first determine the number of entries N needed in the fault queue.
