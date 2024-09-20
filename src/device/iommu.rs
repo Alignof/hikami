@@ -35,16 +35,29 @@ mod constants {
 
     /// Fault-queue base
     pub const REG_FQB: usize = 0x28;
-    /// Holds the number of entries in command-queue as a log to base 2 minus 1.
+    /// Holds the number of entries in fault-queue as a log to base 2 minus 1.
     pub const FIELD_FQB_LOG2SZ: usize = 0;
-    /// Holds the PPN of the root page of the in-memory command-queue used by software to queue commands to the IOMMU.
+    /// Holds the PPN of the root page of the in-memory fault-queue used by software to queue faults to the IOMMU.
     pub const FIELD_FQB_PPN: usize = 10;
     /// Fault-queue tail
     pub const REG_FQT: usize = 0x34;
     /// Fault-queue CSR
     pub const REG_FQCSR: usize = 0x4c;
-    /// The command-queue is active if cqon is 1.
+    /// The fault-queue is active if cqon is 1.
     pub const FIELD_FQCSR_FQON: usize = 0x10;
+
+    /// Page-request-queue base
+    pub const REG_PQB: usize = 0x18;
+    /// Holds the number of entries in page-request-queue as a log to base 2 minus 1.
+    pub const FIELD_PQB_LOG2SZ: usize = 0;
+    /// Holds the PPN of the root page of the in-memory page-request-queue used by software to queue page-requests to the IOMMU.
+    pub const FIELD_PQB_PPN: usize = 10;
+    /// Page-request-queue tail
+    pub const REG_PQT: usize = 0x24;
+    /// Page-request-queue CSR
+    pub const REG_PQCSR: usize = 0x48;
+    /// The page-request-queue is active if cqon is 1.
+    pub const FIELD_PQCSR_PQON: usize = 0x10;
 }
 
 /// IOMMU: I/O memory management unit.
@@ -120,14 +133,39 @@ impl Device for IoMmu {
                     | (constants::QUEUE_ENTRY_NUM - 1) << constants::FIELD_FQB_LOG2SZ)
                     as u64,
             );
-            // cqt = 0
+            // fqt = 0
             core::ptr::write_volatile(base_ptr.byte_add(constants::REG_FQT), 0);
-            // cqcsr.cqen = 1
+            // fqcsr.fqen = 1
             let cqcsr_value = core::ptr::read_volatile(base_ptr.byte_add(constants::REG_FQCSR));
             core::ptr::write_volatile(base_ptr.byte_add(constants::REG_FQCSR), cqcsr_value | 1);
             // Poll on cqcsr.cqon until it reads 1
             while base_ptr.byte_add(constants::REG_FQCSR).read_volatile()
                 >> constants::FIELD_FQCSR_FQON
+                & 0x1
+                == 0
+            {}
+        }
+
+        // 14. To program the page-request queue, first determine the number of entries N needed in the page-request queue.
+        // The number of entries in the page-request queue is always a power of two.
+        // Allocate a N x 16-bytes sized buffer that is naturally aligned to the greater of 4-KiB or N x 16-bytes.
+        // Let k=log2(N) and B be the PPN of the allocated memory buffer.
+        unsafe {
+            // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
+            core::ptr::write_volatile(
+                base_ptr.byte_add(constants::REG_PQB),
+                (constants::QUEUE_PPN << constants::FIELD_PQB_PPN
+                    | (constants::QUEUE_ENTRY_NUM - 1) << constants::FIELD_PQB_LOG2SZ)
+                    as u64,
+            );
+            // pqt = 0
+            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_PQT), 0);
+            // pqcsr.pqen = 1
+            let cqcsr_value = core::ptr::read_volatile(base_ptr.byte_add(constants::REG_PQCSR));
+            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_PQCSR), cqcsr_value | 1);
+            // Poll on cqcsr.cqon until it reads 1
+            while base_ptr.byte_add(constants::REG_PQCSR).read_volatile()
+                >> constants::FIELD_PQCSR_PQON
                 & 0x1
                 == 0
             {}
