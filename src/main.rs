@@ -11,6 +11,8 @@ mod memmap;
 mod sbi;
 mod trap;
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::arch::asm;
 use core::cell::OnceCell;
 use core::panic::PanicInfo;
@@ -24,6 +26,7 @@ use crate::device::Devices;
 use crate::guest::Guest;
 use crate::machine_init::mstart;
 use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
+use crate::memmap::HostPhysicalAddress;
 use crate::sbi::Sbi;
 
 #[global_allocator]
@@ -60,6 +63,24 @@ pub fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     loop {
         riscv::asm::wfi();
+    }
+}
+
+/// Aligned page size memory block
+#[repr(C, align(0x1000))]
+struct PageBlock([u8; 0x1000]);
+
+impl PageBlock {
+    /// Return aligned address of page size memory block.
+    fn alloc() -> HostPhysicalAddress {
+        let mut host_physical_block_as_vec: Vec<core::mem::MaybeUninit<PageBlock>> =
+            Vec::with_capacity(1);
+        unsafe {
+            host_physical_block_as_vec.set_len(1);
+        }
+
+        let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
+        HostPhysicalAddress(Box::into_raw(host_physical_block_slice) as *const u8 as usize)
     }
 }
 

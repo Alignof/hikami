@@ -9,30 +9,11 @@ use crate::memmap::{
     page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
 };
+use crate::PageBlock;
 use context::{Context, ContextData};
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
 use core::ops::Range;
 use elf::{endian::AnyEndian, ElfBytes};
-
-/// Aligned page size memory block
-#[repr(C, align(0x1000))]
-struct PageBlock([u8; 0x1000]);
-
-impl PageBlock {
-    /// Return aligned address of page size memory block.
-    fn alloc() -> HostPhysicalAddress {
-        let mut host_physical_block_as_vec: Vec<core::mem::MaybeUninit<PageBlock>> =
-            Vec::with_capacity(1);
-        unsafe {
-            host_physical_block_as_vec.set_len(1);
-        }
-
-        let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
-        HostPhysicalAddress(Box::into_raw(host_physical_block_slice) as *const u8 as usize)
-    }
-}
 
 /// Guest Information
 #[derive(Debug)]
