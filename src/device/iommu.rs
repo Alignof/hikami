@@ -32,6 +32,19 @@ mod constants {
     pub const REG_CQCSR: usize = 0x48;
     /// The command-queue is active if cqon is 1.
     pub const FIELD_CQCSR_CQON: usize = 0x10;
+
+    /// Fault-queue base
+    pub const REG_FQB: usize = 0x28;
+    /// Holds the number of entries in command-queue as a log to base 2 minus 1.
+    pub const FIELD_FQB_LOG2SZ: usize = 0;
+    /// Holds the PPN of the root page of the in-memory command-queue used by software to queue commands to the IOMMU.
+    pub const FIELD_FQB_PPN: usize = 10;
+    /// Fault-queue tail
+    pub const REG_FQT: usize = 0x34;
+    /// Fault-queue CSR
+    pub const REG_FQCSR: usize = 0x4c;
+    /// The command-queue is active if cqon is 1.
+    pub const FIELD_FQCSR_FQON: usize = 0x10;
 }
 
 /// IOMMU: I/O memory management unit.
@@ -93,7 +106,32 @@ impl Device for IoMmu {
                 & 0x1
                 == 0
             {}
-        };
+        }
+
+        // 13. To program the fault queue, first determine the number of entries N needed in the fault queue.
+        // The number of entries in the fault queue is always a power of two.
+        // Allocate a N x 32-bytes sized memory buffer that is naturally aligned to the greater of 4-KiB or N x 32-bytes.
+        // Let k=log2(N) and B be the PPN of the allocated memory buffer.
+        unsafe {
+            // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
+            core::ptr::write_volatile(
+                base_ptr.byte_add(constants::REG_FQB),
+                (constants::QUEUE_PPN << constants::FIELD_FQB_PPN
+                    | (constants::QUEUE_ENTRY_NUM - 1) << constants::FIELD_FQB_LOG2SZ)
+                    as u64,
+            );
+            // cqt = 0
+            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_FQT), 0);
+            // cqcsr.cqen = 1
+            let cqcsr_value = core::ptr::read_volatile(base_ptr.byte_add(constants::REG_FQCSR));
+            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_FQCSR), cqcsr_value | 1);
+            // Poll on cqcsr.cqon until it reads 1
+            while base_ptr.byte_add(constants::REG_FQCSR).read_volatile()
+                >> constants::FIELD_FQCSR_FQON
+                & 0x1
+                == 0
+            {}
+        }
 
         IoMmu {
             base_addr,
