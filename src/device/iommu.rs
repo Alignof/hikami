@@ -60,6 +60,20 @@ mod constants {
     pub const FIELD_PQCSR_PQON: usize = 0x10;
 }
 
+/// For `ddtp.iommu_mode`.
+enum IoMmuMode {
+    /// No inbound memory transactions are allowed by the IOMMU.
+    Off,
+    /// No translation or protection. All inbound memory accesses are passed through.
+    Bare,
+    /// One-level device-directory-table
+    Lv1,
+    /// Two-level device-directory-table
+    Lv2,
+    /// Three-level device-directory-table
+    Lv3,
+}
+
 /// IOMMU: I/O memory management unit.
 #[derive(Debug)]
 pub struct IoMmu {
