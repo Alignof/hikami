@@ -3,6 +3,7 @@
 use crate::memmap::HostPhysicalAddress;
 
 /// IOMMU register map
+#[repr(C)]
 pub struct IoMmuRegisters {
     /// A read-only register reporting features supported by the IOMMU.
     pub capabilities: Capabilities,
@@ -11,7 +12,7 @@ pub struct IoMmuRegisters {
     /// Designated For custom use
     _custom: u32,
     /// Device directory table pointer
-    ddtp: u64,
+    _ddtp: u64,
 
     /// Command-queue base
     pub cqb: Cqb,
@@ -28,18 +29,18 @@ pub struct IoMmuRegisters {
     pub fqt: Fqt,
 
     /// Page-request-queue base
-    pqb: u64,
+    pub pqb: Pqb,
     /// Page-request-queue head
     _pqh: u32,
     /// Page-request-queue tail
-    pqt: u32,
+    pub pqt: Pqt,
 
     /// Command-queue CSR
     pub cqcsr: CqCsr,
     /// Fault-queue CSR
     pub fqcsr: FqCsr,
     /// Page-request-queue CSR
-    pqcsr: u32,
+    pub pqcsr: PqCsr,
 }
 
 /// IOMMU capabilities
@@ -126,5 +127,41 @@ impl FqCsr {
     pub fn fqon(&self) -> bool {
         const FIELD_FQCSR_FQON: usize = 0x10;
         self.0 >> FIELD_FQCSR_FQON & 0x1 == 1
+    }
+}
+
+/// Page-request-queue base
+pub struct Pqb(u64);
+impl Pqb {
+    /// set ppn value and log_2(size).
+    pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
+        // Is queue address aligned 4KiB?
+        assert!(queue_addr % 4096 == 0);
+
+        // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
+        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64;
+    }
+}
+
+/// Page-request-queue tail
+pub struct Pqt(u32);
+impl Pqt {
+    pub fn write(&mut self, value: u32) {
+        self.0 = value;
+    }
+}
+
+/// Page-request-queue CSR
+pub struct PqCsr(u32);
+impl PqCsr {
+    /// set pqen (offset: 0) bit
+    pub fn set_pqen(&mut self) {
+        self.0 = self.0 | 1
+    }
+
+    /// pqon (offset: 16)
+    pub fn pqon(&self) -> bool {
+        const FIELD_PQCSR_PQON: usize = 0x10;
+        self.0 >> FIELD_PQCSR_PQON & 0x1 == 1
     }
 }

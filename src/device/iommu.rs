@@ -95,7 +95,7 @@ impl Device for IoMmu {
             .unwrap()
             .next()
             .unwrap();
-        let registers = unsafe { &*(region.starting_address as *mut IoMmuRegisters) };
+        let registers = unsafe { &mut *(region.starting_address as *mut IoMmuRegisters) };
 
         // 6.2. Guidelines for initialization
         // p.88
@@ -115,58 +115,43 @@ impl Device for IoMmu {
         // The number of entries in the command queue must be a power of two.
         // Allocate a N x 16-bytes sized memory buffer that is naturally aligned to the greater of 4-KiB or N x 16-bytes.
         // Let k=log2(N) and B be the physical page number (PPN) of the allocated memory buffer.
-        unsafe {
-            // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
-            let command_queue = PageBlock::alloc();
-            registers.cqb.set(command_queue, 4096);
-            // cqt = 0
-            registers.cqt.write(0);
-            // cqcsr.cqen = 1
-            registers.cqcsr.set_cqen();
-            // Poll on cqcsr.cqon until it reads 1
-            while !registers.cqcsr.cqon() {}
-        }
+        // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
+        let command_queue = PageBlock::alloc();
+        registers.cqb.set(command_queue, 4096);
+        // cqt = 0
+        registers.cqt.write(0);
+        // cqcsr.cqen = 1
+        registers.cqcsr.set_cqen();
+        // Poll on cqcsr.cqon until it reads 1
+        while !registers.cqcsr.cqon() {}
 
         // 13. To program the fault queue, first determine the number of entries N needed in the fault queue.
         // The number of entries in the fault queue is always a power of two.
         // Allocate a N x 32-bytes sized memory buffer that is naturally aligned to the greater of 4-KiB or N x 32-bytes.
         // Let k=log2(N) and B be the PPN of the allocated memory buffer.
-        unsafe {
-            // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
-            let command_queue = PageBlock::alloc();
-            registers.fqb.set(command_queue, 4096);
-            // fqt = 0
-            registers.fqt.write(0);
-            // fqcsr.fqen = 1
-            registers.fqcsr.set_fqen();
-            // Poll on fqcsr.fqon until it reads 1
-            while !registers.fqcsr.fqon() {}
-        }
+        // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
+        let command_queue = PageBlock::alloc();
+        registers.fqb.set(command_queue, 4096);
+        // fqt = 0
+        registers.fqt.write(0);
+        // fqcsr.fqen = 1
+        registers.fqcsr.set_fqen();
+        // Poll on fqcsr.fqon until it reads 1
+        while !registers.fqcsr.fqon() {}
 
         // 14. To program the page-request queue, first determine the number of entries N needed in the page-request queue.
         // The number of entries in the page-request queue is always a power of two.
         // Allocate a N x 16-bytes sized buffer that is naturally aligned to the greater of 4-KiB or N x 16-bytes.
         // Let k=log2(N) and B be the PPN of the allocated memory buffer.
-        unsafe {
-            // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
-            core::ptr::write_volatile(
-                base_ptr.byte_add(constants::REG_PQB),
-                (constants::QUEUE_PPN << constants::FIELD_PQB_PPN
-                    | (constants::QUEUE_ENTRY_NUM - 1) << constants::FIELD_PQB_LOG2SZ)
-                    as u64,
-            );
-            // pqt = 0
-            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_PQT), 0);
-            // pqcsr.pqen = 1
-            let cqcsr_value = core::ptr::read_volatile(base_ptr.byte_add(constants::REG_PQCSR));
-            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_PQCSR), cqcsr_value | 1);
-            // Poll on cqcsr.cqon until it reads 1
-            while base_ptr.byte_add(constants::REG_PQCSR).read_volatile()
-                >> constants::FIELD_PQCSR_PQON
-                & 0x1
-                == 0
-            {}
-        }
+        // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
+        let command_queue = PageBlock::alloc();
+        registers.pqb.set(command_queue, 4096);
+        // pqt = 0
+        registers.pqt.write(0);
+        // pqcsr.pqen = 1
+        registers.pqcsr.set_pqen();
+        // Poll on pqcsr.pqon until it reads 1
+        while !registers.pqcsr.pqon() {}
 
         IoMmu {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
