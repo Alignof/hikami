@@ -88,7 +88,7 @@ impl Device for IoMmu {
         unsafe {
             core::ptr::write_bytes(page_request_queue_ptr, 0u8, 0x1000);
         }
-        registers.fqb.set(page_request_queue, 4096);
+        registers.pqb.set(page_request_queue, 4096);
         // pqt = 0
         registers.pqt.write(0);
         // pqcsr.pqen = 1
