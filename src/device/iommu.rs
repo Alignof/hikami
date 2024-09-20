@@ -83,7 +83,6 @@ enum IoMmuMode {
 pub struct IoMmu {
     base_addr: HostPhysicalAddress,
     size: usize,
-    registers: *mut IoMmuRegisters,
 }
 
 impl Device for IoMmu {
@@ -187,9 +186,8 @@ impl Device for IoMmu {
         }
 
         IoMmu {
-            base_addr: HostPhysicalAddress(registers as usize),
+            base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-            registers,
         }
     }
 

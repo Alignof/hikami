@@ -1,18 +1,20 @@
 //! Register map for IOMMU.
 
+use crate::memmap::HostPhysicalAddress;
+
 /// IOMMU register map
 pub struct IoMmuRegisters {
     /// A read-only register reporting features supported by the IOMMU.
     pub capabilities: Capabilities,
     /// Feature control register
-    fctl: u32,
+    _fctl: u32,
     /// Designated For custom use
     _custom: u32,
     /// Device directory table pointer
     ddtp: u64,
 
     /// Command-queue base
-    cqb: u64,
+    pub cqb: Cqb,
     /// Command-queue head
     _cqh: u32,
     /// Command-queue tail
@@ -40,8 +42,8 @@ pub struct IoMmuRegisters {
     pqcsr: u32,
 }
 
+/// IOMMU capabilities
 pub struct Capabilities(u64);
-
 impl Capabilities {
     /// Return (major version, minor version)
     pub fn version(&self) -> (u8, u8) {
@@ -52,5 +54,17 @@ impl Capabilities {
     pub fn is_sv39x4_supported(&self) -> bool {
         const FIELD_CAPABILITIES_SV39X4: usize = 17;
         self.0 >> FIELD_CAPABILITIES_SV39X4 & 0x1 == 1
+    }
+}
+
+/// Command-queue base
+pub struct Cqb(u64);
+impl Cqb {
+    /// set ppn value and log_2(size).
+    pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
+        // Is queue address aligned 4KiB?
+        assert!(queue_addr % 4096 == 0);
+
+        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64
     }
 }
