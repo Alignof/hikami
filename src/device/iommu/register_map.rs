@@ -21,11 +21,11 @@ pub struct IoMmuRegisters {
     pub cqt: Cqt,
 
     /// Fault-queue base
-    fqb: u64,
+    pub fqb: Fqb,
     /// Fault-queue head
     _fqh: u32,
     /// Fault-queue tail
-    fqt: u32,
+    pub fqt: Fqt,
 
     /// Page-request-queue base
     pqb: u64,
@@ -37,7 +37,7 @@ pub struct IoMmuRegisters {
     /// Command-queue CSR
     pub cqcsr: CqCsr,
     /// Fault-queue CSR
-    fqcsr: u32,
+    pub fqcsr: FqCsr,
     /// Page-request-queue CSR
     pqcsr: u32,
 }
@@ -90,5 +90,41 @@ impl CqCsr {
     pub fn cqon(&self) -> bool {
         const FIELD_CQCSR_CQON: usize = 0x10;
         self.0 >> FIELD_CQCSR_CQON & 0x1 == 1
+    }
+}
+
+/// Fault-queue base
+pub struct Fqb(u64);
+impl Fqb {
+    /// set ppn value and log_2(size).
+    pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
+        // Is queue address aligned 4KiB?
+        assert!(queue_addr % 4096 == 0);
+
+        // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
+        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64;
+    }
+}
+
+/// Fault-queue tail
+pub struct Fqt(u32);
+impl Fqt {
+    pub fn write(&mut self, value: u32) {
+        self.0 = value;
+    }
+}
+
+/// Fault-queue CSR
+pub struct FqCsr(u32);
+impl FqCsr {
+    /// set fqen (offset: 0) bit
+    pub fn set_fqen(&mut self) {
+        self.0 = self.0 | 1
+    }
+
+    /// fqon (offset: 16)
+    pub fn fqon(&self) -> bool {
+        const FIELD_FQCSR_FQON: usize = 0x10;
+        self.0 >> FIELD_FQCSR_FQON & 0x1 == 1
     }
 }

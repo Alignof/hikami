@@ -133,23 +133,14 @@ impl Device for IoMmu {
         // Let k=log2(N) and B be the PPN of the allocated memory buffer.
         unsafe {
             // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
-            core::ptr::write_volatile(
-                base_ptr.byte_add(constants::REG_FQB),
-                (constants::QUEUE_PPN << constants::FIELD_FQB_PPN
-                    | (constants::QUEUE_ENTRY_NUM - 1) << constants::FIELD_FQB_LOG2SZ)
-                    as u64,
-            );
+            let command_queue = PageBlock::alloc();
+            registers.fqb.set(command_queue, 4096);
             // fqt = 0
-            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_FQT), 0);
+            registers.fqt.write(0);
             // fqcsr.fqen = 1
-            let cqcsr_value = core::ptr::read_volatile(base_ptr.byte_add(constants::REG_FQCSR));
-            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_FQCSR), cqcsr_value | 1);
-            // Poll on cqcsr.cqon until it reads 1
-            while base_ptr.byte_add(constants::REG_FQCSR).read_volatile()
-                >> constants::FIELD_FQCSR_FQON
-                & 0x1
-                == 0
-            {}
+            registers.fqcsr.set_fqen();
+            // Poll on fqcsr.fqon until it reads 1
+            while !registers.fqcsr.fqon() {}
         }
 
         // 14. To program the page-request queue, first determine the number of entries N needed in the page-request queue.
