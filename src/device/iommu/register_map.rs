@@ -3,7 +3,7 @@
 /// IOMMU register map
 pub struct IoMmuRegisters {
     /// A read-only register reporting features supported by the IOMMU.
-    capabilities: u64,
+    pub capabilities: Capabilities,
     /// Feature control register
     fctl: u32,
     /// Designated For custom use
@@ -38,4 +38,19 @@ pub struct IoMmuRegisters {
     fqcsr: u32,
     /// Page-request-queue CSR
     pqcsr: u32,
+}
+
+pub struct Capabilities(u64);
+
+impl Capabilities {
+    /// Return (major version, minor version)
+    pub fn version(&self) -> (u8, u8) {
+        (self.0 as u8 >> 4 & 0xf, self.0 as u8 & 0xf)
+    }
+
+    /// Is sv39x4 supported?
+    pub fn is_sv39x4_supported(&self) -> bool {
+        const FIELD_CAPABILITIES_SV39X4: usize = 17;
+        self.0 >> FIELD_CAPABILITIES_SV39X4 & 0x1 == 1
+    }
 }

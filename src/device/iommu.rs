@@ -95,20 +95,17 @@ impl Device for IoMmu {
             .unwrap()
             .next()
             .unwrap();
-        let base_ptr = region.starting_address as *mut IoMmuRegisters;
+        let registers = unsafe { &*(region.starting_address as *mut IoMmuRegisters) };
 
         // 6.2. Guidelines for initialization
         // p.88
 
         // 1. Read the capabilities register to discover the capabilities of the IOMMU.
-        let capabilities =
-            unsafe { core::ptr::read_volatile(base_ptr.byte_add(constants::REG_CAPABILITIES)) };
         // 2. Stop and report failure if capabilities.version is not supported.
-        let capabilities_major_version = (capabilities >> 4) & 0xf;
-        assert!(capabilities_major_version >= 1);
-        let capabilities_sv39x4_supports =
-            (capabilities >> constants::FIELD_CAPABILITIES_SV39X4) & 0x1;
-        assert_eq!(capabilities_sv39x4_supports, 1);
+        let (major, minor) = registers.capabilities.version();
+        assert!(major >= 1);
+        assert!(registers.capabilities.is_sv39x4_supported());
+
         // 3. Read the feature control register (fctl).
         // 3~8. are omitted. (does not needed for this system).
         // 9. The icvec register is used to program an interrupt vector for each interrupt cause.
@@ -190,9 +187,9 @@ impl Device for IoMmu {
         }
 
         IoMmu {
-            base_addr: HostPhysicalAddress(base_ptr as usize),
+            base_addr: HostPhysicalAddress(registers as usize),
             size: region.size.unwrap(),
-            registers: base_ptr,
+            registers,
         }
     }
 
