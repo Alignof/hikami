@@ -5,6 +5,7 @@ mod register_map;
 
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::PageBlock;
 use register_map::IoMmuRegisters;
 
 use fdt::Fdt;
@@ -116,14 +117,10 @@ impl Device for IoMmu {
         // Let k=log2(N) and B be the physical page number (PPN) of the allocated memory buffer.
         unsafe {
             // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
-            core::ptr::write_volatile(
-                base_ptr.byte_add(constants::REG_CQB),
-                (constants::QUEUE_PPN << constants::FIELD_CQB_PPN
-                    | (constants::QUEUE_ENTRY_NUM - 1) << constants::FIELD_CQB_LOG2SZ)
-                    as u64,
-            );
+            let command_queue = PageBlock::alloc();
+            registers.cqb.set(command_queue, 4096);
             // cqt = 0
-            core::ptr::write_volatile(base_ptr.byte_add(constants::REG_CQT), 0);
+            registers.cqt.write(0);
             // cqcsr.cqen = 1
             let cqcsr_value = core::ptr::read_volatile(base_ptr.byte_add(constants::REG_CQCSR));
             core::ptr::write_volatile(base_ptr.byte_add(constants::REG_CQCSR), cqcsr_value | 1);

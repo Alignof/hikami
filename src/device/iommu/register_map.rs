@@ -18,7 +18,7 @@ pub struct IoMmuRegisters {
     /// Command-queue head
     _cqh: u32,
     /// Command-queue tail
-    cqt: u32,
+    pub cqt: Cqt,
 
     /// Fault-queue base
     fqb: u64,
@@ -65,6 +65,15 @@ impl Cqb {
         // Is queue address aligned 4KiB?
         assert!(queue_addr % 4096 == 0);
 
-        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64
+        // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
+        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64;
+    }
+}
+
+/// Command-queue tail
+pub struct Cqt(u32);
+impl Cqt {
+    pub fn write(&mut self, value: u32) {
+        self.0 = value;
     }
 }
