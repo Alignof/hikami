@@ -1,7 +1,7 @@
 //! Register map for IOMMU.
 
 /// IOMMU register map
-struct IoMmuRegisters {
+pub struct IoMmuRegisters {
     /// A read-only register reporting features supported by the IOMMU.
     capabilities: u64,
     /// Feature control register

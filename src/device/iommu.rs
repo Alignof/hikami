@@ -5,6 +5,8 @@ mod register_map;
 
 use super::{Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use register_map::IoMmuRegisters;
+
 use fdt::Fdt;
 
 mod constants {
@@ -81,6 +83,7 @@ enum IoMmuMode {
 pub struct IoMmu {
     base_addr: HostPhysicalAddress,
     size: usize,
+    registers: *mut IoMmuRegisters,
 }
 
 impl Device for IoMmu {
@@ -92,8 +95,7 @@ impl Device for IoMmu {
             .unwrap()
             .next()
             .unwrap();
-        let base_ptr = region.starting_address as *mut u64;
-        let base_addr = HostPhysicalAddress(base_ptr as usize);
+        let base_ptr = region.starting_address as *mut IoMmuRegisters;
 
         // 6.2. Guidelines for initialization
         // p.88
@@ -188,8 +190,9 @@ impl Device for IoMmu {
         }
 
         IoMmu {
-            base_addr,
+            base_addr: HostPhysicalAddress(base_ptr as usize),
             size: region.size.unwrap(),
+            registers: base_ptr,
         }
     }
 
