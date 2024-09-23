@@ -42,6 +42,23 @@ impl Pci {
             );
         }
     }
+
+    /// Read config data from "PCI Configuration Space".
+    fn read_config_data(
+        &self,
+        bus_num: u32,
+        device_num: u32,
+        function_num: u32,
+        offset: u32,
+    ) -> u32 {
+        let config_data_reg_ptr = (self.base_addr.0 + 4) as *mut u32;
+
+        self.set_config_address(bus_num, device_num, function_num, offset);
+        let config = unsafe { config_data_reg_ptr.read_volatile() };
+        self.unset_config_address(bus_num, device_num, function_num, offset);
+
+        config
+    }
 }
 
 impl Device for Pci {
