@@ -3,8 +3,7 @@
 
 mod register_map;
 
-use super::{pci::Pci, Device};
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use super::{pci::Pci, PciDevice};
 use crate::PageBlock;
 use register_map::{IoMmuMode, IoMmuRegisters};
 
@@ -18,8 +17,29 @@ pub struct IoMmu {
     function_number: u32,
 }
 
-impl IoMmu {
-    pub fn init(&self, pci: &Pci) {
+impl PciDevice for IoMmu {
+    fn new(device_tree: &Fdt, node_path: &str) -> Self {
+        let pci_reg = device_tree
+            .find_node(node_path)
+            .unwrap()
+            .raw_reg()
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
+        let pci_first_reg = (pci_reg.address[0] as u32) << 24
+            | (pci_reg.address[1] as u32) << 16
+            | (pci_reg.address[2] as u32) << 8
+            | pci_reg.address[3] as u32;
+
+        IoMmu {
+            bus_number: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
+            device_number: pci_first_reg >> 11 & 0b1_1111, // 5 bit
+            function_number: pci_first_reg >> 8 & 0b111,   // 3 bit
+        }
+    }
+
+    fn init(&self, pci: &Pci) {
         let base_address_register = pci.read_config_data(
             self.bus_number,
             self.device_number,
@@ -104,40 +124,5 @@ impl IoMmu {
             core::ptr::write_bytes(ddt_ptr, 0u8, 0x1000);
         }
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
-    }
-}
-
-impl Device for IoMmu {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        let pci_reg = device_tree
-            .find_node(node_path)
-            .unwrap()
-            .raw_reg()
-            .unwrap()
-            .next()
-            .unwrap();
-        assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
-        let pci_first_reg = (pci_reg.address[0] as u32) << 24
-            | (pci_reg.address[1] as u32) << 16
-            | (pci_reg.address[2] as u32) << 8
-            | pci_reg.address[3] as u32;
-
-        IoMmu {
-            bus_number: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
-            device_number: pci_first_reg >> 11 & 0b1_1111, // 5 bit
-            function_number: pci_first_reg >> 8 & 0b111,   // 3 bit
-        }
-    }
-
-    fn size(&self) -> usize {
-        unreachable!();
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        unreachable!();
-    }
-
-    fn memmap(&self) -> MemoryMap {
-        unreachable!();
     }
 }
