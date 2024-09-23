@@ -12,6 +12,38 @@ pub struct Pci {
     size: usize,
 }
 
+impl Pci {
+    /// Set `CONFIG_ADDRESS` register.
+    fn set_config_address(&self, bus_num: u32, device_num: u32, function_num: u32, offset: u32) {
+        let config_addr_reg_ptr = self.base_addr.0 as *mut u32;
+        let enable_bit = 1 << 31;
+
+        unsafe {
+            config_addr_reg_ptr.write_volatile(
+                enable_bit
+                    | (bus_num & 0b1111_1111) << 16
+                    | (device_num & 0b1_1111) << 11
+                    | (function_num & 0b111) << 8
+                    | offset,
+            );
+        }
+    }
+
+    /// Unset `CONFIG_ADDRESS` register.
+    fn unset_config_address(&self, bus_num: u32, device_num: u32, function_num: u32, offset: u32) {
+        let config_addr_reg_ptr = self.base_addr.0 as *mut u32;
+
+        unsafe {
+            config_addr_reg_ptr.write_volatile(
+                (bus_num & 0b1111_1111) << 16
+                    | (device_num & 0b1_1111) << 11
+                    | (function_num & 0b111) << 8
+                    | offset,
+            );
+        }
+    }
+}
+
 impl Device for Pci {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree
