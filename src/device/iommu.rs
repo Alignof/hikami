@@ -107,12 +107,16 @@ impl Device for IoMmu {
             .unwrap()
             .next()
             .unwrap();
-        assert_eq!(pci_reg.address.len(), 3);
+        assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
+        let pci_first_reg = (pci_reg.address[0] as u32) << 24
+            | (pci_reg.address[1] as u32) << 16
+            | (pci_reg.address[2] as u32) << 8
+            | pci_reg.address[3] as u32;
 
         IoMmu {
-            bus_number: pci_reg.address[0] >> 16 & 0b1111_1111, // 8 bit
-            device_number: pci_reg.address[0] >> 11 & 0b1_1111, // 5 bit
-            function_number: pci_reg.address[0] >> 8 & 0b111,   // 3 bit
+            bus_number: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
+            device_number: pci_first_reg >> 11 & 0b1_1111, // 5 bit
+            function_number: pci_first_reg >> 8 & 0b111,   // 3 bit
         }
     }
 
