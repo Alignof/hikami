@@ -3,7 +3,7 @@
 
 mod register_map;
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{pci::Pci, Device, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use crate::PageBlock;
 use register_map::{IoMmuMode, IoMmuRegisters};
@@ -18,21 +18,8 @@ pub struct IoMmu {
     function_number: u32,
 }
 
-impl Device for IoMmu {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        let pci_reg = device_tree
-            .find_node(node_path)
-            .unwrap()
-            .raw_reg()
-            .unwrap()
-            .next()
-            .unwrap();
-        assert_eq!(pci_reg.address.len(), 3);
-
-        let bus_num = pci_reg.address[0] >> 16 & 0b1111_1111; // 8 bit
-        let device_num = pci_reg.address[0] >> 11 & 0b1_1111; // 5 bit
-        let function_num = pci_reg.address[0] >> 8 & 0b111; // 3 bit
-
+impl IoMmu {
+    pub fn init(&self, device_tree: &Fdt, pci: &Pci, node_path: &str) {
         // 6.2. Guidelines for initialization
         // p.88
 
@@ -108,10 +95,24 @@ impl Device for IoMmu {
             core::ptr::write_bytes(ddt_ptr, 0u8, 0x1000);
         }
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
+    }
+}
+
+impl Device for IoMmu {
+    fn new(device_tree: &Fdt, node_path: &str) -> Self {
+        let pci_reg = device_tree
+            .find_node(node_path)
+            .unwrap()
+            .raw_reg()
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(pci_reg.address.len(), 3);
 
         IoMmu {
-            base_addr: HostPhysicalAddress(0),
-            size: 0,
+            bus_number: pci_reg.address[0] >> 16 & 0b1111_1111, // 8 bit
+            device_number: pci_reg.address[0] >> 11 & 0b1_1111, // 5 bit
+            function_number: pci_reg.address[0] >> 8 & 0b111,   // 3 bit
         }
     }
 
