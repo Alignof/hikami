@@ -44,7 +44,7 @@ impl Pci {
     }
 
     /// Read config data from "PCI Configuration Space".
-    fn read_config_data(
+    pub fn read_config_data(
         &self,
         bus_num: u32,
         device_num: u32,

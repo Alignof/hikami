@@ -55,13 +55,18 @@ pub struct Devices {
     pub plic: plic::Plic,
     pub plic_context: usize,
     pub clint: clint::Clint,
-    pub pci: pci::Pci,
     pub rtc: rtc::Rtc,
+    pub pci: pci::Pci,
     pub iommu: iommu::IoMmu,
 }
 
 impl Devices {
     pub fn new(device_tree: Fdt) -> Self {
+        let pci = pci::Pci::new(&device_tree, "/soc/pci");
+        let iommu = iommu::IoMmu::new(&device_tree, "/soc/pci/iommu");
+        // init iommu registers
+        iommu.init(&pci);
+
         Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
@@ -77,9 +82,9 @@ impl Devices {
                 .unwrap()
                 .value[0] as usize,
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
-            pci: pci::Pci::new(&device_tree, "/soc/pci"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
-            iommu: iommu::IoMmu::new(&device_tree, "/soc/pci/iommu"),
+            pci,
+            iommu,
         }
     }
 

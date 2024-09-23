@@ -3,8 +3,8 @@
 
 mod register_map;
 
-use super::{pci::Pci, Device, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use super::{pci::Pci, Device};
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 use crate::PageBlock;
 use register_map::{IoMmuMode, IoMmuRegisters};
 
@@ -19,7 +19,16 @@ pub struct IoMmu {
 }
 
 impl IoMmu {
-    pub fn init(&self, device_tree: &Fdt, pci: &Pci, node_path: &str) {
+    pub fn init(&self, pci: &Pci) {
+        let base_address_register = pci.read_config_data(
+            self.bus_number,
+            self.device_number,
+            self.function_number,
+            0x10,
+        );
+        let registers = base_address_register as *mut IoMmuRegisters;
+        let registers = unsafe { &mut *registers };
+
         // 6.2. Guidelines for initialization
         // p.88
 
