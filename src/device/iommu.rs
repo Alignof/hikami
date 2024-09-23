@@ -117,19 +117,14 @@ impl Device for IoMmu {
     }
 
     fn size(&self) -> usize {
-        self.size
+        unreachable!();
     }
 
     fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
+        unreachable!();
     }
 
     fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+        unreachable!();
     }
 }
