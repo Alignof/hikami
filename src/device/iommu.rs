@@ -13,8 +13,9 @@ use fdt::Fdt;
 /// IOMMU: I/O memory management unit.
 #[derive(Debug)]
 pub struct IoMmu {
-    base_addr: HostPhysicalAddress,
-    size: usize,
+    bus_number: u32,
+    device_number: u32,
+    function_number: u32,
 }
 
 impl Device for IoMmu {
