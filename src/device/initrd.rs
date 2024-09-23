@@ -1,7 +1,7 @@
 //! initrd: INITial RamDisk
 #![allow(clippy::doc_markdown)]
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
@@ -13,7 +13,7 @@ pub struct Initrd {
     size: usize,
 }
 
-impl Device for Initrd {
+impl MmioDevice for Initrd {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let start_prop = "linux,initrd-start";
         let end_prop = "linux,initrd-end";

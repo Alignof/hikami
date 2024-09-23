@@ -2,7 +2,7 @@
 
 use super::hstrap_exit;
 use crate::device::plic::ContextId;
-use crate::device::Device;
+use crate::device::MmioDevice;
 use crate::h_extension::csrs::{hvip, vsip, VsInterruptKind};
 use crate::HYPERVISOR_DATA;
 

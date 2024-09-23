@@ -1,6 +1,6 @@
 //! PCI: Peripheral Component Interconnect
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
@@ -61,7 +61,7 @@ impl Pci {
     }
 }
 
-impl Device for Pci {
+impl MmioDevice for Pci {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree
             .find_node(node_path)

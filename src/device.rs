@@ -29,8 +29,10 @@ pub enum DeviceEmulateError {
     ReservedRegister,
 }
 
-/// A struct that implement Device trait **must** has `base_addr` and size member.
-pub trait Device {
+/// Memory mapped I/O device.
+///
+/// A struct that implement this trait **must** has `base_addr` and size member.
+pub trait MmioDevice {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
     /// * `node_path` - node path in fdt

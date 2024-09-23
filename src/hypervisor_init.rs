@@ -1,6 +1,6 @@
 //! HS-mode level initialization.
 
-use crate::device::Device;
+use crate::device::MmioDevice;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hie,

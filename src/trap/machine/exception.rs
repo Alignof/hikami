@@ -1,7 +1,7 @@
 //! Trap machine exception.
 
 use super::{mtrap_exit, mtrap_exit_sbi};
-use crate::device::Device;
+use crate::device::MmioDevice;
 use crate::print;
 use crate::{HYPERVISOR_DATA, SBI};
 use riscv::register::{
