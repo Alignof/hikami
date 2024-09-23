@@ -19,14 +19,18 @@ pub struct IoMmu {
 
 impl Device for IoMmu {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        let region = device_tree
+        let pci_reg = device_tree
             .find_node(node_path)
             .unwrap()
-            .reg()
+            .raw_reg()
             .unwrap()
             .next()
             .unwrap();
-        let registers = unsafe { &mut *(region.starting_address as *mut IoMmuRegisters) };
+        assert_eq!(pci_reg.address.len(), 3);
+
+        let bus_num = pci_reg.address[0] >> 16 & 0b1111_1111; // 8 bit
+        let device_num = pci_reg.address[0] >> 11 & 0b1_1111; // 5 bit
+        let function_num = pci_reg.address[0] >> 8 & 0b111; // 3 bit
 
         // 6.2. Guidelines for initialization
         // p.88
@@ -105,8 +109,8 @@ impl Device for IoMmu {
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
 
         IoMmu {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            base_addr: HostPhysicalAddress(0),
+            size: 0,
         }
     }
 
