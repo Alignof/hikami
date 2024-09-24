@@ -3,7 +3,10 @@
 
 mod register_map;
 
-use super::{pci::Pci, PciDevice};
+use super::{
+    pci::{ConfigSpaceRegister, Pci},
+    PciDevice,
+};
 use crate::PageBlock;
 use register_map::{IoMmuMode, IoMmuRegisters};
 
@@ -40,13 +43,28 @@ impl PciDevice for IoMmu {
     }
 
     fn init(&self, pci: &Pci) {
-        let base_address_register = pci.read_config_data(
+        pci.write_config_register(
             self.bus_number,
             self.device_number,
             self.function_number,
-            0x10,
+            ConfigSpaceRegister::BaseAddressRegister1,
+            0x4000_0000,
         );
-        let registers = base_address_register as *mut IoMmuRegisters;
+        pci.write_config_register(
+            self.bus_number,
+            self.device_number,
+            self.function_number,
+            ConfigSpaceRegister::BaseAddressRegister2,
+            0x0000_0000,
+        );
+        pci.write_config_register(
+            self.bus_number,
+            self.device_number,
+            self.function_number,
+            ConfigSpaceRegister::Command,
+            0b10, // memory space enable
+        );
+        let registers = 0x4000_0000 as *mut IoMmuRegisters;
         let registers = unsafe { &mut *registers };
 
         // 6.2. Guidelines for initialization

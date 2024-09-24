@@ -9,6 +9,7 @@ use fdt::Fdt;
 /// Ref: [https://astralvx.com/storage/2020/11/PCI_Express_Base_4.0_Rev0.3_February19-2014.pdf](https://astralvx.com/storage/2020/11/PCI_Express_Base_4.0_Rev0.3_February19-2014.pdf) p. 578  
 /// Ref: [https://osdev.jp/wiki/PCI-Memo](https://osdev.jp/wiki/PCI-Memo)  
 /// Ref: [http://oswiki.osask.jp/?PCI](http://oswiki.osask.jp/?PCI)  
+#[derive(Clone, Copy)]
 pub enum ConfigSpaceRegister {
     /// Vendor ID
     VendorId = 0x0,
@@ -34,7 +35,7 @@ pub struct Pci {
 
 impl Pci {
     /// Read config data from "PCI Configuration Space".
-    pub fn read_config_data(
+    pub fn read_config_register(
         &self,
         bus_num: u32,
         device_num: u32,
@@ -46,13 +47,23 @@ impl Pci {
             | (device_num & 0b1_1111) << 15
             | (function_num & 0b111) << 12
             | reg as u32;
-        let config_data_reg_ptr = config_data_reg_addr as *const u32;
 
-        unsafe { config_data_reg_ptr.read_volatile() }
+        match reg {
+            ConfigSpaceRegister::VendorId
+            | ConfigSpaceRegister::DeviceId
+            | ConfigSpaceRegister::Command
+            | ConfigSpaceRegister::Status => unsafe {
+                core::ptr::read_volatile(config_data_reg_addr as *const u16) as u32
+            },
+            ConfigSpaceRegister::BaseAddressRegister1
+            | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
+                core::ptr::read_volatile(config_data_reg_addr as *const u32)
+            },
+        }
     }
 
     /// Read config data from "PCI Configuration Space".
-    pub fn write_config_data(
+    pub fn write_config_register(
         &self,
         bus_num: u32,
         device_num: u32,
@@ -65,10 +76,17 @@ impl Pci {
             | (device_num & 0b1_1111) << 15
             | (function_num & 0b111) << 12
             | reg as u32;
-        let config_data_reg_ptr = config_data_reg_addr as *mut u32;
-
-        unsafe {
-            config_data_reg_ptr.write_volatile(data);
+        match reg {
+            ConfigSpaceRegister::VendorId
+            | ConfigSpaceRegister::DeviceId
+            | ConfigSpaceRegister::Command
+            | ConfigSpaceRegister::Status => unsafe {
+                core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16)
+            },
+            ConfigSpaceRegister::BaseAddressRegister1
+            | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
+                core::ptr::write_volatile(config_data_reg_addr as *mut u32, data)
+            },
         }
     }
 }
