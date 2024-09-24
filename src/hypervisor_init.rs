@@ -133,6 +133,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hgatp::set(HgatpMode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
     hfence_gvma_all();
 
+    // initialize IOMMU
+    hypervisor_data.get_mut().unwrap().devices().init_iommu();
+
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
 

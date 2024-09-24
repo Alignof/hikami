@@ -79,8 +79,6 @@ impl Devices {
     pub fn new(device_tree: Fdt) -> Self {
         let pci = pci::Pci::new(&device_tree, "/soc/pci");
         let iommu = iommu::IoMmu::new(&device_tree, "/soc/pci/iommu");
-        // init iommu registers
-        iommu.init(&pci);
 
         Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
@@ -101,6 +99,11 @@ impl Devices {
             pci,
             iommu,
         }
+    }
+
+    /// Initialization of IOMMU.
+    pub fn init_iommu(&mut self) {
+        self.iommu.init(&self.pci);
     }
 
     /// Identity map for devices.
