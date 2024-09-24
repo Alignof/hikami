@@ -7,6 +7,8 @@ use super::{
     pci::{ConfigSpaceRegister, Pci},
     PciDevice,
 };
+use crate::h_extension::csrs::hgatp;
+use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress};
 use crate::PageBlock;
 use register_map::{IoMmuMode, IoMmuRegisters};
 
@@ -18,6 +20,23 @@ pub struct IoMmu {
     bus_number: u32,
     device_number: u32,
     function_number: u32,
+}
+
+impl IoMmu {
+    /// Set page table in IOMMU.
+    fn init_page_table(&self, ddt_addr: HostPhysicalAddress) {
+        const OFFSET_IOHGATP: usize = 64;
+        // set all ddt entry
+        for offset in (0..PAGE_SIZE).step_by(256) {
+            let tc_addr = ddt_addr + offset;
+            let iohgatp_addr = ddt_addr + offset + OFFSET_IOHGATP;
+
+            unsafe {
+                core::ptr::write_volatile(tc_addr.0 as *mut u64, 1);
+                core::ptr::write_volatile(iohgatp_addr.0 as *mut u64, hgatp::read().bits as u64);
+            }
+        }
+    }
 }
 
 impl PciDevice for IoMmu {
@@ -142,6 +161,7 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(ddt_ptr, 0u8, 1);
         }
+        self.init_page_table(ddt_addr);
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
     }
 }
