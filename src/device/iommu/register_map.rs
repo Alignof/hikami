@@ -91,7 +91,8 @@ impl CqCsr {
     /// cqon (offset: 16)
     pub fn cqon(&self) -> bool {
         const FIELD_CQCSR_CQON: usize = 0x10;
-        self.0 >> FIELD_CQCSR_CQON & 0x1 == 1
+        let cqcsr = self.0;
+        (cqcsr >> FIELD_CQCSR_CQON) & 0x1 == 1
     }
 }
 
@@ -127,7 +128,8 @@ impl FqCsr {
     /// fqon (offset: 16)
     pub fn fqon(&self) -> bool {
         const FIELD_FQCSR_FQON: usize = 0x10;
-        self.0 >> FIELD_FQCSR_FQON & 0x1 == 1
+        let fqcsr = self.0;
+        fqcsr >> FIELD_FQCSR_FQON & 0x1 == 1
     }
 }
 
@@ -163,7 +165,8 @@ impl PqCsr {
     /// pqon (offset: 16)
     pub fn pqon(&self) -> bool {
         const FIELD_PQCSR_PQON: usize = 0x10;
-        self.0 >> FIELD_PQCSR_PQON & 0x1 == 1
+        let pqcsr = self.0;
+        pqcsr >> FIELD_PQCSR_PQON & 0x1 == 1
     }
 }
 
