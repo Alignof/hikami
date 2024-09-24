@@ -51,13 +51,14 @@ impl Pci {
         function_num: u32,
         offset: u32,
     ) -> u32 {
-        let config_data_reg_ptr = (self.base_addr.0 + 4) as *mut u32;
+        let config_data_reg_addr = self.base_addr.0 as u32
+            | (bus_num & 0b1111_1111) << 20
+            | (device_num & 0b1_1111) << 15
+            | (function_num & 0b111) << 12
+            | offset;
+        let config_data_reg_ptr = config_data_reg_addr as *const u32;
 
-        self.set_config_address(bus_num, device_num, function_num, offset);
-        let config = unsafe { config_data_reg_ptr.read_volatile() };
-        self.unset_config_address(bus_num, device_num, function_num, offset);
-
-        config
+        unsafe { config_data_reg_ptr.read_volatile() }
     }
 }
 
