@@ -43,12 +43,13 @@ impl PciDevice for IoMmu {
     }
 
     fn init(&self, pci: &Pci) {
+        const IOMMU_REG_ADDR: u32 = 0x4000_0000;
         pci.write_config_register(
             self.bus_number,
             self.device_number,
             self.function_number,
             ConfigSpaceRegister::BaseAddressRegister1,
-            0x4000_0000,
+            IOMMU_REG_ADDR,
         );
         pci.write_config_register(
             self.bus_number,
@@ -64,7 +65,7 @@ impl PciDevice for IoMmu {
             ConfigSpaceRegister::Command,
             0b10, // memory space enable
         );
-        let registers = 0x4000_0000 as *mut IoMmuRegisters;
+        let registers = IOMMU_REG_ADDR as *mut IoMmuRegisters;
         let registers = unsafe { &mut *registers };
 
         // 6.2. Guidelines for initialization
@@ -89,7 +90,7 @@ impl PciDevice for IoMmu {
         let command_queue = PageBlock::alloc();
         let command_queue_ptr = command_queue.0 as *mut [u8; 0x1000];
         unsafe {
-            core::ptr::write_bytes(command_queue_ptr, 0u8, 0x1000);
+            core::ptr::write_bytes(command_queue_ptr, 0u8, 1);
         }
         registers.cqb.set(command_queue, 4096);
         // cqt = 0
@@ -107,7 +108,7 @@ impl PciDevice for IoMmu {
         let fault_queue = PageBlock::alloc();
         let fault_queue_ptr = fault_queue.0 as *mut [u8; 0x1000];
         unsafe {
-            core::ptr::write_bytes(fault_queue_ptr, 0u8, 0x1000);
+            core::ptr::write_bytes(fault_queue_ptr, 0u8, 1);
         }
         registers.fqb.set(fault_queue, 4096);
         // fqt = 0
@@ -125,7 +126,7 @@ impl PciDevice for IoMmu {
         let page_request_queue = PageBlock::alloc();
         let page_request_queue_ptr = page_request_queue.0 as *mut [u8; 0x1000];
         unsafe {
-            core::ptr::write_bytes(page_request_queue_ptr, 0u8, 0x1000);
+            core::ptr::write_bytes(page_request_queue_ptr, 0u8, 1);
         }
         registers.pqb.set(page_request_queue, 4096);
         // pqt = 0
@@ -139,7 +140,7 @@ impl PciDevice for IoMmu {
         let ddt_addr = PageBlock::alloc();
         let ddt_ptr = ddt_addr.0 as *mut [u8; 0x1000];
         unsafe {
-            core::ptr::write_bytes(ddt_ptr, 0u8, 0x1000);
+            core::ptr::write_bytes(ddt_ptr, 0u8, 1);
         }
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
     }
