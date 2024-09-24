@@ -95,6 +95,7 @@ impl PciDevice for IoMmu {
         let (major, _minor) = registers.capabilities.version();
         assert!(major >= 1);
         assert!(registers.capabilities.is_sv39x4_supported());
+        assert!(!registers.capabilities.is_base_format());
 
         // 3. Read the feature control register (fctl).
         // 3~8. are omitted. (does not needed for this system).

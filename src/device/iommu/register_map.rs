@@ -52,6 +52,11 @@ impl Capabilities {
         ((version_reg >> 4 & 0xf) as u8, (version_reg & 0xf) as u8)
     }
 
+    /// Return
+    pub fn is_base_format(&self) -> bool {
+        (self.0 >> 22) & 0x1 == 0
+    }
+
     /// Is sv39x4 supported?
     pub fn is_sv39x4_supported(&self) -> bool {
         const FIELD_CAPABILITIES_SV39X4: usize = 17;
