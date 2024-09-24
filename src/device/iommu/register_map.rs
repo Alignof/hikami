@@ -48,7 +48,8 @@ pub struct Capabilities(u64);
 impl Capabilities {
     /// Return (major version, minor version)
     pub fn version(&self) -> (u8, u8) {
-        (self.0 as u8 >> 4 & 0xf, self.0 as u8 & 0xf)
+        let version_reg = self.0;
+        ((version_reg >> 4 & 0xf) as u8, (version_reg & 0xf) as u8)
     }
 
     /// Is sv39x4 supported?
