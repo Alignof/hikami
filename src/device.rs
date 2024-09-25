@@ -36,7 +36,10 @@ pub trait PciDevice {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
     /// * `node_path` - node path in fdt
-    fn new(device_tree: &Fdt, node_path: &str) -> Self;
+    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self>
+    where
+        Self: Sized;
+
     /// Initialize pci device.
     /// * `pci` - struct `Pci`
     fn init(&self, pci: &pci::Pci);
@@ -72,7 +75,7 @@ pub struct Devices {
     pub clint: clint::Clint,
     pub rtc: rtc::Rtc,
     pub pci: pci::Pci,
-    pub iommu: iommu::IoMmu,
+    pub iommu: Option<iommu::IoMmu>,
 }
 
 impl Devices {
@@ -100,7 +103,9 @@ impl Devices {
 
     /// Initialization of IOMMU.
     pub fn init_iommu(&mut self) {
-        self.iommu.init(&self.pci);
+        if let Some(iommu) = &self.iommu {
+            iommu.init(&self.pci);
+        }
     }
 
     /// Identity map for devices.

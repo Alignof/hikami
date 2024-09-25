@@ -41,10 +41,9 @@ impl IoMmu {
 }
 
 impl PciDevice for IoMmu {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
+    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self> {
         let pci_reg = device_tree
-            .find_node(node_path)
-            .unwrap()
+            .find_node(node_path)?
             .raw_reg()
             .unwrap()
             .next()
@@ -55,11 +54,11 @@ impl PciDevice for IoMmu {
             | (pci_reg.address[2] as u32) << 8
             | pci_reg.address[3] as u32;
 
-        IoMmu {
+        Some(IoMmu {
             bus_number: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
             device_number: pci_first_reg >> 11 & 0b1_1111, // 5 bit
             function_number: pci_first_reg >> 8 & 0b111,   // 3 bit
-        }
+        })
     }
 
     fn init(&self, pci: &Pci) {
