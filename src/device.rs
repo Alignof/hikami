@@ -123,6 +123,7 @@ impl Devices {
             .flat_map(|virt| [virt.memmap()])
             .collect();
 
+        use crate::memmap::GuestPhysicalAddress;
         device_mapping.extend_from_slice(&[
             self.uart.memmap(),
             self.initrd.memmap(),
@@ -130,6 +131,11 @@ impl Devices {
             self.clint.memmap(),
             self.pci.memmap(),
             self.rtc.memmap(),
+            MemoryMap::new(
+                GuestPhysicalAddress(0x4_0000_0000)..GuestPhysicalAddress(0x4_1000_0000),
+                HostPhysicalAddress(0x4_0000_0000)..HostPhysicalAddress(0x4_1000_0000),
+                &PTE_FLAGS_FOR_DEVICE,
+            ),
         ]);
 
         device_mapping

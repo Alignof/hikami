@@ -7,10 +7,10 @@ runner = """
 -nographic
 -m 2G
 -initrd vmlinux_debug
--device riscv-iommu-pci
 -drive file=rootfs.img,format=raw,id=hd0,if=none
--device virtio-blk-device,drive=hd0
+-device virtio-blk-pci,drive=hd0
 -append root=/dev/vda,rw,console=ttyS0
+-device riscv-iommu-pci
 -kernel
 """
 # memo: maintenance packet Qqemu.PhyMemMode:1
