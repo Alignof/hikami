@@ -8,7 +8,7 @@ runner = """
 -m 2G
 -initrd vmlinux_debug
 -drive file=rootfs.img,format=raw,id=hd0,if=none
--device virtio-blk-pci,drive=hd0
+-device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on
 -append root=/dev/vda,rw,console=ttyS0
 -device riscv-iommu-pci
 -kernel
