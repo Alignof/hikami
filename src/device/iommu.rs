@@ -25,7 +25,7 @@ pub struct IoMmu {
 impl IoMmu {
     /// Set page table in IOMMU.
     fn init_page_table(&self, ddt_addr: HostPhysicalAddress) {
-        const OFFSET_IOHGATP: usize = 64;
+        const OFFSET_IOHGATP: usize = 8;
         const LEAF_DDT_ENTRY_SIZE: usize = 512;
         // set all ddt entry
         for offset in (0..PAGE_SIZE).step_by(LEAF_DDT_ENTRY_SIZE) {
