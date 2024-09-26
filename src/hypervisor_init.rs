@@ -17,7 +17,7 @@ use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
 use core::arch::asm;
 
 use elf::{endian::AnyEndian, ElfBytes};
-use riscv::register::{sepc, sie, sscratch, sstatus, stvec};
+use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 
 /// Entry point to HS-mode.
 #[inline(never)]
@@ -145,6 +145,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         sstatus::set_spp(sstatus::SPP::Supervisor);
         // sstatus.sie = 1
         sstatus::set_sie();
+        // sstatus.fs = 1
+        sstatus::set_fs(FS::Initial);
 
         // hstatus.spv = 1 (enable V bit when sret executed)
         hstatus::set_spv();
