@@ -7,6 +7,8 @@ pub mod instruction;
 pub enum HvException {
     /// Environment call from VS-mode
     EcallFromVsMode = 10,
+    /// Instruction guest-page fault
+    InstructionGuestPageFault = 20,
     /// Load guest-page fault
     LoadGuestPageFault = 21,
     /// Virtual instruction
@@ -19,6 +21,7 @@ impl From<usize> for HvException {
     fn from(exception_num: usize) -> Self {
         match exception_num {
             10 => HvException::EcallFromVsMode,
+            20 => HvException::InstructionGuestPageFault,
             21 => HvException::LoadGuestPageFault,
             22 => HvException::VirtualInstruction,
             23 => HvException::StoreAmoGuestPageFault,

@@ -98,6 +98,9 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 sbi_vs_mode_handler(&mut context);
                 context.set_sepc(context.sepc() + 4);
             }
+            HvException::InstructionGuestPageFault => {
+                panic!("Instruction guest-page fault");
+            }
             HvException::LoadGuestPageFault => {
                 let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
                 let fault_inst_value = htinst::read().bits;
