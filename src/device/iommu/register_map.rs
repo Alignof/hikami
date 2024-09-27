@@ -67,13 +67,13 @@ impl Capabilities {
 /// Command-queue base
 pub struct Cqb(u64);
 impl Cqb {
-    /// set ppn value and log_2(size).
+    /// set ppn value and `log_2(size`).
     pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
         // Is queue address aligned 4KiB?
         assert!(queue_addr % 4096 == 0);
 
         // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
-        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64;
+        self.0 = (queue_addr.0 as u64 >> 12) << 10 | u64::from(size.ilog2() - 1);
     }
 }
 
@@ -90,7 +90,7 @@ pub struct CqCsr(u32);
 impl CqCsr {
     /// set cqen (offset: 0) bit
     pub fn set_cqen(&mut self) {
-        self.0 = self.0 | 1
+        self.0 |= 1;
     }
 
     /// cqon (offset: 16)
@@ -104,13 +104,13 @@ impl CqCsr {
 /// Fault-queue base
 pub struct Fqb(u64);
 impl Fqb {
-    /// set ppn value and log_2(size).
+    /// set ppn value and `log_2(size`).
     pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
         // Is queue address aligned 4KiB?
         assert!(queue_addr % 4096 == 0);
 
         // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
-        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64;
+        self.0 = (queue_addr.0 as u64 >> 12) << 10 | u64::from(size.ilog2() - 1);
     }
 }
 
@@ -127,7 +127,7 @@ pub struct FqCsr(u32);
 impl FqCsr {
     /// set fqen (offset: 0) bit
     pub fn set_fqen(&mut self) {
-        self.0 = self.0 | 1
+        self.0 |= 1;
     }
 
     /// fqon (offset: 16)
@@ -141,13 +141,13 @@ impl FqCsr {
 /// Page-request-queue base
 pub struct Pqb(u64);
 impl Pqb {
-    /// set ppn value and log_2(size).
+    /// set ppn value and `log_2(size`).
     pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
         // Is queue address aligned 4KiB?
         assert!(queue_addr % 4096 == 0);
 
         // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
-        self.0 = (queue_addr.0 as u64 >> 12) << 10 | (size.ilog2() - 1) as u64;
+        self.0 = (queue_addr.0 as u64 >> 12) << 10 | u64::from(size.ilog2() - 1);
     }
 }
 
@@ -164,7 +164,7 @@ pub struct PqCsr(u32);
 impl PqCsr {
     /// set pqen (offset: 0) bit
     pub fn set_pqen(&mut self) {
-        self.0 = self.0 | 1
+        self.0 |= 1;
     }
 
     /// pqon (offset: 16)

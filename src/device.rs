@@ -32,6 +32,7 @@ pub enum DeviceEmulateError {
 /// Pci device.
 ///
 /// A struct that implement this trait **must** has `bus`, `device`, `function` number.
+#[allow(clippy::module_name_repetitions)]
 pub trait PciDevice {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
@@ -48,6 +49,7 @@ pub trait PciDevice {
 /// Memory mapped I/O device.
 ///
 /// A struct that implement this trait **must** has `base_addr` and size member.
+#[allow(clippy::module_name_repetitions)]
 pub trait MmioDevice {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
@@ -117,13 +119,13 @@ impl Devices {
     /// Return devices range to crate identity map.  
     /// It does not return `Plic` address to emulate it.
     fn create_device_map(&self) -> Vec<MemoryMap> {
+        use crate::memmap::GuestPhysicalAddress;
         let mut device_mapping: Vec<MemoryMap> = self
             .virtio_list
             .iter()
             .flat_map(|virt| [virt.memmap()])
             .collect();
 
-        use crate::memmap::GuestPhysicalAddress;
         device_mapping.extend_from_slice(&[
             self.uart.memmap(),
             self.initrd.memmap(),

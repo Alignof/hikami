@@ -35,6 +35,7 @@ pub struct Pci {
 
 impl Pci {
     /// Read config data from "PCI Configuration Space".
+    #[allow(clippy::cast_possible_truncation)]
     pub fn read_config_register(
         &self,
         bus_num: u32,
@@ -53,7 +54,7 @@ impl Pci {
             | ConfigSpaceRegister::DeviceId
             | ConfigSpaceRegister::Command
             | ConfigSpaceRegister::Status => unsafe {
-                core::ptr::read_volatile(config_data_reg_addr as *const u16) as u32
+                u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u16))
             },
             ConfigSpaceRegister::BaseAddressRegister1
             | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
@@ -63,6 +64,7 @@ impl Pci {
     }
 
     /// Read config data from "PCI Configuration Space".
+    #[allow(clippy::cast_possible_truncation)]
     pub fn write_config_register(
         &self,
         bus_num: u32,
@@ -81,11 +83,11 @@ impl Pci {
             | ConfigSpaceRegister::DeviceId
             | ConfigSpaceRegister::Command
             | ConfigSpaceRegister::Status => unsafe {
-                core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16)
+                core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16);
             },
             ConfigSpaceRegister::BaseAddressRegister1
             | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
-                core::ptr::write_volatile(config_data_reg_addr as *mut u32, data)
+                core::ptr::write_volatile(config_data_reg_addr as *mut u32, data);
             },
         }
     }

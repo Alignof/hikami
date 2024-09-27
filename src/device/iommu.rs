@@ -17,14 +17,14 @@ use fdt::Fdt;
 /// IOMMU: I/O memory management unit.
 #[derive(Debug)]
 pub struct IoMmu {
-    bus_number: u32,
-    device_number: u32,
-    function_number: u32,
+    bus: u32,
+    device: u32,
+    function: u32,
 }
 
 impl IoMmu {
     /// Set page table in IOMMU.
-    fn init_page_table(&self, ddt_addr: HostPhysicalAddress) {
+    fn init_page_table(ddt_addr: HostPhysicalAddress) {
         const OFFSET_IOHGATP: usize = 8;
         const LEAF_DDT_ENTRY_SIZE: usize = 512;
         // set all ddt entry
@@ -49,38 +49,38 @@ impl PciDevice for IoMmu {
             .next()
             .unwrap();
         assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
-        let pci_first_reg = (pci_reg.address[0] as u32) << 24
-            | (pci_reg.address[1] as u32) << 16
-            | (pci_reg.address[2] as u32) << 8
-            | pci_reg.address[3] as u32;
+        let pci_first_reg = u32::from(pci_reg.address[0]) << 24
+            | u32::from(pci_reg.address[1]) << 16
+            | u32::from(pci_reg.address[2]) << 8
+            | u32::from(pci_reg.address[3]);
 
         Some(IoMmu {
-            bus_number: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
-            device_number: pci_first_reg >> 11 & 0b1_1111, // 5 bit
-            function_number: pci_first_reg >> 8 & 0b111,   // 3 bit
+            bus: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
+            device: pci_first_reg >> 11 & 0b1_1111, // 5 bit
+            function: pci_first_reg >> 8 & 0b111,   // 3 bit
         })
     }
 
     fn init(&self, pci: &Pci) {
         const IOMMU_REG_ADDR: u32 = 0x7000_0000;
         pci.write_config_register(
-            self.bus_number,
-            self.device_number,
-            self.function_number,
+            self.bus,
+            self.device,
+            self.function,
             ConfigSpaceRegister::BaseAddressRegister1,
             IOMMU_REG_ADDR,
         );
         pci.write_config_register(
-            self.bus_number,
-            self.device_number,
-            self.function_number,
+            self.bus,
+            self.device,
+            self.function,
             ConfigSpaceRegister::BaseAddressRegister2,
             0x0000_0000,
         );
         pci.write_config_register(
-            self.bus_number,
-            self.device_number,
-            self.function_number,
+            self.bus,
+            self.device,
+            self.function,
             ConfigSpaceRegister::Command,
             0b10, // memory space enable
         );
@@ -162,7 +162,7 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(ddt_ptr, 0u8, 1);
         }
-        self.init_page_table(ddt_addr);
+        Self::init_page_table(ddt_addr);
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
     }
 }

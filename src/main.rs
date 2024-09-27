@@ -99,6 +99,7 @@ impl HypervisorData {
     ///
     /// # Panics
     /// It will be panic when parsing device tree failed.
+    #[must_use]
     pub fn new(device_tree: Fdt) -> Self {
         const ARRAY_INIT_VALUE: Option<Guest> = None;
         HypervisorData {
@@ -117,6 +118,7 @@ impl HypervisorData {
 
     /// # Panics
     /// It will be panic if current HART's guest data is empty.
+    #[must_use]
     pub fn guest(&self) -> &Guest {
         self.guests[self.current_hart]
             .as_ref()
