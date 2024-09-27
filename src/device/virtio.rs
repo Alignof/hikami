@@ -1,6 +1,6 @@
 //! A virtualization standard for network and disk device drivers.
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
 use core::slice::Iter;
@@ -49,7 +49,7 @@ impl VirtIo {
     }
 }
 
-impl Device for VirtIo {
+impl MmioDevice for VirtIo {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let node = device_tree.find_all_nodes(node_path).next().unwrap();
         let region = node.reg().unwrap().next().unwrap();

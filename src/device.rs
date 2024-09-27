@@ -2,6 +2,7 @@
 
 pub mod clint;
 mod initrd;
+pub mod iommu;
 mod pci;
 pub mod plic;
 mod rtc;
@@ -10,7 +11,6 @@ mod virtio;
 
 use crate::memmap::page_table::PteFlag;
 use crate::memmap::{page_table, HostPhysicalAddress, MemoryMap};
-use crate::HypervisorData;
 use alloc::vec::Vec;
 use fdt::Fdt;
 
@@ -29,8 +29,28 @@ pub enum DeviceEmulateError {
     ReservedRegister,
 }
 
-/// A struct that implement Device trait **must** has `base_addr` and size member.
-pub trait Device {
+/// Pci device.
+///
+/// A struct that implement this trait **must** has `bus`, `device`, `function` number.
+#[allow(clippy::module_name_repetitions)]
+pub trait PciDevice {
+    /// Create self instance.
+    /// * `device_tree` - struct Fdt
+    /// * `node_path` - node path in fdt
+    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self>
+    where
+        Self: Sized;
+
+    /// Initialize pci device.
+    /// * `pci` - struct `Pci`
+    fn init(&self, pci: &pci::Pci);
+}
+
+/// Memory mapped I/O device.
+///
+/// A struct that implement this trait **must** has `base_addr` and size member.
+#[allow(clippy::module_name_repetitions)]
+pub trait MmioDevice {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
     /// * `node_path` - node path in fdt
@@ -55,48 +75,14 @@ pub struct Devices {
     pub plic: plic::Plic,
     pub plic_context: usize,
     pub clint: clint::Clint,
-    pub pci: pci::Pci,
     pub rtc: rtc::Rtc,
+    pub pci: pci::Pci,
+    pub iommu: Option<iommu::IoMmu>,
 }
 
 impl Devices {
-    /// Identity map for devices.
-    pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
-        let memory_map = self.create_device_map();
-        page_table::sv39x4::generate_page_table(page_table_start, &memory_map);
-    }
-
-    /// Return devices range to crate identity map.  
-    /// It does not return `Plic` address to emulate it.
-    fn create_device_map(&self) -> Vec<MemoryMap> {
-        let mut device_mapping: Vec<MemoryMap> = self
-            .virtio_list
-            .iter()
-            .flat_map(|virt| [virt.memmap()])
-            .collect();
-
-        device_mapping.extend_from_slice(&[
-            self.uart.memmap(),
-            self.initrd.memmap(),
-            self.plic.memmap(),
-            self.clint.memmap(),
-            self.pci.memmap(),
-            self.rtc.memmap(),
-        ]);
-
-        device_mapping
-    }
-}
-
-impl HypervisorData {
-    /// Set device data.
-    ///
-    /// It replace None (uninit value) to `Some(init_device)`.
-    ///
-    /// # Panics
-    /// It will be panic when parsing device tree failed.
-    pub fn register_devices(&mut self, device_tree: Fdt) {
-        self.devices.replace(Devices {
+    pub fn new(device_tree: Fdt) -> Self {
+        Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
             initrd: initrd::Initrd::new(&device_tree, "/chosen"),
@@ -111,8 +97,50 @@ impl HypervisorData {
                 .unwrap()
                 .value[0] as usize,
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
-            pci: pci::Pci::new(&device_tree, "/soc/pci"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
-        });
+            pci: pci::Pci::new(&device_tree, "/soc/pci"),
+            iommu: iommu::IoMmu::new(&device_tree, "/soc/pci/iommu"),
+        }
+    }
+
+    /// Initialization of IOMMU.
+    pub fn init_iommu(&mut self) {
+        if let Some(iommu) = &self.iommu {
+            iommu.init(&self.pci);
+        }
+    }
+
+    /// Identity map for devices.
+    pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
+        let memory_map = self.create_device_map();
+        page_table::sv39x4::generate_page_table(page_table_start, &memory_map);
+    }
+
+    /// Return devices range to crate identity map.  
+    /// It does not return `Plic` address to emulate it.
+    fn create_device_map(&self) -> Vec<MemoryMap> {
+        use crate::memmap::GuestPhysicalAddress;
+        let mut device_mapping: Vec<MemoryMap> = self
+            .virtio_list
+            .iter()
+            .flat_map(|virt| [virt.memmap()])
+            .collect();
+
+        device_mapping.extend_from_slice(&[
+            self.uart.memmap(),
+            self.initrd.memmap(),
+            self.plic.memmap(),
+            self.clint.memmap(),
+            self.pci.memmap(),
+            self.rtc.memmap(),
+            // FIXME: for pci device ?
+            MemoryMap::new(
+                GuestPhysicalAddress(0x4_0000_0000)..GuestPhysicalAddress(0x4_1000_0000),
+                HostPhysicalAddress(0x4_0000_0000)..HostPhysicalAddress(0x4_1000_0000),
+                &PTE_FLAGS_FOR_DEVICE,
+            ),
+        ]);
+
+        device_mapping
     }
 }

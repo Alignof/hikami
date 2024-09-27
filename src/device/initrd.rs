@@ -1,7 +1,7 @@
 //! initrd: INITial RamDisk
 #![allow(clippy::doc_markdown)]
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
@@ -13,15 +13,18 @@ pub struct Initrd {
     size: usize,
 }
 
-impl Device for Initrd {
+impl MmioDevice for Initrd {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let start_prop = "linux,initrd-start";
         let end_prop = "linux,initrd-end";
         let node = device_tree.find_node(node_path).unwrap();
+
+        // linux,initrd-start = <0x00 0xa0000000> -> [0, 0, 0, 0, 160, 0, 0, 0]
+        // `start[4..]` means skipping first four bytes.
         let start = node.property(start_prop).unwrap().value;
-        let start = u32::from_be_bytes(start.try_into().unwrap()) as usize;
+        let start = u32::from_be_bytes(start[4..].try_into().unwrap()) as usize;
         let end = node.property(end_prop).unwrap().value;
-        let end = u32::from_be_bytes(end.try_into().unwrap()) as usize;
+        let end = u32::from_be_bytes(end[4..].try_into().unwrap()) as usize;
 
         Initrd {
             base_addr: HostPhysicalAddress(start),

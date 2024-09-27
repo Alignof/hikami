@@ -1,7 +1,7 @@
 //! Trap machine exception.
 
 use super::{mtrap_exit, mtrap_exit_sbi};
-use crate::device::Device;
+use crate::device::MmioDevice;
 use crate::print;
 use crate::{HYPERVISOR_DATA, SBI};
 use riscv::register::{
@@ -93,7 +93,7 @@ pub extern "C" fn forward_exception() {
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::MachineEnvCall | Exception::SupervisorEnvCall | Exception::UserEnvCall => {
-            let context = unsafe { HYPERVISOR_DATA.lock().guest().context };
+            let context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
             let a0 = context.xreg(10) as usize;
             let a1 = context.xreg(11) as usize;
             let a2 = context.xreg(12) as usize;

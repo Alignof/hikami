@@ -91,7 +91,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         pmpaddr1::write(0x8000_0000 >> 2);
         // 0x8000_0000 - 0xffff_ffff = RWX
         pmpcfg0::set_pmp(2, Range::TOR, Permission::RWX, false);
-        pmpaddr2::write(0xffff_ffff);
+        pmpaddr2::write(0xffff_ffff_ffff_ffff);
 
         // no address translation
         satp::set(satp::Mode::Bare, 0, 0);

@@ -344,7 +344,7 @@ pub mod hgatp {
 
     const HGATP: usize = 0x680;
     pub struct Hgatp {
-        bits: usize,
+        pub bits: usize,
     }
 
     impl Hgatp {

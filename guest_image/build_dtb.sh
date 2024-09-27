@@ -16,7 +16,9 @@ if [ "$#" -eq 1 ]; then
                 -machine virt \
                 -bios none  \
                 -m 256M \
-                -drive file=../rootfs.img,format=raw,id=hd0 \
+                -initrd ../vmlinux_debug \
+                -device riscv-iommu-pci \
+                -drive file=../rootfs.img,format=raw,id=hd0,if=none \
                 -device virtio-blk-device,drive=hd0 \
                 -append "root=/dev/vda rw console=ttyS0" \
                 -kernel ../target/riscv64imac-unknown-none-elf/debug/hikami \

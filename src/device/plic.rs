@@ -1,7 +1,7 @@
 //! PLIC: Platform-Level Interrupt Controller  
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
-use super::{Device, DeviceEmulateError, PTE_FLAGS_FOR_DEVICE};
+use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::h_extension::csrs::{hvip, VsInterruptKind};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
@@ -118,7 +118,7 @@ impl Plic {
     }
 }
 
-impl Device for Plic {
+impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree

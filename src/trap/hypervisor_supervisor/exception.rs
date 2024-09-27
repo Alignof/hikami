@@ -26,7 +26,7 @@ use sbi_handler::{sbi_base_handler, sbi_rfnc_handler};
 #[allow(clippy::inline_always, clippy::module_name_repetitions)]
 pub extern "C" fn hs_forward_exception() {
     unsafe {
-        let mut context = HYPERVISOR_DATA.lock().guest().context;
+        let mut context = HYPERVISOR_DATA.lock().get().unwrap().guest().context;
         asm!(
             "csrw vsepc, {sepc}",
             "csrw vscause, {scause}",
@@ -94,9 +94,12 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
         // Enum not found in `riscv` crate.
         Exception::Unknown => match HvException::from(scause::read().code()) {
             HvException::EcallFromVsMode => {
-                let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
+                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
                 sbi_vs_mode_handler(&mut context);
                 context.set_sepc(context.sepc() + 4);
+            }
+            HvException::InstructionGuestPageFault => {
+                panic!("Instruction guest-page fault");
             }
             HvException::LoadGuestPageFault => {
                 let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
@@ -108,9 +111,15 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                match hypervisor_data.devices().plic.emulate_read(fault_addr) {
+                match hypervisor_data
+                    .get_mut()
+                    .unwrap()
+                    .devices()
+                    .plic
+                    .emulate_read(fault_addr)
+                {
                     Ok(value) => {
-                        let mut context = hypervisor_data.guest().context;
+                        let mut context = hypervisor_data.get().unwrap().guest().context;
                         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
                         if (fault_inst_value & 0b10) >> 1 == 0 {
                             // compressed instruction
@@ -137,7 +146,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                let context = hypervisor_data.guest().context;
+                let context = hypervisor_data.get().unwrap().guest().context;
                 let update_epc = |fault_inst_value: usize, mut context: guest::context::Context| {
                     if (fault_inst_value & 0b10) >> 1 == 0 {
                         // compressed instruction
@@ -150,6 +159,8 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
 
                 if let Ok(()) = hypervisor_data
+                    .get_mut()
+                    .unwrap()
                     .devices()
                     .plic
                     .emulate_write(fault_addr, store_value.try_into().unwrap())
@@ -162,7 +173,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 hs_forward_exception();
             }
             HvException::VirtualInstruction => {
-                let mut context = unsafe { HYPERVISOR_DATA.lock().guest().context };
+                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
                 virtual_instruction_handler(stval::read() as u32, &mut context);
                 context.set_sepc(context.sepc() + 4);
             }
