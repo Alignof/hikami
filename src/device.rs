@@ -131,6 +131,7 @@ impl Devices {
             self.clint.memmap(),
             self.pci.memmap(),
             self.rtc.memmap(),
+            // FIXME: for pci device ?
             MemoryMap::new(
                 GuestPhysicalAddress(0x4_0000_0000)..GuestPhysicalAddress(0x4_1000_0000),
                 HostPhysicalAddress(0x4_0000_0000)..HostPhysicalAddress(0x4_1000_0000),
