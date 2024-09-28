@@ -72,6 +72,11 @@ $ mv rootfs.img /path/to/this/repository
 $ cargo r
 ```
 
+## Documents
+```
+$ cargo doc --open
+```
+
 ## References
 - [The RISC-V Instruction Set Manual: Volume I Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/unpriv-isa-asciidoc.pdf)
 - [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf)
