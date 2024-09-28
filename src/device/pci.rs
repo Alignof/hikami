@@ -4,6 +4,8 @@ use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
+use alloc::vec::Vec;
+
 /// Registers in Common configuration Space Header.
 ///
 /// Ref: [https://astralvx.com/storage/2020/11/PCI_Express_Base_4.0_Rev0.3_February19-2014.pdf](https://astralvx.com/storage/2020/11/PCI_Express_Base_4.0_Rev0.3_February19-2014.pdf) p. 578  
@@ -31,6 +33,8 @@ pub enum ConfigSpaceRegister {
 pub struct Pci {
     base_addr: HostPhysicalAddress,
     size: usize,
+    /// Memory maps for pci devices
+    memory_maps: Vec<MemoryMap>,
 }
 
 impl Pci {
@@ -91,10 +95,20 @@ impl Pci {
             },
         }
     }
+
+    /// Return memory maps of Generic PCI host controller
+    ///
+    /// Ref: [https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt](https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt)
+    pub fn pci_memory_maps(&self) -> &[MemoryMap] {
+        &self.memory_maps
+    }
 }
 
 impl MmioDevice for Pci {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
+        const BYTES_U32: usize = 4;
+        const RANGE_NUM: usize = 7;
+
         let region = device_tree
             .find_node(node_path)
             .unwrap()
@@ -102,10 +116,45 @@ impl MmioDevice for Pci {
             .unwrap()
             .next()
             .unwrap();
+        let ranges = device_tree
+            .find_node(node_path)
+            .unwrap()
+            .property("ranges")
+            .unwrap()
+            .value;
+
+        assert!(ranges.len() % 4 == 0);
+        assert!((ranges.len() / 4) % 7 == 0);
+
+        let get_u32 = |range: &[u8], four_bytes_index: usize| {
+            let index = four_bytes_index * 4;
+            u32::from(range[index]) << 24
+                | u32::from(range[index + 1]) << 16
+                | u32::from(range[index + 2]) << 8
+                | u32::from(range[index + 3])
+        };
+        let mut memory_maps = Vec::new();
+        for range in ranges.chunks(RANGE_NUM * BYTES_U32) {
+            let bus_address = get_u32(range, 0);
+
+            // ignore I/O space map
+            // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
+            if (bus_address >> 24) & 0b11 != 0b01 {
+                let address = (get_u32(range, 3) as usize) << 32 | get_u32(range, 4) as usize;
+                let size = (get_u32(range, 5) as usize) << 32 | get_u32(range, 6) as usize;
+
+                memory_maps.push(MemoryMap::new(
+                    GuestPhysicalAddress(address)..GuestPhysicalAddress(address) + size,
+                    HostPhysicalAddress(address)..HostPhysicalAddress(address) + size,
+                    &PTE_FLAGS_FOR_DEVICE,
+                ));
+            }
+        }
 
         Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
+            memory_maps,
         }
     }
 

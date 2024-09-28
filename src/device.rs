@@ -119,7 +119,6 @@ impl Devices {
     /// Return devices range to crate identity map.  
     /// It does not return `Plic` address to emulate it.
     fn create_device_map(&self) -> Vec<MemoryMap> {
-        use crate::memmap::GuestPhysicalAddress;
         let mut device_mapping: Vec<MemoryMap> = self
             .virtio_list
             .iter()
@@ -133,13 +132,9 @@ impl Devices {
             self.clint.memmap(),
             self.pci.memmap(),
             self.rtc.memmap(),
-            // FIXME: for pci device ?
-            MemoryMap::new(
-                GuestPhysicalAddress(0x4_0000_0000)..GuestPhysicalAddress(0x4_1000_0000),
-                HostPhysicalAddress(0x4_0000_0000)..HostPhysicalAddress(0x4_1000_0000),
-                &PTE_FLAGS_FOR_DEVICE,
-            ),
         ]);
+
+        device_mapping.extend_from_slice(self.pci.pci_memory_maps());
 
         device_mapping
     }
