@@ -30,13 +30,11 @@ use crate::memmap::HostPhysicalAddress;
 use crate::sbi::Sbi;
 
 #[global_allocator]
-// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 /// Global allocator.
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
 /// Singleton for this hypervisor.
-///
-/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
 static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
 
 /// Singleton for SBI handler.
