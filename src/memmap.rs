@@ -80,7 +80,7 @@ impl AddressRangeUtil for Range<HostPhysicalAddress> {
 }
 
 /// Struct for represent memory regtion.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MemoryMap {
     /// Guest physical address
     virt: Range<GuestPhysicalAddress>,

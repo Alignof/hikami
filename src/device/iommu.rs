@@ -62,7 +62,7 @@ impl PciDevice for IoMmu {
     }
 
     fn init(&self, pci: &Pci) {
-        const IOMMU_REG_ADDR: u32 = 0x7000_0000;
+        const IOMMU_REG_ADDR: u32 = 0x4000_0000;
         pci.write_config_register(
             self.bus,
             self.device,
