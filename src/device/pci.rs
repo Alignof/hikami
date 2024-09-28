@@ -95,6 +95,13 @@ impl Pci {
             },
         }
     }
+
+    /// Return memory maps of Generic PCI host controller
+    ///
+    /// Ref: [https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt](https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt)
+    pub fn pci_memory_maps(&self) -> &[MemoryMap] {
+        &self.memory_maps
+    }
 }
 
 impl MmioDevice for Pci {
@@ -132,8 +139,8 @@ impl MmioDevice for Pci {
             // ignore I/O space map
             // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
             if (bus_address >> 24) & 0b11 != 0b01 {
-                let address = (get_u32(range, 3) << 32 | get_u32(range, 4)) as usize;
-                let size = (get_u32(range, 5) << 32 | get_u32(range, 6)) as usize;
+                let address = (get_u32(range, 3) as usize) << 32 | get_u32(range, 4) as usize;
+                let size = (get_u32(range, 5) as usize) << 32 | get_u32(range, 6) as usize;
 
                 memory_maps.push(MemoryMap::new(
                     GuestPhysicalAddress(address)..GuestPhysicalAddress(address) + size,
