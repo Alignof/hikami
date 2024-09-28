@@ -62,7 +62,7 @@ impl PciDevice for IoMmu {
     }
 
     fn init(&self, pci: &Pci) {
-        let iommu_reg_addr: u32 = pci.pci_memory_maps()[0].phys.start.0 as u32;
+        let iommu_reg_addr: u32 = u32::try_from(pci.pci_memory_maps()[0].phys.start.0).unwrap();
         pci.write_config_register(
             self.bus,
             self.device,

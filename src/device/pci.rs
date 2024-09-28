@@ -106,6 +106,9 @@ impl Pci {
 
 impl MmioDevice for Pci {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
+        const BYTES_U32: usize = 4;
+        const RANGE_NUM: usize = 7;
+
         let region = device_tree
             .find_node(node_path)
             .unwrap()
@@ -123,8 +126,6 @@ impl MmioDevice for Pci {
         assert!(ranges.len() % 4 == 0);
         assert!((ranges.len() / 4) % 7 == 0);
 
-        const BYTES_U32: usize = 4;
-        const RANGE_NUM: usize = 7;
         let get_u32 = |range: &[u8], four_bytes_index: usize| {
             let index = four_bytes_index * 4;
             u32::from(range[index]) << 24
