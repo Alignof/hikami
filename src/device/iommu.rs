@@ -62,13 +62,13 @@ impl PciDevice for IoMmu {
     }
 
     fn init(&self, pci: &Pci) {
-        const IOMMU_REG_ADDR: u32 = 0x4000_0000;
+        let iommu_reg_addr: u32 = pci.pci_memory_maps()[0].phys.start.0 as u32;
         pci.write_config_register(
             self.bus,
             self.device,
             self.function,
             ConfigSpaceRegister::BaseAddressRegister1,
-            IOMMU_REG_ADDR,
+            iommu_reg_addr,
         );
         pci.write_config_register(
             self.bus,
@@ -84,7 +84,7 @@ impl PciDevice for IoMmu {
             ConfigSpaceRegister::Command,
             0b10, // memory space enable
         );
-        let registers = IOMMU_REG_ADDR as *mut IoMmuRegisters;
+        let registers = iommu_reg_addr as *mut IoMmuRegisters;
         let registers = unsafe { &mut *registers };
 
         // 6.2. Guidelines for initialization
