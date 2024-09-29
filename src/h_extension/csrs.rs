@@ -90,11 +90,11 @@ macro_rules! clear_csr_from_enum {
 /// VS-level interrupt kind.
 pub enum VsInterruptKind {
     /// VS-level external interrupts (bit 10)
-    External = 0b100_0000_0000,
+    External = 1 << 10,
     /// VS-level timer interrupts (bit 6)
-    Timer = 0b100_0000,
+    Timer = 1 << 6,
     /// VS-level software interrupts (bit 2)
-    Software = 0b100,
+    Software = 1 << 2,
 }
 
 pub mod vstvec {
@@ -250,49 +250,6 @@ pub mod hcounteren {
     set_csr_as!(0x606);
 }
 
-pub mod hvip {
-    //! Hypervisor virtual interrupt pending.
-    #![allow(dead_code)]
-    use super::VsInterruptKind;
-
-    const HVIP: usize = 0x645;
-    pub struct Hvip {
-        bits: usize,
-    }
-
-    set_csr_from_enum!(VsInterruptKind, 0x645);
-    clear_csr_from_enum!(VsInterruptKind, 0x645);
-
-    read_csr_as!(Hvip, 0x645);
-    write_csr_as!(0x645);
-}
-
-pub mod hgatp {
-    //! Hypervisor guest address translation and protection.
-    #![allow(dead_code)]
-
-    const HGATP: usize = 0x680;
-    pub struct Hgatp {
-        bits: usize,
-    }
-
-    /// Translation mode in G-stage.
-    #[allow(clippy::module_name_repetitions)]
-    pub enum HgatpMode {
-        Bare = 0,
-        Sv39x4 = 8,
-        Sv48x4 = 9,
-        Sv57x4 = 10,
-    }
-
-    pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
-        write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
-    }
-
-    read_csr_as!(Hgatp, 0x680);
-    write_csr_as!(0x680);
-}
-
 pub mod henvcfg {
     //! Hypervisor environment configuration register.
     #![allow(dead_code)]
@@ -337,4 +294,90 @@ pub mod henvcfg {
             );
         }
     }
+}
+
+pub mod htval {
+    //! Hypervisor bad guest physical address.
+    #![allow(dead_code)]
+
+    const HTVAL: usize = 0x643;
+    pub struct Htval {
+        pub bits: usize,
+    }
+
+    read_csr_as!(Htval, 0x643);
+}
+
+pub mod hvip {
+    //! Hypervisor virtual interrupt pending.
+    #![allow(dead_code)]
+    use super::VsInterruptKind;
+
+    const HVIP: usize = 0x645;
+    pub struct Hvip {
+        bits: usize,
+    }
+
+    set_csr_from_enum!(VsInterruptKind, 0x645);
+    clear_csr_from_enum!(VsInterruptKind, 0x645);
+
+    read_csr_as!(Hvip, 0x645);
+    write_csr_as!(0x645);
+}
+
+pub mod htinst {
+    //! Hypervisor trap instruction (transformed).
+    #![allow(dead_code)]
+
+    const HTINST: usize = 0x64a;
+    pub struct Htinst {
+        pub bits: usize,
+    }
+
+    read_csr_as!(Htinst, 0x64a);
+    write_csr_as!(0x64a);
+}
+
+pub mod hgatp {
+    //! Hypervisor guest address translation and protection.
+    #![allow(dead_code)]
+
+    const HGATP: usize = 0x680;
+    pub struct Hgatp {
+        pub bits: usize,
+    }
+
+    impl Hgatp {
+        /// Return ppn.
+        pub fn ppn(&self) -> usize {
+            self.bits & 0xfff_ffff_ffff // 44 bit
+        }
+
+        /// Return translation mode.
+        pub fn mode(&self) -> HgatpMode {
+            match (self.bits >> 60) & 0b1111 {
+                0 => HgatpMode::Bare,
+                8 => HgatpMode::Sv39x4,
+                9 => HgatpMode::Sv48x4,
+                10 => HgatpMode::Sv57x4,
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    /// Translation mode in G-stage.
+    #[allow(clippy::module_name_repetitions)]
+    pub enum HgatpMode {
+        Bare = 0,
+        Sv39x4 = 8,
+        Sv48x4 = 9,
+        Sv57x4 = 10,
+    }
+
+    pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
+        write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
+    }
+
+    read_csr_as!(Hgatp, 0x680);
+    write_csr_as!(0x680);
 }

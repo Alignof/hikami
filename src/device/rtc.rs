@@ -1,6 +1,6 @@
 //! RTC: Real Time Clock.
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
@@ -12,7 +12,7 @@ pub struct Rtc {
     size: usize,
 }
 
-impl Device for Rtc {
+impl MmioDevice for Rtc {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree
             .find_node(node_path)

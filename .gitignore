@@ -19,6 +19,5 @@ Cargo.lock
 
 # Added by me
 .gdb_history
-fedora-vmlinux
-stage4-disk.img
+vmlinux
 vmlinux_debug

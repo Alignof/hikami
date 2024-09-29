@@ -1,6 +1,6 @@
 [package]
 name = "hikami"
-version = "0.4.0"
+version = "1.0.0"
 edition = "2021"
 
 [lints.clippy]
@@ -10,11 +10,10 @@ pedantic = "warn"
 elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"
 linked_list_allocator = "0.10.5"
-raki = { version = "1.0.0-beta.3" }
+raki = { version = "1.0.0" }
 riscv = "0.11.1"
 riscv-rt = "0.11.0"
 rustsbi = { version = "0.4.0-alpha.1", features = ["machine"] }
 sbi-rt = "0.0.3"
 sbi-spec = { version = "0.0.7", features = [ "legacy" ] }
 spin = "0.9.8"
-wild_screen_alloc = { version = "0.1.1",  path = "wild-screen-alloc" }

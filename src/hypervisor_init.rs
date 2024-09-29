@@ -1,6 +1,6 @@
 //! HS-mode level initialization.
 
-use crate::device::Device;
+use crate::device::MmioDevice;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hie,
@@ -12,12 +12,12 @@ use crate::memmap::{
     HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
-use crate::{GUEST_DTB, HYPERVISOR_DATA};
+use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
 
 use core::arch::asm;
 
 use elf::{endian::AnyEndian, ElfBytes};
-use riscv::register::{sepc, sscratch, sstatus, stvec};
+use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 
 /// Entry point to HS-mode.
 #[inline(never)]
@@ -28,7 +28,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // dtb_addr test and hint for register usage.
     assert_ne!(dtb_addr, 0);
 
-    // clear all hypervisor interrupts.
+    // clear all hs-mode to vs-mode interrupts.
     hvip::clear(VsInterruptKind::External);
     hvip::clear(VsInterruptKind::Timer);
     hvip::clear(VsInterruptKind::Software);
@@ -36,7 +36,17 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // disable address translation.
     vsatp::write(0);
 
-    // disable hypervisor external interrupt
+    // enable all hs-mode interrupts
+    unsafe {
+        sie::set_sext();
+        sie::set_ssoft();
+        sie::set_stimer();
+    }
+
+    // set hie = 0x444
+    hie::set(VsInterruptKind::External);
+    hie::set(VsInterruptKind::Timer);
+    hie::set(VsInterruptKind::Software);
 
     // enable Sstc extention
     henvcfg::set_stce();
@@ -45,12 +55,6 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
-
-    // set hie = 0x444
-    // TODO?: trap VS-mode interrupt.
-    hie::set(VsInterruptKind::External);
-    hie::set(VsInterruptKind::Timer);
-    hie::set(VsInterruptKind::Software);
 
     // specify delegation exception kinds.
     hedeleg::write(
@@ -76,9 +80,6 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Parse DTB
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
-    // aquire hypervisor data
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-
     // create new guest data
     let guest_id = hart_id + 1;
     let guest_memory_begin = guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
@@ -97,23 +98,24 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
             Err(e) => panic!("{}", e),
         }
     };
-    // parsing and storing device data
-    hypervisor_data.register_devices(device_tree);
+
+    // initialize hypervisor data
+    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    hypervisor_data.get_or_init(|| HypervisorData::new(device_tree));
 
     // load guest elf from address
+    let initrd = &hypervisor_data.get_mut().unwrap().devices().initrd;
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
-            hypervisor_data.devices().initrd.size(),
+            initrd.paddr().raw() as *mut u8,
+            initrd.size(),
         ))
         .unwrap()
     };
 
     // load guest image
-    let (guest_entry_point, elf_end_addr) = new_guest.load_guest_elf(
-        &guest_elf,
-        hypervisor_data.devices().initrd.paddr().raw() as *mut u8,
-    );
+    let (guest_entry_point, elf_end_addr) =
+        new_guest.load_guest_elf(&guest_elf, initrd.paddr().raw() as *mut u8);
 
     // filling remain memory region
     new_guest.filling_memory_region(
@@ -122,6 +124,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // set device memory map
     hypervisor_data
+        .get_mut()
+        .unwrap()
         .devices()
         .device_mapping_g_stage(root_page_table_addr);
 
@@ -129,13 +133,20 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hgatp::set(HgatpMode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
     hfence_gvma_all();
 
+    // initialize IOMMU
+    hypervisor_data.get_mut().unwrap().devices().init_iommu();
+
     // set new guest data
-    hypervisor_data.register_guest(new_guest);
+    hypervisor_data.get_mut().unwrap().register_guest(new_guest);
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::Supervisor);
+        // sstatus.sie = 1
+        sstatus::set_sie();
+        // sstatus.fs = 1
+        sstatus::set_fs(FS::Initial);
 
         // hstatus.spv = 1 (enable V bit when sret executed)
         hstatus::set_spv();
@@ -150,7 +161,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
             stvec::TrapMode::Direct,
         );
 
-        let mut context = hypervisor_data.guest().context;
+        let mut context = hypervisor_data.get().unwrap().guest().context;
         context.set_sepc(sepc::read());
 
         // set sstatus value to context
@@ -159,7 +170,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         context.set_sstatus(sstatus_val);
     }
 
-    let guest_dtb_addr = hypervisor_data.guest().guest_dtb_addr();
+    let guest_dtb_addr = hypervisor_data.get().unwrap().guest().guest_dtb_addr();
 
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
@@ -171,8 +182,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 #[inline(never)]
 fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // aquire hypervisor data
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    let stack_top = hypervisor_data.guest().stack_top();
+    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 

@@ -1,6 +1,6 @@
 //! CLINT: Core Local `INTerrupt`
 
-use super::{Device, PTE_FLAGS_FOR_DEVICE};
+use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{constant, GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 use rustsbi::{HartMask, SbiRet};
@@ -28,7 +28,7 @@ pub struct Clint {
     size: usize,
 }
 
-impl Device for Clint {
+impl MmioDevice for Clint {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
         let region = device_tree
             .find_node(node_path)

@@ -4,7 +4,7 @@
 
 mod rfence;
 
-use crate::device::{clint, uart, Device};
+use crate::device::{clint, uart, MmioDevice};
 use fdt::Fdt;
 use rustsbi::RustSBI;
 

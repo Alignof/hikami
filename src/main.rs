@@ -11,28 +11,31 @@ mod memmap;
 mod sbi;
 mod trap;
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::arch::asm;
 use core::cell::OnceCell;
 use core::panic::PanicInfo;
-use riscv_rt::entry;
 
+use fdt::Fdt;
 use linked_list_allocator::LockedHeap;
+use riscv_rt::entry;
 use spin::Mutex;
 
+use crate::device::Devices;
 use crate::guest::Guest;
 use crate::machine_init::mstart;
 use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
+use crate::memmap::HostPhysicalAddress;
 use crate::sbi::Sbi;
 
 #[global_allocator]
-// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 /// Global allocator.
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
 /// Singleton for this hypervisor.
-///
-/// TODO: change to `Mutex<OnceCell<HypervisorData>>`?
-static mut HYPERVISOR_DATA: Mutex<HypervisorData> = Mutex::new(HypervisorData::const_default());
+static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
 
 /// Singleton for SBI handler.
 static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
@@ -61,39 +64,62 @@ pub fn panic(info: &PanicInfo) -> ! {
     }
 }
 
+/// Aligned page size memory block
+#[repr(C, align(0x1000))]
+struct PageBlock([u8; 0x1000]);
+
+impl PageBlock {
+    /// Return aligned address of page size memory block.
+    fn alloc() -> HostPhysicalAddress {
+        let mut host_physical_block_as_vec: Vec<core::mem::MaybeUninit<PageBlock>> =
+            Vec::with_capacity(1);
+        unsafe {
+            host_physical_block_as_vec.set_len(1);
+        }
+
+        let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
+        HostPhysicalAddress(Box::into_raw(host_physical_block_slice) as *const u8 as usize)
+    }
+}
+
 /// Global data for hypervisor.
 ///
 /// FIXME: Rename me!
 #[derive(Debug)]
 pub struct HypervisorData {
     current_hart: usize,
-    guest: [Option<guest::Guest>; MAX_HART_NUM],
-    devices: Option<device::Devices>,
+    guests: [Option<guest::Guest>; MAX_HART_NUM],
+    devices: device::Devices,
 }
 
 impl HypervisorData {
-    /// Const default function for global variable
-    const fn const_default() -> Self {
+    /// Initialize hypervisor.
+    ///
+    /// # Panics
+    /// It will be panic when parsing device tree failed.
+    #[must_use]
+    pub fn new(device_tree: Fdt) -> Self {
         const ARRAY_INIT_VALUE: Option<Guest> = None;
         HypervisorData {
             current_hart: 0,
-            guest: [ARRAY_INIT_VALUE; MAX_HART_NUM],
-            devices: None,
+            guests: [ARRAY_INIT_VALUE; MAX_HART_NUM],
+            devices: Devices::new(device_tree),
         }
     }
 
     /// # Panics
     /// It will be panic if devices are uninitialized.
     #[must_use]
-    pub fn devices(&self) -> &device::Devices {
-        self.devices.as_ref().expect("device data is uninitialized")
+    pub fn devices(&mut self) -> &mut device::Devices {
+        &mut self.devices
     }
 
     /// # Panics
     /// It will be panic if current HART's guest data is empty.
-    pub fn guest(&mut self) -> &mut Guest {
-        self.guest[self.current_hart]
-            .as_mut()
+    #[must_use]
+    pub fn guest(&self) -> &Guest {
+        self.guests[self.current_hart]
+            .as_ref()
             .expect("guest data not found")
     }
 
@@ -102,7 +128,7 @@ impl HypervisorData {
     pub fn register_guest(&mut self, new_guest: Guest) {
         let hart_id = new_guest.hart_id();
         assert!(hart_id < MAX_HART_NUM);
-        self.guest[hart_id] = Some(new_guest);
+        self.guests[hart_id] = Some(new_guest);
     }
 }
 
