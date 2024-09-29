@@ -2,6 +2,9 @@
 [![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)  
 Light weight type-1 hypervisor for RISC-V H-extension.
 
+This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor. (currently in progress)  
+Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)
+
 ## Run Linux
 ### Build QEMU
 We need to build manually the QEMU to support IOMMU.  
