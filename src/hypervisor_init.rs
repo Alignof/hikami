@@ -50,6 +50,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // enable Sstc extention
     henvcfg::set_stce();
+    henvcfg::set_cde();
     henvcfg::set_cbze();
     henvcfg::set_cbcfe();
 
