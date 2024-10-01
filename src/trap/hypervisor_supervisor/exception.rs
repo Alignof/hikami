@@ -13,11 +13,8 @@ use crate::memmap::HostPhysicalAddress;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
-use raki::{Decode, Instruction, Isa::Rv64, OpcodeKind, ZicntrOpcode};
-use riscv::register::{
-    scause::{self, Exception},
-    stval,
-};
+use raki::Instruction;
+use riscv::register::scause::{self, Exception};
 use sbi_handler::{sbi_base_handler, sbi_rfnc_handler};
 
 /// Delegate exception to supervisor mode from VS-mode.
@@ -62,28 +59,6 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
 
     context.set_xreg(10, sbiret.error as u64);
     context.set_xreg(11, sbiret.value as u64);
-}
-
-/// Trap `VirtualInstruction` (cause = 22)
-fn virtual_instruction_handler(inst_bytes: u32, context: &mut guest::context::Context) {
-    let inst = inst_bytes
-        .decode(Rv64)
-        .expect("virtual instruction decoding failed");
-
-    match inst.opc {
-        OpcodeKind::Zicntr(ZicntrOpcode::RDTIME) => {
-            let time_val = unsafe {
-                let time;
-                asm!("csrr {time_val}, time", time_val = out(reg) time);
-                time
-            };
-            context.set_xreg(
-                inst.rd.expect("rd register is not found in rdtime"),
-                time_val,
-            );
-        }
-        _ => panic!("unsupported instruction"),
-    };
 }
 
 /// Trap handler for exception
@@ -172,11 +147,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
 
                 hs_forward_exception();
             }
-            HvException::VirtualInstruction => {
-                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
-                virtual_instruction_handler(stval::read() as u32, &mut context);
-                context.set_sepc(context.sepc() + 4);
-            }
+            HvException::VirtualInstruction => unreachable!(),
         },
         _ => hs_forward_exception(),
     }
