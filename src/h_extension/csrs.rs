@@ -271,6 +271,18 @@ pub mod henvcfg {
         }
     }
 
+    /// set CDE (60 bit)
+    pub fn set_cde() {
+        unsafe {
+            core::arch::asm!(
+                "
+                csrs henvcfg, {bits}
+                ",
+                bits = in(reg) 1u64 << 60
+            );
+        }
+    }
+
     /// set CBZE (7 bit)
     pub fn set_cbze() {
         unsafe {
