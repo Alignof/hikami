@@ -3,6 +3,7 @@
 
 extern crate alloc;
 mod device;
+mod emulate_extension;
 mod guest;
 mod h_extension;
 mod hypervisor_init;
