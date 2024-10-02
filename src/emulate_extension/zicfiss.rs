@@ -47,11 +47,13 @@ impl ShadowStack {
     /// Pop value from shadow stack
     pub fn pop(&mut self) -> usize {
         unsafe {
+            let pop_value = self.stack_pointer.read_volatile();
             self.stack_pointer = self.stack_pointer.byte_add(core::mem::size_of::<usize>());
             if self.stack_pointer.cast_const() > self.top {
                 panic!("stack smashed!");
             }
-            self.stack_pointer.read_volatile()
+
+            pop_value
         }
     }
 
