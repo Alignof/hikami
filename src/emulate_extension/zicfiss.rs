@@ -83,11 +83,52 @@ impl Zicfiss {
 }
 
 /// Emulate Zicfiss instruction.
-pub fn instruction(opc: ZicfissOpcode) {
-    match opc {
-        ZicfissOpcode::SSPUSH | ZicfissOpcode::C_SSPUSH => todo!(),
-        ZicfissOpcode::SSPOPCHK | ZicfissOpcode::C_SSPOPCHK => todo!(),
-        ZicfissOpcode::SSRDP => todo!(),
-        ZicfissOpcode::SSAMOSWAP_W | ZicfissOpcode::SSAMOSWAP_D => todo!(),
+pub fn instruction(inst: Instruction) {
+    let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+    unsafe { ZICFISS_DATA.lock().get_or_init(|| Zicfiss::new()) };
+    let mut zicfiss_data = unsafe { ZICFISS_DATA.lock() };
+    let zicfiss = zicfiss_data.get_mut().unwrap();
+
+    match inst.opc {
+        OpcodeKind::Zicfiss(ZicfissOpcode::SSPUSH) => {
+            if zicfiss.sse {
+                let push_value = context.xreg(inst.rs2.unwrap());
+                zicfiss.shadow_stack.push(push_value as usize);
+            }
+        }
+        OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPUSH) => {
+            if zicfiss.sse {
+                let push_value = context.xreg(inst.rd.unwrap());
+                zicfiss.shadow_stack.push(push_value as usize);
+            }
+        }
+        OpcodeKind::Zicfiss(ZicfissOpcode::SSPOPCHK) => {
+            if zicfiss.sse {
+                let pop_value = zicfiss.shadow_stack.pop();
+                let expected_value = context.xreg(inst.rs1.unwrap()) as usize;
+                if pop_value != expected_value {
+                    todo!("shadow stack fault exception: {:#x} != {:#x} (popped value, expected value)", pop_value, expected_value);
+                }
+            }
+        }
+        OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPOPCHK) => {
+            if zicfiss.sse {
+                let pop_value = zicfiss.shadow_stack.pop();
+                let expected_value = context.xreg(inst.rd.unwrap()) as usize;
+                if pop_value != expected_value {
+                    todo!("shadow stack fault exception: {:#x} != {:#x} (popped value, expected value)", pop_value, expected_value);
+                }
+            }
+        }
+        OpcodeKind::Zicfiss(ZicfissOpcode::SSRDP) => {
+            if zicfiss.sse {
+                let ssp = zicfiss.shadow_stack.get_ssp();
+                context.set_xreg(inst.rd.unwrap(), ssp.0 as u64);
+            } else {
+                context.set_xreg(inst.rd.unwrap(), 0);
+            }
+        }
+        OpcodeKind::Zicfiss(ZicfissOpcode::SSAMOSWAP_W | ZicfissOpcode::SSAMOSWAP_D) => todo!(),
+        _ => unreachable!(),
     }
 }

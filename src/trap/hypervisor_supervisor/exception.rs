@@ -14,7 +14,7 @@ use crate::memmap::HostPhysicalAddress;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
-use raki::{Instruction, OpcodeKind, ZicfissOpcode};
+use raki::{Instruction, OpcodeKind};
 use riscv::register::{
     scause::{self, Exception},
     stval,
@@ -76,7 +76,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
 
             // emulate the instruction
             match fault_inst.opc {
-                OpcodeKind::Zicfiss(opc) => zicfiss::instruction(opc),
+                OpcodeKind::Zicfiss(_) => zicfiss::instruction(fault_inst),
                 _ => unimplemented!(),
             }
 
