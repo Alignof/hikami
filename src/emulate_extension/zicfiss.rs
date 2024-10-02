@@ -62,7 +62,22 @@ impl ShadowStack {
 
 /// Singleton for Zicfiss extension
 struct Zicfiss {
-    shadow_stack: ShadowStack,
+    /// Shadow stack
+    pub shadow_stack: ShadowStack,
+    /// Shadow Stack Enable
+    ///
+    /// TODO: handle xenvcfg register.
+    /// TODO: devide into each priv.
+    pub sse: bool,
+}
+
+impl Zicfiss {
+    pub fn new() -> Self {
+        Zicfiss {
+            shadow_stack: ShadowStack::new(),
+            sse: true,
+        }
+    }
 }
 
 /// Emulate Zicfiss instruction.
