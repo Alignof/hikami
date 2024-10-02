@@ -2,8 +2,17 @@
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
 use crate::memmap::page_table::constants::PAGE_SIZE;
+use crate::memmap::HostPhysicalAddress;
 use crate::PageBlock;
-use raki::ZicfissOpcode;
+use crate::HYPERVISOR_DATA;
+
+use core::cell::OnceCell;
+use raki::{Instruction, OpcodeKind, ZicfissOpcode};
+use spin::Mutex;
+
+/// Singleton for Zicfiss.
+/// TODO: change `OnceCell` to `LazyCell`.
+static mut ZICFISS_DATA: Mutex<OnceCell<Zicfiss>> = Mutex::new(OnceCell::new());
 
 /// Shadow Stack
 struct ShadowStack {
