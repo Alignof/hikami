@@ -54,6 +54,10 @@ impl ShadowStack {
             self.stack_pointer.read_volatile()
         }
     }
+
+    pub fn get_ssp(&self) -> HostPhysicalAddress {
+        HostPhysicalAddress(self.stack_pointer as usize)
+    }
 }
 
 /// Singleton for Zicfiss extension
