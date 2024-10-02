@@ -13,8 +13,11 @@ use crate::memmap::HostPhysicalAddress;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
-use raki::Instruction;
-use riscv::register::scause::{self, Exception};
+use raki::{Instruction, OpcodeKind, ZicfissOpcode};
+use riscv::register::{
+    scause::{self, Exception},
+    stval,
+};
 use sbi_handler::{sbi_base_handler, sbi_rfnc_handler};
 
 /// Delegate exception to supervisor mode from VS-mode.
@@ -65,6 +68,27 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
+        Exception::IllegalInstruction => {
+            let fault_inst_value = stval::read();
+            let fault_inst = Instruction::try_from(fault_inst_value)
+                .expect("decoding load fault instruction failed");
+            match fault_inst.opc {
+                OpcodeKind::Zicfiss(ZicfissOpcode::SSPUSH) => (), // no push for now
+                OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPUSH) => (), // no push for now
+                OpcodeKind::Zicfiss(ZicfissOpcode::SSPOPCHK) => (), // no pop/check for now
+                OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPOPCHK) => (), // no pop/check for now
+                _ => unimplemented!(),
+            }
+
+            let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+            if (fault_inst_value & 0b10) >> 1 == 0 {
+                // compressed instruction
+                context.set_sepc(context.sepc() + 2);
+            } else {
+                // normal size instruction
+                context.set_sepc(context.sepc() + 4);
+            }
+        }
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
         // Enum not found in `riscv` crate.
         Exception::Unknown => match HvException::from(scause::read().code()) {
