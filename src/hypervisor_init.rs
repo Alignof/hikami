@@ -56,6 +56,10 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
+    // enable supervisor counter
+    unsafe {
+        asm!("csrw scounteren, {bits}", bits = in(reg) 0xffff_ffff as u32);
+    }
 
     // specify delegation exception kinds.
     hedeleg::write(
