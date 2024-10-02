@@ -1,3 +1,3 @@
 //! Extension emulation
 
-mod zicfiss;
+pub mod zicfiss;

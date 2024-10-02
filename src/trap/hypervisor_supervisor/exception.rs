@@ -4,6 +4,7 @@ mod sbi_handler;
 
 use super::hstrap_exit;
 use crate::device::DeviceEmulateError;
+use crate::emulate_extension::zicfiss;
 use crate::guest;
 use crate::h_extension::{
     csrs::{htinst, htval, vstvec},
@@ -72,11 +73,10 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
             let fault_inst_value = stval::read();
             let fault_inst = Instruction::try_from(fault_inst_value)
                 .expect("decoding load fault instruction failed");
+
+            // emulate the instruction
             match fault_inst.opc {
-                OpcodeKind::Zicfiss(ZicfissOpcode::SSPUSH) => (), // no push for now
-                OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPUSH) => (), // no push for now
-                OpcodeKind::Zicfiss(ZicfissOpcode::SSPOPCHK) => (), // no pop/check for now
-                OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPOPCHK) => (), // no pop/check for now
+                OpcodeKind::Zicfiss(opc) => zicfiss::instruction(opc),
                 _ => unimplemented!(),
             }
 
