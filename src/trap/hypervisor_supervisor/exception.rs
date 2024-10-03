@@ -19,7 +19,7 @@ use riscv::register::{
     scause::{self, Exception},
     stval,
 };
-use sbi_handler::{sbi_base_handler, sbi_rfnc_handler};
+use sbi_handler::{sbi_base_handler, sbi_fwft_handler, sbi_rfnc_handler};
 
 /// Delegate exception to supervisor mode from VS-mode.
 #[no_mangle]
@@ -42,6 +42,7 @@ pub extern "C" fn hs_forward_exception() {
 /// Handler for Ecall from VS-mode exception
 #[allow(clippy::cast_possible_truncation)]
 fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
+    const EID_FWFT: usize = 0x46574654;
     let ext_id: usize = context.xreg(17) as usize;
     let func_id: usize = context.xreg(16) as usize;
     let arguments: &[u64; 5] = &[
@@ -55,8 +56,9 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     let sbiret = match ext_id {
         sbi_spec::base::EID_BASE => sbi_base_handler(func_id),
         sbi_spec::rfnc::EID_RFNC => sbi_rfnc_handler(func_id, arguments),
+        EID_FWFT => sbi_fwft_handler(func_id, arguments),
         _ => panic!(
-            "Unsupported SBI call, eid: {:x}, fid: {:x}",
+            "Unsupported SBI call, eid: {:#x}, fid: {:#x}",
             ext_id, func_id
         ),
     };

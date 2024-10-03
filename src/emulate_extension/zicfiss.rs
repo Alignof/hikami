@@ -12,7 +12,7 @@ use spin::Mutex;
 
 /// Singleton for Zicfiss.
 /// TODO: change `OnceCell` to `LazyCell`.
-static mut ZICFISS_DATA: Mutex<OnceCell<Zicfiss>> = Mutex::new(OnceCell::new());
+pub static mut ZICFISS_DATA: Mutex<OnceCell<Zicfiss>> = Mutex::new(OnceCell::new());
 
 /// Shadow Stack
 struct ShadowStack {
@@ -63,7 +63,7 @@ impl ShadowStack {
 }
 
 /// Singleton for Zicfiss extension
-struct Zicfiss {
+pub struct Zicfiss {
     /// Shadow stack
     pub shadow_stack: ShadowStack,
     /// Shadow Stack Enable
@@ -77,7 +77,7 @@ impl Zicfiss {
     pub fn new() -> Self {
         Zicfiss {
             shadow_stack: ShadowStack::new(),
-            sse: true,
+            sse: false,
         }
     }
 }
