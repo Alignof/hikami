@@ -3,7 +3,7 @@
 
 use sbi_rt::SbiRet;
 
-/// sbi ecall handler for Base Extension (EID: #0x10)
+/// SBI ecall handler for Base Extension (EID: #0x10)
 ///
 /// All functions in the base extension must be supported by all SBI implementations,
 /// so there are no error returns defined. (p.13)
@@ -33,7 +33,7 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     }
 }
 
-/// sbi ecall handler for RFENCE Extension (EID: #0x52464E43)
+/// SBI ecall handler for RFENCE Extension (EID: #0x52464E43)
 #[allow(clippy::module_name_repetitions, clippy::cast_possible_truncation)]
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     use rustsbi::HartMask;
@@ -54,5 +54,32 @@ pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
             args[4] as usize,
         ),
         _ => panic!("unsupported fid: {}", func_id),
+    }
+}
+
+/// FWFT Feature
+/// Ref: [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/vv3.0-rc1/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/vv3.0-rc1/riscv-sbi.pdf) p.78
+#[derive(Debug)]
+enum FwftFeature {
+    MisalignedExcDeleg,
+    LandingPad,
+    ShadowStack,
+    DoubleTrap,
+    PteAdHwUpdating,
+    PointerMaskingPmlen,
+}
+
+impl TryFrom<usize> for FwftFeature {
+    type Error = usize;
+    fn try_from(from: usize) -> Result<Self, Self::Error> {
+        match from {
+            0 => Ok(FwftFeature::MisalignedExcDeleg),
+            1 => Ok(FwftFeature::LandingPad),
+            2 => Ok(FwftFeature::ShadowStack),
+            3 => Ok(FwftFeature::DoubleTrap),
+            4 => Ok(FwftFeature::PteAdHwUpdating),
+            5 => Ok(FwftFeature::PointerMaskingPmlen),
+            _ => Err(from),
+        }
     }
 }
