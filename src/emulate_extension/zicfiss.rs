@@ -1,6 +1,7 @@
 //! Emulation Zicfiss (Shadow Stack)
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
+use super::pseudo_vs_exception;
 use crate::memmap::page_table::constants::PAGE_SIZE;
 use crate::memmap::HostPhysicalAddress;
 use crate::PageBlock;
@@ -13,6 +14,11 @@ use spin::Mutex;
 /// Singleton for Zicfiss.
 /// TODO: change `OnceCell` to `LazyCell`.
 pub static mut ZICFISS_DATA: Mutex<OnceCell<Zicfiss>> = Mutex::new(OnceCell::new());
+
+/// Software-check exception. (cause value)
+const SOFTWARE_CHECK_EXCEPTION: usize = 18;
+/// Shadow stack fault. (tval value)
+const SHADOW_STACK_FAULT: usize = 3;
 
 /// Shadow Stack
 struct ShadowStack {
@@ -107,7 +113,7 @@ pub fn instruction(inst: Instruction) {
                 let pop_value = zicfiss.shadow_stack.pop();
                 let expected_value = context.xreg(inst.rs1.unwrap()) as usize;
                 if pop_value != expected_value {
-                    todo!("shadow stack fault exception: {:#x} != {:#x} (popped value, expected value)", pop_value, expected_value);
+                    pseudo_vs_exception(SOFTWARE_CHECK_EXCEPTION, SHADOW_STACK_FAULT)
                 }
             }
         }
@@ -116,7 +122,7 @@ pub fn instruction(inst: Instruction) {
                 let pop_value = zicfiss.shadow_stack.pop();
                 let expected_value = context.xreg(inst.rd.unwrap()) as usize;
                 if pop_value != expected_value {
-                    todo!("shadow stack fault exception: {:#x} != {:#x} (popped value, expected value)", pop_value, expected_value);
+                    pseudo_vs_exception(SOFTWARE_CHECK_EXCEPTION, SHADOW_STACK_FAULT)
                 }
             }
         }
