@@ -31,8 +31,10 @@ pub extern "C" fn hs_forward_exception() {
         asm!(
             "csrw vsepc, {sepc}",
             "csrw vscause, {scause}",
+            "csrw vstval, {stval}",
             sepc = in(reg) context.sepc(),
-            scause = in(reg) scause::read().bits()
+            scause = in(reg) scause::read().bits(),
+            stval = in(reg) stval::read(),
         );
 
         context.set_sepc(vstvec::read().bits());
