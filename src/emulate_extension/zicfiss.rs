@@ -90,7 +90,8 @@ impl Zicfiss {
 
 /// Emulate Zicfiss instruction.
 pub fn instruction(inst: Instruction) {
-    let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let mut context = hypervisor_data.get().unwrap().guest().context;
     unsafe { ZICFISS_DATA.lock().get_or_init(|| Zicfiss::new()) };
     let mut zicfiss_data = unsafe { ZICFISS_DATA.lock() };
     let zicfiss = zicfiss_data.get_mut().unwrap();
@@ -113,6 +114,8 @@ pub fn instruction(inst: Instruction) {
                 let pop_value = zicfiss.shadow_stack.pop();
                 let expected_value = context.xreg(inst.rs1.unwrap()) as usize;
                 if pop_value != expected_value {
+                    drop(zicfiss_data);
+                    drop(hypervisor_data);
                     pseudo_vs_exception(SOFTWARE_CHECK_EXCEPTION, SHADOW_STACK_FAULT)
                 }
             }
@@ -122,6 +125,8 @@ pub fn instruction(inst: Instruction) {
                 let pop_value = zicfiss.shadow_stack.pop();
                 let expected_value = context.xreg(inst.rd.unwrap()) as usize;
                 if pop_value != expected_value {
+                    drop(zicfiss_data);
+                    drop(hypervisor_data);
                     pseudo_vs_exception(SOFTWARE_CHECK_EXCEPTION, SHADOW_STACK_FAULT)
                 }
             }
