@@ -17,7 +17,7 @@ use core::arch::asm;
 use raki::{Instruction, OpcodeKind};
 use riscv::register::{
     scause::{self, Exception},
-    stval,
+    sepc, stval,
 };
 use sbi_handler::{sbi_base_handler, sbi_fwft_handler, sbi_rfnc_handler};
 
@@ -81,7 +81,18 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
             // emulate the instruction
             match fault_inst.opc {
                 OpcodeKind::Zicfiss(_) => zicfiss::instruction(fault_inst),
-                _ => unimplemented!(),
+                OpcodeKind::Zicsr(_) => match fault_inst.rs2.unwrap() {
+                    // ssp
+                    0x11 => zicfiss::csrs(fault_inst),
+                    unsupported_csr_num => {
+                        unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
+                    }
+                },
+                _ => unimplemented!(
+                    "unsupported illegal instruction: {:#?}, at {:#x}",
+                    fault_inst,
+                    sepc::read()
+                ),
             }
 
             let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };

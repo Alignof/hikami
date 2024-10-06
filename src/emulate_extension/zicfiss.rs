@@ -1,14 +1,14 @@
 //! Emulation Zicfiss (Shadow Stack)
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
-use super::pseudo_vs_exception;
+use super::{pseudo_vs_exception, CsrData};
 use crate::memmap::page_table::constants::PAGE_SIZE;
 use crate::memmap::HostPhysicalAddress;
 use crate::PageBlock;
 use crate::HYPERVISOR_DATA;
 
 use core::cell::OnceCell;
-use raki::{Instruction, OpcodeKind, ZicfissOpcode};
+use raki::{Instruction, OpcodeKind, ZicfissOpcode, ZicsrOpcode};
 use spin::Mutex;
 
 /// Singleton for Zicfiss.
@@ -72,6 +72,10 @@ impl ShadowStack {
 pub struct Zicfiss {
     /// Shadow stack
     pub shadow_stack: ShadowStack,
+
+    /// Shadow stack pointer
+    pub ssp: CsrData,
+
     /// Shadow Stack Enable
     ///
     /// TODO: handle xenvcfg register.
@@ -83,7 +87,55 @@ impl Zicfiss {
     pub fn new() -> Self {
         Zicfiss {
             shadow_stack: ShadowStack::new(),
+            ssp: CsrData(0),
             sse: false,
+        }
+    }
+}
+
+/// Emulate Zicfiss CSRs access.
+pub fn csrs(inst: Instruction) {
+    const CSR_SSP: usize = 0x11;
+
+    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let mut context = hypervisor_data.get().unwrap().guest().context;
+    let mut zicfiss_data = unsafe { ZICFISS_DATA.lock() };
+    let zicfiss = zicfiss_data.get_mut().unwrap();
+
+    let csr_num = inst.rs2.unwrap();
+    match csr_num {
+        CSR_SSP => match inst.opc {
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRW) => {
+                let rs1 = context.xreg(inst.rs1.unwrap());
+                context.set_xreg(inst.rd.unwrap(), zicfiss.ssp.bits());
+                zicfiss.ssp.write(rs1);
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRS) => {
+                let rs1 = context.xreg(inst.rs1.unwrap());
+                context.set_xreg(inst.rd.unwrap(), zicfiss.ssp.bits());
+                zicfiss.ssp.set(rs1);
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRC) => {
+                let rs1 = context.xreg(inst.rs1.unwrap());
+                context.set_xreg(inst.rd.unwrap(), zicfiss.ssp.bits());
+                zicfiss.ssp.clear(rs1);
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRWI) => {
+                context.set_xreg(inst.rd.unwrap(), zicfiss.ssp.bits());
+                zicfiss.ssp.write(inst.rs1.unwrap() as u64);
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRSI) => {
+                context.set_xreg(inst.rd.unwrap(), zicfiss.ssp.bits());
+                zicfiss.ssp.set(inst.rs1.unwrap() as u64);
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRCI) => {
+                context.set_xreg(inst.rd.unwrap(), zicfiss.ssp.bits());
+                zicfiss.ssp.clear(inst.rs1.unwrap() as u64);
+            }
+            _ => unreachable!(),
+        },
+        unsupported_csr_num => {
+            unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
         }
     }
 }
@@ -140,6 +192,6 @@ pub fn instruction(inst: Instruction) {
             }
         }
         OpcodeKind::Zicfiss(ZicfissOpcode::SSAMOSWAP_W | ZicfissOpcode::SSAMOSWAP_D) => todo!(),
-        _ => unreachable!(),
+        _ => todo!(),
     }
 }
