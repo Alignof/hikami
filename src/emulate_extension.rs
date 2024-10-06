@@ -9,6 +9,34 @@ use crate::HYPERVISOR_DATA;
 use core::arch::asm;
 use riscv::register::sstatus;
 
+/// CSR data for CSRs emulation.
+pub struct CsrData(u64);
+
+impl CsrData {
+    /// Return raw data.
+    pub fn bits(&self) -> u64 {
+        self.0
+    }
+
+    /// Write data to CSR.
+    /// For CSRRW or CSRRWI
+    pub fn write(&mut self, data: u64) {
+        self.0 = data;
+    }
+
+    /// Set bit in CSR.
+    /// For CSRRS or CSRRSI
+    pub fn set(&mut self, mask: u64) {
+        self.0 |= mask;
+    }
+
+    /// Clear bit in CSR.
+    /// For CSRRC or CSRRCI
+    pub fn clear(&mut self, mask: u64) {
+        self.0 &= !mask;
+    }
+}
+
 /// Throw an VS-level exception.
 /// * `exception_num`: Exception number. (store to vscause)
 /// * `trap_value`: Trap value. (store to vstval)
