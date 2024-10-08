@@ -2,6 +2,8 @@
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
 use crate::emulate_extension::zicfiss::ZICFISS_DATA;
+
+use core::arch::asm;
 use sbi_rt::SbiRet;
 
 /// SBI ecall handler for Base Extension (EID: #0x10)
@@ -93,7 +95,7 @@ pub fn sbi_fwft_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     const FWFT_GET: usize = 1;
 
     let feature = args[0] as usize;
-    let value = args[1];
+    let _value = args[1];
     let _flags = args[2];
 
     // TODO remove it.
@@ -103,14 +105,15 @@ pub fn sbi_fwft_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     match func_id {
         FWFT_SET => match FwftFeature::try_from(feature).unwrap() {
             FwftFeature::ShadowStack => {
-                unsafe { ZICFISS_DATA.lock() }.get_mut().unwrap().sse = value != 0;
+                // hypervisor does not use shadow stack.
                 SbiRet::success(0)
             }
             feat => unimplemented!("unimplemented feature {:?}", feat),
         },
         FWFT_GET => match FwftFeature::try_from(feature).unwrap() {
             FwftFeature::ShadowStack => {
-                SbiRet::success(unsafe { ZICFISS_DATA.lock() }.get().unwrap().sse as usize)
+                // hypervisor does not use shadow stack.
+                SbiRet::success(0)
             }
             feat => unimplemented!("unimplemented feature {:?}", feat),
         },
