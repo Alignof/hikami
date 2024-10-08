@@ -21,22 +21,22 @@ const SHADOW_STACK_FAULT: usize = 3;
 pub struct Zicfiss {
     /// Shadow stack pointer
     pub ssp: CsrData,
-
-    /// Shadow Stack Enable
-    ///
-    /// TODO: handle xenvcfg register.
-    /// TODO: devide into each priv.
-    pub sse: bool,
+    /// Shadow Stack Enable in henvcfg (for VS-mode)
+    pub henv_sse: bool,
+    /// Shadow Stack Enable in senvcfg (for VU-mode)
+    pub senv_sse: bool,
 }
 
 impl Zicfiss {
     pub fn new() -> Self {
         Zicfiss {
             ssp: CsrData(0),
-            sse: false,
+            henv_sse: false,
+            senv_sse: false,
         }
     }
 
+    /// Return shadow stack pointer as `*mut usize`.
     fn ssp_ptr(&self) -> *mut usize {
         self.ssp.0 as *mut usize
     }
