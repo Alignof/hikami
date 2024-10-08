@@ -3,7 +3,6 @@
 
 use crate::emulate_extension::zicfiss::ZICFISS_DATA;
 
-use core::arch::asm;
 use sbi_rt::SbiRet;
 
 /// SBI ecall handler for Base Extension (EID: #0x10)

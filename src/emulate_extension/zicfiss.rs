@@ -59,14 +59,8 @@ impl Zicfiss {
         }
     }
 
-    pub fn is_ss_enable(&self) -> bool {
-        let context = unsafe { HYPERVISOR_DATA.lock() }
-            .get()
-            .unwrap()
-            .guest()
-            .context;
-
-        let spp = context.sstatus() >> 8 & 0x1;
+    pub fn is_ss_enable(&self, sstatus: usize) -> bool {
+        let spp = sstatus >> 8 & 0x1;
         if spp == 0 {
             self.senv_sse
         } else {
@@ -79,25 +73,26 @@ impl Zicfiss {
 pub fn instruction(inst: Instruction) {
     let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let mut context = hypervisor_data.get().unwrap().guest().context;
+    let sstatus = context.sstatus();
     unsafe { ZICFISS_DATA.lock().get_or_init(|| Zicfiss::new()) };
     let mut zicfiss_data = unsafe { ZICFISS_DATA.lock() };
     let zicfiss = zicfiss_data.get_mut().unwrap();
 
     match inst.opc {
         OpcodeKind::Zicfiss(ZicfissOpcode::SSPUSH) => {
-            if zicfiss.is_ss_enable() {
+            if zicfiss.is_ss_enable(sstatus) {
                 let push_value = context.xreg(inst.rs2.unwrap());
                 zicfiss.ss_push(push_value as usize);
             }
         }
         OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPUSH) => {
-            if zicfiss.is_ss_enable() {
+            if zicfiss.is_ss_enable(sstatus) {
                 let push_value = context.xreg(inst.rd.unwrap());
                 zicfiss.ss_push(push_value as usize);
             }
         }
         OpcodeKind::Zicfiss(ZicfissOpcode::SSPOPCHK) => {
-            if zicfiss.is_ss_enable() {
+            if zicfiss.is_ss_enable(sstatus) {
                 let pop_value = zicfiss.ss_pop();
                 let expected_value = context.xreg(inst.rs1.unwrap()) as usize;
                 if pop_value != expected_value {
@@ -108,7 +103,7 @@ pub fn instruction(inst: Instruction) {
             }
         }
         OpcodeKind::Zicfiss(ZicfissOpcode::C_SSPOPCHK) => {
-            if zicfiss.is_ss_enable() {
+            if zicfiss.is_ss_enable(sstatus) {
                 let pop_value = zicfiss.ss_pop();
                 let expected_value = context.xreg(inst.rd.unwrap()) as usize;
                 if pop_value != expected_value {
@@ -119,7 +114,7 @@ pub fn instruction(inst: Instruction) {
             }
         }
         OpcodeKind::Zicfiss(ZicfissOpcode::SSRDP) => {
-            if zicfiss.is_ss_enable() {
+            if zicfiss.is_ss_enable(sstatus) {
                 context.set_xreg(inst.rd.unwrap(), zicfiss.ssp.0 as u64);
             } else {
                 context.set_xreg(inst.rd.unwrap(), 0);
