@@ -4,7 +4,6 @@ mod sbi_handler;
 
 use super::hstrap_exit;
 use crate::device::DeviceEmulateError;
-use crate::emulate_extension::zicfiss;
 use crate::guest;
 use crate::h_extension::{
     csrs::{htinst, htval, vstvec},
@@ -72,6 +71,9 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
+    use crate::emulate_extension::zicfiss::ZICFISS_DATA;
+    use crate::emulate_extension::EmulateExtension;
+
     match exception_cause {
         Exception::IllegalInstruction => {
             let fault_inst_value = stval::read();
@@ -80,10 +82,16 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
 
             // emulate the instruction
             match fault_inst.opc {
-                OpcodeKind::Zicfiss(_) => zicfiss::instruction(fault_inst),
+                OpcodeKind::Zicfiss(_) => unsafe { ZICFISS_DATA.lock() }
+                    .get_mut()
+                    .unwrap()
+                    .instruction(fault_inst),
                 OpcodeKind::Zicsr(_) => match fault_inst.rs2.unwrap() {
                     // ssp
-                    0x11 => zicfiss::csrs(fault_inst),
+                    0x11 => unsafe { ZICFISS_DATA.lock() }
+                        .get_mut()
+                        .unwrap()
+                        .csr(fault_inst),
                     unsupported_csr_num => {
                         unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
                     }

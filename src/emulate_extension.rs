@@ -7,7 +7,16 @@ use crate::trap::hypervisor_supervisor::hstrap_exit;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
+use raki::Instruction;
 use riscv::register::sstatus;
+
+/// Trait for extention emulation.
+pub trait EmulateExtension {
+    /// Emulate instruction
+    fn instruction(&mut self, inst: Instruction);
+    /// Emulate CSR
+    fn csr(&mut self, inst: Instruction);
+}
 
 /// CSR data for CSRs emulation.
 pub struct CsrData(u64);
