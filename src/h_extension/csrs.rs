@@ -308,6 +308,30 @@ pub mod henvcfg {
     }
 }
 
+pub mod hstateen0 {
+    //! Hypervisor State Enable 0 Register.
+    #![allow(dead_code)]
+
+    const HSTATEEN0: usize = 0x60c;
+    pub struct HstateEn0 {
+        pub bits: usize,
+    }
+
+    /// Enable all state except `C` bit
+    pub fn all_state_set() {
+        unsafe {
+            core::arch::asm!("csrs hstateen0, {all_set}", all_set = in(reg) u64::MAX);
+        }
+    }
+
+    /// Hypervisor State Enable 0 Register.
+    pub enum StateEnField {
+        /// It controls access to the senvcfg CSRs.
+        EnvCfg = 1 << 62,
+    }
+    clear_csr_from_enum!(StateEnField, 0x60c);
+}
+
 pub mod htval {
     //! Hypervisor bad guest physical address.
     #![allow(dead_code)]
