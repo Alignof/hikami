@@ -165,4 +165,53 @@ impl EmulateExtension for Zicfiss {
             }
         }
     }
+
+    /// Emulate CSR field that already exists.
+    fn csr_field(&mut self, inst: &Instruction, write_to_csr_value: u64, read_csr_value: &mut u64) {
+        const CSR_SENVCFG: usize = 0x10a;
+
+        let csr_num = inst.rs2.unwrap();
+        match csr_num {
+            CSR_SENVCFG => {
+                // overwritten emulated csr field
+                *read_csr_value |= (self.senv_sse as u64) << 3;
+
+                // update emulated csr field
+                match inst.opc {
+                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRW) => {
+                        if write_to_csr_value >> 3 & 0x1 == 1 {
+                            self.senv_sse = true;
+                        }
+                    }
+                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRS) => {
+                        if write_to_csr_value >> 3 & 0x1 == 1 {
+                            self.senv_sse = true;
+                        }
+                    }
+                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRC) => {
+                        if write_to_csr_value >> 3 & 0x1 == 1 {
+                            self.senv_sse = false;
+                        }
+                    }
+                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRWI) => {
+                        if write_to_csr_value >> 3 & 0x1 == 1 {
+                            self.senv_sse = true;
+                        }
+                    }
+                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRSI) => {
+                        if write_to_csr_value >> 3 & 0x1 == 1 {
+                            self.senv_sse = true;
+                        }
+                    }
+                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRCI) => {
+                        if write_to_csr_value >> 3 & 0x1 == 1 {
+                            self.senv_sse = false;
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => (),
+        }
+    }
 }

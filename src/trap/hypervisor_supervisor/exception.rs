@@ -194,7 +194,57 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
 
                 hs_forward_exception();
             }
-            HvException::VirtualInstruction => unreachable!(),
+            HvException::VirtualInstruction => {
+                let fault_inst_value = stval::read();
+                let fault_inst = Instruction::try_from(fault_inst_value)
+                    .expect("decoding load fault instruction failed");
+
+                // emulate CSR set
+                match fault_inst.opc {
+                    OpcodeKind::Zicsr(_) => {
+                        match fault_inst.rs2.unwrap() {
+                            // senvcfg
+                            0x10a => {
+                                let mut read_from_csr_value: u64;
+                                unsafe {
+                                    asm!("csrr {0}, senvcfg", out(reg) read_from_csr_value);
+                                }
+
+                                let mut context = unsafe {
+                                    HYPERVISOR_DATA.lock().get().unwrap().guest().context
+                                };
+                                let write_to_csr_value = context.xreg(fault_inst.rs1.unwrap());
+
+                                // update emulated CSR field.
+                                unsafe { ZICFISS_DATA.lock() }.get_mut().unwrap().csr_field(
+                                    &fault_inst,
+                                    write_to_csr_value,
+                                    &mut read_from_csr_value,
+                                );
+
+                                // commit result
+                                unsafe {
+                                    asm!("csrw senvcfg, {0}", in(reg) write_to_csr_value);
+                                }
+                                context.set_xreg(fault_inst.rd.unwrap(), read_from_csr_value);
+                            }
+                            unsupported_csr_num => {
+                                unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+
+                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+                if (fault_inst_value & 0b10) >> 1 == 0 {
+                    // compressed instruction
+                    context.set_sepc(context.sepc() + 2);
+                } else {
+                    // normal size instruction
+                    context.set_sepc(context.sepc() + 4);
+                }
+            }
         },
         _ => hs_forward_exception(),
     }
