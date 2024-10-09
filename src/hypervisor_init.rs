@@ -3,7 +3,12 @@
 use crate::device::MmioDevice;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hie,
+    hcounteren, hedeleg,
+    hedeleg::ExceptionKind,
+    henvcfg, hgatp,
+    hgatp::HgatpMode,
+    hideleg, hie,
+    hstateen0::{self, StateEnField},
     hstatus, hvip, vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
@@ -53,6 +58,10 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     henvcfg::set_cde();
     henvcfg::set_cbze();
     henvcfg::set_cbcfe();
+
+    // disable `ENVCFG` state
+    hstateen0::all_state_set();
+    hstateen0::clear(StateEnField::EnvCfg);
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);

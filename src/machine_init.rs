@@ -83,6 +83,9 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
             core::ptr::addr_of!(crate::_top_m_stack) as usize + STACK_SIZE_PER_HART * hart_id,
         );
 
+        // Enable all custom state
+        asm!("csrs mstateen0, {all_set}", all_set = in(reg) u64::MAX);
+
         // pmp settings
         pmpcfg0::set_pmp(0, Range::OFF, Permission::NONE, false);
         pmpaddr0::write(0);
