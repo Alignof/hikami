@@ -90,6 +90,11 @@ impl PageTableEntry {
     fn already_created(self) -> bool {
         self.0 & PteFlag::Valid as u64 == 1
     }
+
+    /// Return entire ppn field
+    fn entire_ppn(self) -> u64 {
+        (self.0 >> 10) & 0xfff_ffff_ffff // 44 bit
+    }
 }
 
 /// Page table address

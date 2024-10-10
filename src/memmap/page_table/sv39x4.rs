@@ -23,8 +23,6 @@ pub static ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
 
 /// Pte field for Sv39x4
 trait PteFieldSv39x4 {
-    /// Return ppn
-    fn entire_ppn(self) -> u64;
     /// Return entire ppn field
     fn ppn(self, index: usize) -> usize;
 }
@@ -40,11 +38,6 @@ impl PteFieldSv39x4 for PageTableEntry {
             0 => (self.0 as usize >> 10) & 0x1ff,      // 9 bit
             _ => unreachable!(),
         }
-    }
-
-    /// Return entire ppn field
-    fn entire_ppn(self) -> u64 {
-        (self.0 >> 10) & 0xfff_ffff_ffff // 44 bit
     }
 }
 
