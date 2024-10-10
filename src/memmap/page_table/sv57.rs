@@ -59,7 +59,7 @@ impl AddressFieldSv57 for GuestVirtualAddress {
 
 /// Translate gva to gpa in sv57
 #[allow(clippy::cast_possible_truncation)]
-pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
+pub fn trans_addr(gva: GuestVirtualAddress) -> GuestPhysicalAddress {
     let vsatp = vsatp::read();
     let mut page_table_addr = PageTableAddress(vsatp.ppn() << 12);
     assert!(matches!(vsatp.mode(), vsatp::Mode::Sv57));
@@ -72,7 +72,7 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
     ] {
         let page_table =
             unsafe { from_raw_parts_mut(page_table_addr.to_pte_ptr(), PAGE_TABLE_LEN) };
-        let pte = page_table[gpa.vpn(level as usize)];
+        let pte = page_table[gva.vpn(level as usize)];
         if pte.is_leaf() {
             match level {
                 PageTableLevel::Lv256TB => {
@@ -94,11 +94,11 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
                     );
                     return GuestPhysicalAddress(
                         pte.ppn(4) << 48
-                            | gpa.vpn(3) << 39
-                            | gpa.vpn(2) << 30
-                            | gpa.vpn(1) << 21
-                            | gpa.vpn(0) << 12
-                            | gpa.page_offset(),
+                            | gva.vpn(3) << 39
+                            | gva.vpn(2) << 30
+                            | gva.vpn(1) << 21
+                            | gva.vpn(0) << 12
+                            | gva.page_offset(),
                     );
                 }
                 PageTableLevel::Lv512GB => {
@@ -117,10 +117,10 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
                     return GuestPhysicalAddress(
                         pte.ppn(4) << 48
                             | pte.ppn(3) << 39
-                            | gpa.vpn(2) << 30
-                            | gpa.vpn(1) << 21
-                            | gpa.vpn(0) << 12
-                            | gpa.page_offset(),
+                            | gva.vpn(2) << 30
+                            | gva.vpn(1) << 21
+                            | gva.vpn(0) << 12
+                            | gva.page_offset(),
                     );
                 }
                 PageTableLevel::Lv1GB => {
@@ -136,9 +136,9 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
                         pte.ppn(4) << 48
                             | pte.ppn(3) << 39
                             | pte.ppn(2) << 30
-                            | gpa.vpn(1) << 21
-                            | gpa.vpn(0) << 12
-                            | gpa.page_offset(),
+                            | gva.vpn(1) << 21
+                            | gva.vpn(0) << 12
+                            | gva.page_offset(),
                     );
                 }
                 PageTableLevel::Lv2MB => {
@@ -151,8 +151,8 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
                             | pte.ppn(3) << 39
                             | pte.ppn(2) << 30
                             | pte.ppn(1) << 21
-                            | gpa.vpn(0) << 12
-                            | gpa.page_offset(),
+                            | gva.vpn(0) << 12
+                            | gva.page_offset(),
                     );
                 }
                 PageTableLevel::Lv4KB => {
@@ -162,7 +162,7 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
                             | pte.ppn(2) << 30
                             | pte.ppn(1) << 21
                             | pte.ppn(0) << 12
-                            | gpa.page_offset(),
+                            | gva.page_offset(),
                     )
                 }
             }

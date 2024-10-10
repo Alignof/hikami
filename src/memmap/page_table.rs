@@ -134,3 +134,28 @@ impl HostPhysicalAddress {
         self.0 as u64 / constants::PAGE_SIZE as u64
     }
 }
+
+/// VS-stage address translation.
+pub fn vs_stage_trans_addr(gva: GuestVirtualAddress) -> GuestPhysicalAddress {
+    use crate::h_extension::csrs::vsatp;
+
+    let vsatp = vsatp::read();
+    match vsatp.mode() {
+        vsatp::Mode::Bare => unreachable!("no trans addr"),
+        vsatp::Mode::Sv39 => sv39::trans_addr(gva),
+        vsatp::Mode::Sv57 => sv57::trans_addr(gva),
+        vsatp::Mode::Sv48 | vsatp::Mode::Sv64 => unimplemented!(),
+    }
+}
+
+/// G-stage address translation.
+pub fn g_stage_trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
+    use crate::h_extension::csrs::hgatp::{self, HgatpMode};
+
+    let hgatp = hgatp::read();
+    match hgatp.mode() {
+        HgatpMode::Bare => unreachable!("no trans addr"),
+        HgatpMode::Sv39x4 => sv39x4::trans_addr(gpa),
+        HgatpMode::Sv48x4 | HgatpMode::Sv57x4 => unimplemented!(),
+    }
+}
