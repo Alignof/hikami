@@ -66,7 +66,7 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
         PageTableLevel::Lv4KB,
     ] {
         let page_table =
-            unsafe { from_raw_parts_mut(page_table_addr.to_pte_ptr(), PAGE_TABLE_LEN) };
+            unsafe { from_raw_parts_mut(page_table_addr.to_host_physical_ptr(), PAGE_TABLE_LEN) };
         let pte = page_table[gpa.vpn(level as usize)];
         if pte.is_leaf() {
             match level {

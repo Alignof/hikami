@@ -112,6 +112,11 @@ impl PageTableAddress {
     fn to_pte_ptr(self) -> *mut PageTableEntry {
         self.0 as *mut PageTableEntry
     }
+
+    fn to_host_physical_ptr(self) -> *mut PageTableEntry {
+        let hpa = g_stage_trans_addr(GuestPhysicalAddress(self.0));
+        hpa.0 as *mut PageTableEntry
+    }
 }
 
 impl GuestVirtualAddress {
