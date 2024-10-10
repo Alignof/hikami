@@ -146,7 +146,7 @@ impl HostPhysicalAddress {
 }
 
 /// VS-stage address translation.
-pub fn vs_stage_trans_addr(gva: GuestVirtualAddress) -> GuestPhysicalAddress {
+pub fn vs_stage_trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> {
     use crate::h_extension::csrs::vsatp;
 
     let vsatp = vsatp::read();
