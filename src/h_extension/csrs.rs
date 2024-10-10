@@ -154,6 +154,36 @@ pub mod vsatp {
         bits: usize,
     }
 
+    impl Vsatp {
+        /// Current address-translation scheme
+        #[inline]
+        pub fn mode(&self) -> Mode {
+            match self.bits >> 60 {
+                0 => Mode::Bare,
+                8 => Mode::Sv39,
+                9 => Mode::Sv48,
+                10 => Mode::Sv57,
+                11 => Mode::Sv64,
+                _ => unreachable!(),
+            }
+        }
+
+        /// Physical page number
+        #[inline]
+        pub fn ppn(&self) -> usize {
+            self.bits & 0xFFF_FFFF_FFFF // bits 0-43
+        }
+    }
+
+    /// Translation mode.
+    pub enum Mode {
+        Bare = 0,
+        Sv39 = 8,
+        Sv48 = 9,
+        Sv57 = 10,
+        Sv64 = 11,
+    }
+
     read_csr_as!(Vsatp, 0x280);
     write_csr_as!(0x280);
 }
