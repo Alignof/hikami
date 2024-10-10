@@ -1,6 +1,6 @@
 use super::{
     constants::{PAGE_SIZE, PAGE_TABLE_LEN},
-    PageTableAddress, PageTableLevel,
+    PageTableAddress, PageTableEntry, PageTableLevel,
 };
 use crate::h_extension::csrs::vsatp;
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress};
@@ -9,6 +9,33 @@ use core::slice::from_raw_parts_mut;
 
 /// First page table size
 pub const FIRST_LV_PAGE_TABLE_LEN: usize = 512;
+
+/// Pte field for Sv39x4
+trait PteFieldSv39 {
+    /// Return ppn
+    fn entire_ppn(self) -> u64;
+    /// Return entire ppn field
+    fn ppn(self, index: usize) -> usize;
+}
+
+impl PteFieldSv39 for PageTableEntry {
+    /// Return ppn
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(dead_code)]
+    fn ppn(self, index: usize) -> usize {
+        match index {
+            2 => (self.0 as usize >> 28) & 0x3ff_ffff, // 26 bit
+            1 => (self.0 as usize >> 19) & 0x1ff,      // 9 bit
+            0 => (self.0 as usize >> 10) & 0x1ff,      // 9 bit
+            _ => unreachable!(),
+        }
+    }
+
+    /// Return entire ppn field
+    fn entire_ppn(self) -> u64 {
+        (self.0 >> 10) & 0xfff_ffff_ffff // 44 bit
+    }
+}
 
 /// Translate gva to gpa in sv39
 #[allow(clippy::cast_possible_truncation)]

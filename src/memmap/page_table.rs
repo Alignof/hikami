@@ -85,23 +85,6 @@ impl PageTableEntry {
         pte_r == 1 || pte_x == 1
     }
 
-    /// Return ppn
-    #[allow(clippy::cast_possible_truncation)]
-    #[allow(dead_code)]
-    fn ppn(self, index: usize) -> usize {
-        match index {
-            2 => (self.0 as usize >> 28) & 0x3ff_ffff, // 26 bit
-            1 => (self.0 as usize >> 19) & 0x1ff,      // 9 bit
-            0 => (self.0 as usize >> 10) & 0x1ff,      // 9 bit
-            _ => unreachable!(),
-        }
-    }
-
-    /// Return entire ppn
-    fn entire_ppn(self) -> u64 {
-        (self.0 >> 10) & 0xfff_ffff_ffff // 44 bit
-    }
-
     /// Is it has already been created
     fn already_created(self) -> bool {
         self.0 & PteFlag::Valid as u64 == 1
