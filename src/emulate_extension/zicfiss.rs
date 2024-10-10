@@ -2,6 +2,10 @@
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
 use super::{pseudo_vs_exception, CsrData, EmulateExtension};
+use crate::memmap::{
+    page_table::{g_stage_trans_addr, vs_stage_trans_addr},
+    GuestVirtualAddress,
+};
 use crate::HYPERVISOR_DATA;
 
 use core::cell::OnceCell;
@@ -36,24 +40,30 @@ impl Zicfiss {
         }
     }
 
-    /// Return shadow stack pointer as `*mut usize`.
-    fn ssp_ptr(&self) -> *mut usize {
-        self.ssp.0 as *mut usize
+    /// Return host physical shadow stack pointer as `*mut usize`.
+    fn ssp_hp_ptr(&self) -> *mut usize {
+        let gpa = vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize));
+        let hpa = g_stage_trans_addr(gpa);
+        hpa.0 as *mut usize
     }
 
     /// Push value to shadow stack
     pub fn ss_push(&mut self, value: usize) {
         unsafe {
-            self.ssp = CsrData(self.ssp_ptr().byte_sub(core::mem::size_of::<usize>()) as u64);
-            self.ssp_ptr().write_volatile(value);
+            self.ssp = CsrData(
+                (self.ssp.0 as *const usize).byte_sub(core::mem::size_of::<usize>()) as u64,
+            );
+            self.ssp_hp_ptr().write_volatile(value);
         }
     }
 
     /// Pop value from shadow stack
     pub fn ss_pop(&mut self) -> usize {
         unsafe {
-            let pop_value = self.ssp_ptr().read_volatile();
-            self.ssp = CsrData(self.ssp_ptr().byte_add(core::mem::size_of::<usize>()) as u64);
+            let pop_value = self.ssp_hp_ptr().read_volatile();
+            self.ssp = CsrData(
+                (self.ssp.0 as *const usize).byte_add(core::mem::size_of::<usize>()) as u64,
+            );
 
             pop_value
         }
