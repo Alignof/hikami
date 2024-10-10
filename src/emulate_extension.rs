@@ -67,9 +67,16 @@ pub fn pseudo_vs_exception(exception_num: usize, trap_value: usize) -> ! {
         let spp = sstatus::read().spp();
         let vsstatus: usize;
         asm!("csrr {status}, vsstatus", status = out(reg) vsstatus);
+        let sie = vsstatus >> 1 & 0x1;
         asm!(
             "csrw vsstatus, {status}",
             status = in(reg) (vsstatus & !(1 << 8)) | (spp as usize) << 8
+        );
+        // disable interrupt
+        asm!(
+            "csrs vsstatus, {status}",
+            "csrci vsstatus, 0b10",
+            status = in(reg) sie << 5,
         );
         context.set_sstatus(context.sstatus() | 1 << 8);
 
