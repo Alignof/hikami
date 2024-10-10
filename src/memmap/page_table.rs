@@ -2,6 +2,7 @@
 
 pub mod sv39;
 pub mod sv39x4;
+pub mod sv57;
 
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
 
