@@ -1,3 +1,5 @@
+//! Sv39: Page-Based 39-bit Virtual-Memory System
+
 use super::{
     constants::{PAGE_SIZE, PAGE_TABLE_LEN},
     PageTableAddress, PageTableEntry, PageTableLevel,
@@ -67,6 +69,7 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
         PageTableLevel::Lv4KB,
     ] {
         let page_table = match level {
+            PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
             PageTableLevel::Lv1GB => unsafe {
                 from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
             },
@@ -77,6 +80,7 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
         let pte = page_table[gpa.vpn(level as usize)];
         if pte.is_leaf() {
             match level {
+                PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                 PageTableLevel::Lv1GB => {
                     assert!(
                         pte.ppn(0) == 0,

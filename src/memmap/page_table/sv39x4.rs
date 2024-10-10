@@ -121,6 +121,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
             ] {
                 let vpn = v_start.vpn(current_level as usize);
                 let current_page_table = match current_level {
+                    PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                     PageTableLevel::Lv1GB => &mut *first_lv_page_table,
                     PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
                         from_raw_parts_mut(next_table_addr.to_pte_ptr(), PAGE_TABLE_LEN)
@@ -169,6 +170,7 @@ pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
         PageTableLevel::Lv4KB,
     ] {
         let page_table = match level {
+            PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
             PageTableLevel::Lv1GB => unsafe {
                 from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
             },
@@ -179,6 +181,7 @@ pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
         let pte = page_table[gpa.vpn(level as usize)];
         if pte.is_leaf() {
             match level {
+                PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                 PageTableLevel::Lv1GB => {
                     assert!(
                         pte.ppn(0) == 0,

@@ -20,16 +20,14 @@ pub mod constants {
 #[derive(Copy, Clone, PartialEq)]
 #[allow(clippy::module_name_repetitions)]
 enum PageTableLevel {
-    /// Page table level 0
-    ///
+    /// 256TB = 48 bit = vpn\[3\] (9 bit) + vpn\[2\] (9 bit) + vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
+    Lv256TB = 4,
+    /// 512GB = 39 bit = vpn\[2\] (9 bit) + vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
+    Lv512GB = 3,
     /// 1GB = 30 bit = vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
     Lv1GB = 2,
-    /// Page table level 1
-    ///
     /// 2MB = 21 bit = vpn\[0\] (9 bit) + offset (12 bit)
     Lv2MB = 1,
-    /// Page table level 2
-    ///
     /// 4KB = 12 bit = offset (12 bit)
     Lv4KB = 0,
 }
@@ -37,6 +35,8 @@ enum PageTableLevel {
 impl PageTableLevel {
     fn size(self) -> usize {
         match self {
+            Self::Lv256TB => 0x1_0000_0000_0000,
+            Self::Lv512GB => 0x80_0000_0000,
             Self::Lv1GB => 0x4000_0000,
             Self::Lv2MB => 0x0020_0000,
             Self::Lv4KB => 0x1000,
