@@ -150,12 +150,12 @@ pub fn vs_stage_trans_addr(gva: GuestVirtualAddress) -> GuestPhysicalAddress {
 
 /// G-stage address translation.
 pub fn g_stage_trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
-    use crate::h_extension::csrs::hgatp::{self, HgatpMode};
+    use crate::h_extension::csrs::hgatp;
 
     let hgatp = hgatp::read();
     match hgatp.mode() {
-        HgatpMode::Bare => unreachable!("no trans addr"),
-        HgatpMode::Sv39x4 => sv39x4::trans_addr(gpa),
-        HgatpMode::Sv48x4 | HgatpMode::Sv57x4 => unimplemented!(),
+        hgatp::Mode::Bare => unreachable!("no trans addr"),
+        hgatp::Mode::Sv39x4 => sv39x4::trans_addr(gpa),
+        hgatp::Mode::Sv48x4 | hgatp::Mode::Sv57x4 => unimplemented!(),
     }
 }

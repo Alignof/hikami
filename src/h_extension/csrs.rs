@@ -420,12 +420,12 @@ pub mod hgatp {
         }
 
         /// Return translation mode.
-        pub fn mode(&self) -> HgatpMode {
+        pub fn mode(&self) -> Mode {
             match (self.bits >> 60) & 0b1111 {
-                0 => HgatpMode::Bare,
-                8 => HgatpMode::Sv39x4,
-                9 => HgatpMode::Sv48x4,
-                10 => HgatpMode::Sv57x4,
+                0 => Mode::Bare,
+                8 => Mode::Sv39x4,
+                9 => Mode::Sv48x4,
+                10 => Mode::Sv57x4,
                 _ => unreachable!(),
             }
         }
@@ -433,14 +433,14 @@ pub mod hgatp {
 
     /// Translation mode in G-stage.
     #[allow(clippy::module_name_repetitions)]
-    pub enum HgatpMode {
+    pub enum Mode {
         Bare = 0,
         Sv39x4 = 8,
         Sv48x4 = 9,
         Sv57x4 = 10,
     }
 
-    pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
+    pub fn set(mode: Mode, vmid: usize, ppn: usize) {
         write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
     }
 

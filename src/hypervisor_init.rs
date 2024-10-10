@@ -5,9 +5,7 @@ use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hcounteren, hedeleg,
     hedeleg::ExceptionKind,
-    henvcfg, hgatp,
-    hgatp::HgatpMode,
-    hideleg, hie,
+    henvcfg, hgatp, hideleg, hie,
     hstateen0::{self, StateEnField},
     hstatus, hvip, vsatp, VsInterruptKind,
 };
@@ -144,7 +142,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .device_mapping_g_stage(root_page_table_addr);
 
     // enable two-level address translation
-    hgatp::set(HgatpMode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
     hfence_gvma_all();
 
     // initialize IOMMU

@@ -7,7 +7,7 @@ use super::{
     constants::{PAGE_SIZE, PAGE_TABLE_LEN},
     PageTableAddress, PageTableEntry, PageTableLevel, PteFlag,
 };
-use crate::h_extension::csrs::{hgatp, hgatp::HgatpMode};
+use crate::h_extension::csrs::hgatp;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use alloc::boxed::Box;
@@ -163,7 +163,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
 pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
     let hgatp = hgatp::read();
     let mut page_table_addr = PageTableAddress(hgatp.ppn() << 12);
-    assert!(matches!(hgatp.mode(), HgatpMode::Sv39x4));
+    assert!(matches!(hgatp.mode(), hgatp::Mode::Sv39x4));
     for level in [
         PageTableLevel::Lv1GB,
         PageTableLevel::Lv2MB,
