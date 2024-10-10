@@ -37,6 +37,24 @@ impl PteFieldSv39 for PageTableEntry {
     }
 }
 
+/// Virtual address field for Sv39
+trait AddressFieldSv39 {
+    /// Return virtual page number
+    fn vpn(self, index: usize) -> usize;
+}
+
+impl AddressFieldSv39 for GuestVirtualAddress {
+    /// Return vpn value with index.
+    fn vpn(self, index: usize) -> usize {
+        match index {
+            2 => (self.0 >> 30) & 0x1ff,
+            1 => (self.0 >> 21) & 0x1ff,
+            0 => (self.0 >> 12) & 0x1ff,
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// Translate gva to gpa in sv39
 #[allow(clippy::cast_possible_truncation)]
 pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {

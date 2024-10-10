@@ -48,6 +48,24 @@ impl PteFieldSv39x4 for PageTableEntry {
     }
 }
 
+/// Virtual address field for Sv39
+trait AddressFieldSv39x4 {
+    /// Return virtual page number
+    fn vpn(self, index: usize) -> usize;
+}
+
+impl AddressFieldSv39x4 for GuestPhysicalAddress {
+    /// Return vpn value with index.
+    fn vpn(self, index: usize) -> usize {
+        match index {
+            2 => (self.0 >> 30) & 0x7ff,
+            1 => (self.0 >> 21) & 0x1ff,
+            0 => (self.0 >> 12) & 0x1ff,
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// Zero filling root page table
 pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
     let first_lv_page_table: &mut [PageTableEntry] = unsafe {
