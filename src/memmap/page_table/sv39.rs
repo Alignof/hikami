@@ -9,9 +9,6 @@ use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress};
 
 use core::slice::from_raw_parts_mut;
 
-/// First page table size
-pub const FIRST_LV_PAGE_TABLE_LEN: usize = 512;
-
 /// Pte field for Sv39x4
 trait PteFieldSv39 {
     /// Return ppn
@@ -68,15 +65,8 @@ pub fn trans_addr(gpa: GuestVirtualAddress) -> GuestPhysicalAddress {
         PageTableLevel::Lv2MB,
         PageTableLevel::Lv4KB,
     ] {
-        let page_table = match level {
-            PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
-            PageTableLevel::Lv1GB => unsafe {
-                from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
-            },
-            PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
-                from_raw_parts_mut(page_table_addr.to_pte_ptr(), PAGE_TABLE_LEN)
-            },
-        };
+        let page_table =
+            unsafe { from_raw_parts_mut(page_table_addr.to_pte_ptr(), PAGE_TABLE_LEN) };
         let pte = page_table[gpa.vpn(level as usize)];
         if pte.is_leaf() {
             match level {
