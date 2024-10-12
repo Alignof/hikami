@@ -18,6 +18,8 @@ pub static mut ZICFISS_DATA: Mutex<OnceCell<Zicfiss>> = Mutex::new(OnceCell::new
 
 /// Software-check exception. (cause value)
 const SOFTWARE_CHECK_EXCEPTION: usize = 18;
+/// Store/AMO page fault
+const STORE_AMO_PAGE_FAULT: usize = 15;
 /// Shadow stack fault. (tval value)
 const SHADOW_STACK_FAULT: usize = 3;
 
@@ -42,9 +44,19 @@ impl Zicfiss {
 
     /// Return host physical shadow stack pointer as `*mut usize`.
     fn ssp_hp_ptr(&self) -> *mut usize {
-        let gpa = vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize));
-        let hpa = g_stage_trans_addr(gpa);
-        hpa.0 as *mut usize
+        match vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize)) {
+            Ok(gpa) => {
+                let hpa = g_stage_trans_addr(gpa);
+                hpa.0 as *mut usize
+            }
+            Err(()) => {
+                unsafe {
+                    HYPERVISOR_DATA.force_unlock();
+                    ZICFISS_DATA.force_unlock();
+                }
+                pseudo_vs_exception(STORE_AMO_PAGE_FAULT, self.ssp.0 as usize);
+            }
+        }
     }
 
     /// Push value to shadow stack
@@ -82,8 +94,11 @@ impl Zicfiss {
 impl EmulateExtension for Zicfiss {
     /// Emulate Zicfiss instruction.
     fn instruction(&mut self, inst: Instruction) {
-        let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-        let mut context = hypervisor_data.get().unwrap().guest().context;
+        let mut context = unsafe { HYPERVISOR_DATA.lock() }
+            .get()
+            .unwrap()
+            .guest()
+            .context;
         let sstatus = context.sstatus();
 
         match inst.opc {
@@ -104,7 +119,10 @@ impl EmulateExtension for Zicfiss {
                     let pop_value = self.ss_pop();
                     let expected_value = context.xreg(inst.rs1.unwrap()) as usize;
                     if pop_value != expected_value {
-                        drop(hypervisor_data);
+                        unsafe {
+                            HYPERVISOR_DATA.force_unlock();
+                            ZICFISS_DATA.force_unlock();
+                        }
                         pseudo_vs_exception(SOFTWARE_CHECK_EXCEPTION, SHADOW_STACK_FAULT)
                     }
                 }
@@ -114,7 +132,10 @@ impl EmulateExtension for Zicfiss {
                     let pop_value = self.ss_pop();
                     let expected_value = context.xreg(inst.rd.unwrap()) as usize;
                     if pop_value != expected_value {
-                        drop(hypervisor_data);
+                        unsafe {
+                            HYPERVISOR_DATA.force_unlock();
+                            ZICFISS_DATA.force_unlock();
+                        }
                         pseudo_vs_exception(SOFTWARE_CHECK_EXCEPTION, SHADOW_STACK_FAULT)
                     }
                 }
