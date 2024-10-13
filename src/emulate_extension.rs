@@ -13,9 +13,9 @@ use riscv::register::sstatus;
 /// Trait for extention emulation.
 pub trait EmulateExtension {
     /// Emulate instruction
-    fn instruction(&mut self, inst: Instruction);
+    fn instruction(&mut self, inst: &Instruction);
     /// Emulate CSR
-    fn csr(&mut self, inst: Instruction);
+    fn csr(&mut self, inst: &Instruction);
     /// Emulate CSR field that already exists.
     fn csr_field(&mut self, inst: &Instruction, write_to_csr_value: u64, read_csr_value: &mut u64);
 }

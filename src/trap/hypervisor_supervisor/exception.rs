@@ -85,13 +85,13 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 OpcodeKind::Zicfiss(_) => unsafe { ZICFISS_DATA.lock() }
                     .get_mut()
                     .unwrap()
-                    .instruction(fault_inst),
+                    .instruction(&fault_inst),
                 OpcodeKind::Zicsr(_) => match fault_inst.rs2.unwrap() {
                     // ssp
                     0x11 => unsafe { ZICFISS_DATA.lock() }
                         .get_mut()
                         .unwrap()
-                        .csr(fault_inst),
+                        .csr(&fault_inst),
                     unsupported_csr_num => {
                         unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
                     }

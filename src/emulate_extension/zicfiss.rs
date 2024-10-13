@@ -93,7 +93,7 @@ impl Zicfiss {
 
 impl EmulateExtension for Zicfiss {
     /// Emulate Zicfiss instruction.
-    fn instruction(&mut self, inst: Instruction) {
+    fn instruction(&mut self, inst: &Instruction) {
         let mut context = unsafe { HYPERVISOR_DATA.lock() }
             .get()
             .unwrap()
@@ -153,7 +153,7 @@ impl EmulateExtension for Zicfiss {
     }
 
     /// Emulate Zicfiss CSRs access.
-    fn csr(&mut self, inst: Instruction) {
+    fn csr(&mut self, inst: &Instruction) {
         const CSR_SSP: usize = 0x11;
 
         let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
