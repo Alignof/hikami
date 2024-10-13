@@ -104,13 +104,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
             }
 
             let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
-            if (fault_inst_value & 0b10) >> 1 == 0 {
-                // compressed instruction
-                context.set_sepc(context.sepc() + 2);
-            } else {
-                // normal size instruction
-                context.set_sepc(context.sepc() + 4);
-            }
+            context.update_sepc_by_inst(&fault_inst);
         }
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
         // Enum not found in `riscv` crate.
@@ -143,13 +137,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     Ok(value) => {
                         let mut context = hypervisor_data.get().unwrap().guest().context;
                         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
-                        if (fault_inst_value & 0b10) >> 1 == 0 {
-                            // compressed instruction
-                            context.set_sepc(context.sepc() + 2);
-                        } else {
-                            // normal size instruction
-                            context.set_sepc(context.sepc() + 4);
-                        }
+                        context.update_sepc_by_inst(&fault_inst);
                     }
                     Err(
                         DeviceEmulateError::InvalidAddress
@@ -168,16 +156,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .expect("decoding load fault instruction failed");
 
                 let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                let context = hypervisor_data.get().unwrap().guest().context;
-                let update_epc = |fault_inst_value: usize, mut context: guest::context::Context| {
-                    if (fault_inst_value & 0b10) >> 1 == 0 {
-                        // compressed instruction
-                        context.set_sepc(context.sepc() + 2);
-                    } else {
-                        // normal size instruction
-                        context.set_sepc(context.sepc() + 4);
-                    }
-                };
+                let mut context = hypervisor_data.get().unwrap().guest().context;
                 let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
 
                 if let Ok(()) = hypervisor_data
@@ -187,7 +166,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .plic
                     .emulate_write(fault_addr, store_value.try_into().unwrap())
                 {
-                    update_epc(fault_inst_value, context);
+                    context.update_sepc_by_inst(&fault_inst);
                     drop(hypervisor_data);
                     hstrap_exit(); // exit handler
                 }
@@ -198,6 +177,11 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 let fault_inst_value = stval::read();
                 let fault_inst = Instruction::try_from(fault_inst_value)
                     .expect("decoding load fault instruction failed");
+                let mut context = unsafe { HYPERVISOR_DATA.lock() }
+                    .get()
+                    .unwrap()
+                    .guest()
+                    .context;
 
                 // emulate CSR set
                 match fault_inst.opc {
@@ -210,9 +194,6 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                                     asm!("csrr {0}, senvcfg", out(reg) read_from_csr_value);
                                 }
 
-                                let mut context = unsafe {
-                                    HYPERVISOR_DATA.lock().get().unwrap().guest().context
-                                };
                                 let write_to_csr_value = context.xreg(fault_inst.rs1.unwrap());
 
                                 // update emulated CSR field.
@@ -236,14 +217,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     _ => unreachable!(),
                 }
 
-                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
-                if (fault_inst_value & 0b10) >> 1 == 0 {
-                    // compressed instruction
-                    context.set_sepc(context.sepc() + 2);
-                } else {
-                    // normal size instruction
-                    context.set_sepc(context.sepc() + 4);
-                }
+                context.update_sepc_by_inst(&fault_inst);
             }
         },
         _ => hs_forward_exception(),
