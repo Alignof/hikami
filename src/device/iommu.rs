@@ -17,16 +17,22 @@ use fdt::Fdt;
 /// IOMMU: I/O memory management unit.
 #[derive(Debug)]
 pub struct IoMmu {
+    /// PCI Bus number
     bus: u32,
+    /// PCI Device number
     device: u32,
+    /// PCI Function number
     function: u32,
 }
 
 impl IoMmu {
     /// Set page table in IOMMU.
     fn init_page_table(ddt_addr: HostPhysicalAddress) {
+        /// Offset of `iohgatp` register.
         const OFFSET_IOHGATP: usize = 8;
+        /// Size of leaf ddt entry.
         const LEAF_DDT_ENTRY_SIZE: usize = 512;
+
         // set all ddt entry
         for offset in (0..PAGE_SIZE).step_by(LEAF_DDT_ENTRY_SIZE) {
             let tc_addr = ddt_addr + offset;
