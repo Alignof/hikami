@@ -142,7 +142,7 @@ impl EmulateExtension for Zicfiss {
             }
             OpcodeKind::Zicfiss(ZicfissOpcode::SSRDP) => {
                 if self.is_ss_enable(sstatus) {
-                    context.set_xreg(inst.rd.unwrap(), self.ssp.0 as u64);
+                    context.set_xreg(inst.rd.unwrap(), self.ssp.0);
                 } else {
                     context.set_xreg(inst.rd.unwrap(), 0);
                 }
@@ -205,7 +205,7 @@ impl EmulateExtension for Zicfiss {
         match csr_num {
             CSR_SENVCFG => {
                 // overwritten emulated csr field
-                *read_csr_value |= (self.senv_sse as u64) << 3;
+                *read_csr_value |= u64::from(self.senv_sse) << 3;
 
                 // update emulated csr field
                 match inst.opc {

@@ -99,7 +99,7 @@ pub fn sbi_fwft_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
 
     // TODO remove it.
     use crate::emulate_extension::zicfiss::Zicfiss;
-    unsafe { ZICFISS_DATA.lock().get_or_init(|| Zicfiss::new()) };
+    unsafe { ZICFISS_DATA.lock().get_or_init(Zicfiss::new) };
 
     match func_id {
         FWFT_SET => match FwftFeature::try_from(feature).unwrap() {

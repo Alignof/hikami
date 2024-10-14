@@ -65,7 +65,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     hcounteren::set(0xffff_ffff);
     // enable supervisor counter
     unsafe {
-        asm!("csrw scounteren, {bits}", bits = in(reg) 0xffff_ffff as u32);
+        asm!("csrw scounteren, {bits}", bits = in(reg) 0xffff_ffff_u32);
     }
 
     // specify delegation exception kinds.
