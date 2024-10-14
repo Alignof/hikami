@@ -49,7 +49,7 @@ impl AddressFieldSv39 for GuestVirtualAddress {
 
 /// Translate gva to gpa in sv39
 #[allow(clippy::cast_possible_truncation)]
-pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> {
+pub fn trans_addr(gva: GuestVirtualAddress) -> GuestPhysicalAddress {
     let vsatp = vsatp::read();
     let mut page_table_addr = PageTableAddress(vsatp.ppn() << 12);
     assert!(matches!(vsatp.mode(), vsatp::Mode::Sv39));
@@ -73,23 +73,23 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
                         pte.ppn(1) == 0,
                         "Address translation failed: pte.ppn[1] != 0"
                     );
-                    return Ok(GuestPhysicalAddress(
+                    return GuestPhysicalAddress(
                         pte.ppn(2) << 30 | gva.vpn(1) << 21 | gva.vpn(0) << 12 | gva.page_offset(),
-                    ));
+                    );
                 }
                 PageTableLevel::Lv2MB => {
                     assert!(
                         pte.ppn(0) == 0,
                         "Address translation failed: pte.ppn[0] != 0"
                     );
-                    return Ok(GuestPhysicalAddress(
+                    return GuestPhysicalAddress(
                         pte.ppn(2) << 30 | pte.ppn(1) << 21 | gva.vpn(0) << 12 | gva.page_offset(),
-                    ));
+                    );
                 }
                 PageTableLevel::Lv4KB => {
-                    return Ok(GuestPhysicalAddress(
+                    return GuestPhysicalAddress(
                         pte.ppn(2) << 30 | pte.ppn(1) << 21 | pte.ppn(0) << 12 | gva.page_offset(),
-                    ));
+                    );
                 }
             }
         }

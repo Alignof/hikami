@@ -153,7 +153,7 @@ pub fn vs_stage_trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddr
     let vsatp = vsatp::read();
     match vsatp.mode() {
         vsatp::Mode::Bare => unreachable!("no trans addr"),
-        vsatp::Mode::Sv39 => sv39::trans_addr(gva),
+        vsatp::Mode::Sv39 => Ok(sv39::trans_addr(gva)),
         vsatp::Mode::Sv57 => sv57::trans_addr(gva),
         vsatp::Mode::Sv48 | vsatp::Mode::Sv64 => unimplemented!(),
     }
