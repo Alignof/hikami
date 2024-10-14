@@ -63,11 +63,17 @@ pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
 /// Ref: [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/vv3.0-rc1/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/vv3.0-rc1/riscv-sbi.pdf) p.78
 #[derive(Debug)]
 enum FwftFeature {
+    /// Control misaligned access exception delegation to supervisor-mode if medeleg is present.
     MisalignedExcDeleg,
+    /// Control landing pad support for supervisor-mode.
     LandingPad,
+    /// Control shadow stack support for supervisor-mode.
     ShadowStack,
+    /// Control double trap support for supervisor-mode.
     DoubleTrap,
+    /// Control hardware updating of PTE A/D bits for supervisor-mode.
     PteAdHwUpdating,
+    /// Control the pointer masking tag length for supervisor-mode.
     PointerMaskingPmlen,
 }
 
