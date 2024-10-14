@@ -101,8 +101,11 @@ impl PageBlock {
 /// FIXME: Rename me!
 #[derive(Debug)]
 pub struct HypervisorData {
+    /// Current hart id (zero indexed).
     current_hart: usize,
+    /// Guests data
     guests: [Option<guest::Guest>; MAX_HART_NUM],
+    /// Devices data.
     devices: device::Devices,
 }
 
@@ -120,6 +123,8 @@ impl HypervisorData {
         }
     }
 
+    /// Return Device objects.
+    ///
     /// # Panics
     /// It will be panic if devices are uninitialized.
     #[must_use]
@@ -127,6 +132,8 @@ impl HypervisorData {
         &mut self.devices
     }
 
+    /// Return current hart's guest.
+    ///
     /// # Panics
     /// It will be panic if current HART's guest data is empty.
     #[must_use]
@@ -136,6 +143,8 @@ impl HypervisorData {
             .expect("guest data not found")
     }
 
+    /// Add new guest data.
+    ///
     /// # Panics
     /// It will be panic if `hart_id` is greater than `MAX_HART_NUM`.
     pub fn register_guest(&mut self, new_guest: Guest) {
