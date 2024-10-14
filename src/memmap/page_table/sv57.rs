@@ -51,7 +51,7 @@ impl AddressFieldSv57 for GuestVirtualAddress {
 }
 
 /// Translate gva to gpa in sv57
-#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
 pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> {
     let vsatp = vsatp::read();
     assert!(matches!(vsatp.mode(), vsatp::Mode::Sv57));
