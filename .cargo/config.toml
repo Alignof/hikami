@@ -1,17 +1,19 @@
 [target.riscv64imac-unknown-none-elf]
 runner = """
 qemu-system-riscv64
+-cpu rv64,smstateen=true
 -machine virt
 -bios none
 -nographic
 -m 2G
--initrd vmlinux
--drive file=rootfs.img,format=raw,id=hd0,if=none
+-initrd vmlinux_debug
+-drive file=rootfs.ext2,format=raw,id=hd0,if=none
 -device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on
 -append root=/dev/vda,rw,console=ttyS0
 -device riscv-iommu-pci
 -kernel
 """
+
 # for debug
 # runner = "../../qemu/build/qemu-system-riscv64 -S -gdb tcp::10000 -d int,in_asm,cpu_reset,mmu,page,guest_errors -machine virt -bios none -nographic -m 2G -initrd vmlinux_debug -drive file=rootfs.img,format=raw,id=hd0,if=none -device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on -append root=/dev/vda,rw,console=ttyS0 -device riscv-iommu-pci -kernel"
 # memo: maintenance packet Qqemu.PhyMemMode:1
@@ -24,4 +26,3 @@ rustflags = [
 
 [build]
 target = "riscv64imac-unknown-none-elf"
-
