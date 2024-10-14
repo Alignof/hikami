@@ -17,10 +17,12 @@ if [ "$#" -eq 1 ]; then
                 -bios none  \
                 -m 256M \
                 -initrd ../vmlinux_debug \
-                -device riscv-iommu-pci \
-                -drive file=../rootfs.img,format=raw,id=hd0,if=none \
+                -drive file=../rootfs.ext2,format=raw,id=hd0,if=none \
                 -device virtio-blk-device,drive=hd0 \
+                -netdev user,id=n1 \
+                -device virtio-net-pci,netdev=n1,rombar=0 \
                 -append "root=/dev/vda rw console=ttyS0" \
+                -device riscv-iommu-pci \
                 -kernel ../target/riscv64imac-unknown-none-elf/debug/hikami \
                 -machine dumpdtb=qemu.dtb
             dtc -I dtb -O dts -o guest.dts qemu.dtb
