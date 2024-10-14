@@ -101,8 +101,11 @@ pub mod vstvec {
     //! Virtual supervisor trap handler base address.
     #![allow(dead_code)]
 
+    /// vstvec register number.
     const VSTVEC: usize = 0x205;
+    /// Virtual supervisor trap handler base address.
     pub struct Vstvec {
+        /// bitmap
         bits: usize,
     }
 
@@ -116,8 +119,11 @@ pub mod vsip {
     //! Virtual supervisor interrupt pending.
     #![allow(dead_code)]
 
+    /// vsip register number.
     const VSIP: usize = 0x244;
+    /// Virtual supervisor interrupt pending.
     pub struct Vsip {
+        /// bitmap
         bits: usize,
     }
 
@@ -149,8 +155,11 @@ pub mod vsatp {
     //! Virtual supervisor address translation and protection.
     #![allow(dead_code)]
 
+    /// vsatp register number.
     const VSATP: usize = 0x280;
+    /// Virtual supervisor address translation and protection.
     pub struct Vsatp {
+        /// bitmap
         bits: usize,
     }
 
@@ -192,8 +201,11 @@ pub mod hstatus {
     //! hstatus util functions.
     #![allow(dead_code)]
 
+    /// hstatus register number.
     const HSTATUS: usize = 0x600;
+    /// hstatus util functions.
     pub struct Hstatus {
+        /// bitmap
         bits: usize,
     }
 
@@ -215,8 +227,11 @@ pub mod hedeleg {
     //! Hypervisor exception delegation register.
     #![allow(dead_code)]
 
+    /// hedeleg register number.
     const HEDELEG: usize = 0x602;
+    /// Hypervisor exception delegation register.
     pub struct Hedeleg {
+        /// bitmap
         bits: usize,
     }
 
@@ -246,8 +261,11 @@ pub mod hideleg {
     //! Hypervisor interrupt delegation register.
     #![allow(dead_code)]
 
+    /// hideleg register number.
     const HIDELEG: usize = 0x603;
+    /// Hypervisor interrupt delegation register.
     pub struct Hideleg {
+        /// bitmap
         bits: usize,
     }
 
@@ -260,8 +278,11 @@ pub mod hie {
     #![allow(dead_code)]
     use super::VsInterruptKind;
 
+    /// hie register number.
     const HIE: usize = 0x604;
+    /// Hypervisor interrupt-enable register.
     pub struct Hie {
+        /// bitmap
         bits: usize,
     }
 
@@ -272,8 +293,11 @@ pub mod hcounteren {
     //! Hypervisor counter enable.
     #![allow(dead_code)]
 
+    /// hcounteren register number.
     const HCOUNTEREN: usize = 0x606;
+    /// Hypervisor counter enable.
     pub struct Hcounteren {
+        /// bitmap
         bits: usize,
     }
 
@@ -284,8 +308,11 @@ pub mod henvcfg {
     //! Hypervisor environment configuration register.
     #![allow(dead_code)]
 
+    /// henvcfg register number.
     const HENVCFG: usize = 0x60a;
+    /// Hypervisor environment configuration register.
     pub struct Henvcfg {
+        /// bitmap
         bits: usize,
     }
 
@@ -342,8 +369,11 @@ pub mod hstateen0 {
     //! Hypervisor State Enable 0 Register.
     #![allow(dead_code)]
 
+    /// hstateen0 register number.
     const HSTATEEN0: usize = 0x60c;
+    /// Hypervisor State Enable 0 Register.
     pub struct HstateEn0 {
+        /// bitmap
         pub bits: usize,
     }
 
@@ -366,8 +396,11 @@ pub mod htval {
     //! Hypervisor bad guest physical address.
     #![allow(dead_code)]
 
+    /// htval register number.
     const HTVAL: usize = 0x643;
+    /// Hypervisor bad guest physical address.
     pub struct Htval {
+        /// bitmap
         pub bits: usize,
     }
 
@@ -377,10 +410,14 @@ pub mod htval {
 pub mod hvip {
     //! Hypervisor virtual interrupt pending.
     #![allow(dead_code)]
+
     use super::VsInterruptKind;
 
+    /// hvip register number.
     const HVIP: usize = 0x645;
+    /// Hypervisor virtual interrupt pending.
     pub struct Hvip {
+        /// bitmap
         bits: usize,
     }
 
@@ -395,8 +432,11 @@ pub mod htinst {
     //! Hypervisor trap instruction (transformed).
     #![allow(dead_code)]
 
+    /// htinst register number.
     const HTINST: usize = 0x64a;
+    /// Hypervisor trap instruction (transformed).
     pub struct Htinst {
+        /// bitmap
         pub bits: usize,
     }
 
@@ -408,8 +448,11 @@ pub mod hgatp {
     //! Hypervisor guest address translation and protection.
     #![allow(dead_code)]
 
+    /// hgatp register number.
     const HGATP: usize = 0x680;
+    /// Hypervisor guest address translation and protection.
     pub struct Hgatp {
+        /// bitmap
         pub bits: usize,
     }
 
@@ -440,6 +483,7 @@ pub mod hgatp {
         Sv57x4 = 10,
     }
 
+    /// Set Hgatp fields.
     pub fn set(mode: Mode, vmid: usize, ppn: usize) {
         write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
     }

@@ -31,7 +31,9 @@ pub enum ConfigSpaceRegister {
 /// Local computer bus.
 #[derive(Debug)]
 pub struct Pci {
+    /// Base address of memory map.
     base_addr: HostPhysicalAddress,
+    /// Memory map size.
     size: usize,
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
@@ -106,7 +108,10 @@ impl Pci {
 
 impl MmioDevice for Pci {
     fn new(device_tree: &Fdt, node_path: &str) -> Self {
+        /// Bytes size of u32.
         const BYTES_U32: usize = 4;
+        /// Number of bytes in each range chunks.
+        /// `BUS_ADDRESS(3)` - `CPU_PHYSICAL(2)` - `SIZE(2)`
         const RANGE_NUM: usize = 7;
 
         let region = device_tree

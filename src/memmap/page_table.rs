@@ -7,6 +7,8 @@ pub mod sv57;
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
 
 pub mod constants {
+    //! Constants of page table.
+
     /// Size of memory areathat a page can point to.
     pub const PAGE_SIZE: usize = 4096;
     /// Second or Third page table size
@@ -34,6 +36,7 @@ enum PageTableLevel {
 }
 
 impl PageTableLevel {
+    /// Return usize.
     fn size(self) -> usize {
         match self {
             Self::Lv256TB => 0x1_0000_0000_0000,
@@ -73,6 +76,7 @@ pub enum PteFlag {
 pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
+    /// Constructor for `PageTableEntry`.
     fn new(ppn: u64, flags: u8) -> Self {
         Self(ppn << 10 | u64::from(flags))
     }
@@ -119,6 +123,7 @@ impl PageTableAddress {
         self.0 as *mut PageTableEntry
     }
 
+    /// Convert guest physical page table address to host physical one.
     fn to_host_physical_ptr(self) -> *mut PageTableEntry {
         let hpa = g_stage_trans_addr(GuestPhysicalAddress(self.0));
         hpa.0 as *mut PageTableEntry

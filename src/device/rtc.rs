@@ -8,7 +8,9 @@ use fdt::Fdt;
 /// An electronic device that measures the passage of time.
 #[derive(Debug)]
 pub struct Rtc {
+    /// Base address of memory map.
     base_addr: HostPhysicalAddress,
+    /// Memory map size.
     size: usize,
 }
 

@@ -59,11 +59,14 @@ impl Write for UartWriter {
 /// UART: Universal asynchronous receiver-transmitter
 #[derive(Debug)]
 pub struct Uart {
+    /// Base address of memory map.
     base_addr: HostPhysicalAddress,
+    /// Memory map size.
     size: usize,
 }
 
 impl Uart {
+    /// Return address of LSR register.
     pub fn lsr_addr(&self) -> HostPhysicalAddress {
         self.base_addr + register::LSR_OFFSET
     }

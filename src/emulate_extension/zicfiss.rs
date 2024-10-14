@@ -34,6 +34,7 @@ pub struct Zicfiss {
 }
 
 impl Zicfiss {
+    /// Constructor for `Zicfiss`.
     pub fn new() -> Self {
         Zicfiss {
             ssp: CsrData(0),
@@ -79,6 +80,9 @@ impl Zicfiss {
         }
     }
 
+    /// Is shadow stack enabled?
+    ///
+    /// Chack corresponding `SSE` bit of xenvcfg.
     fn is_ss_enable(&self, sstatus: usize) -> bool {
         let spp = sstatus >> 8 & 0x1;
         if spp == 0 {
@@ -153,6 +157,7 @@ impl EmulateExtension for Zicfiss {
 
     /// Emulate Zicfiss CSRs access.
     fn csr(&mut self, inst: &Instruction) {
+        /// Register number of `Shadow Stack Pointer`.
         const CSR_SSP: usize = 0x11;
 
         let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
@@ -198,6 +203,7 @@ impl EmulateExtension for Zicfiss {
 
     /// Emulate CSR field that already exists.
     fn csr_field(&mut self, inst: &Instruction, write_to_csr_value: u64, read_csr_value: &mut u64) {
+        /// Register number of `Supervisor Environment Configuration Register`.
         const CSR_SENVCFG: usize = 0x10a;
 
         let csr_num = inst.rs2.unwrap();

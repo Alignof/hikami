@@ -23,10 +23,14 @@ const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
 pub struct ContextId(usize);
 
 impl ContextId {
+    /// Create new `ContextId` from hart id.
+    ///
+    /// Each hart has two id for machine and supervisor.
     pub fn new(hart_id: usize, is_supervisor: bool) -> Self {
         ContextId(2 * hart_id + usize::from(is_supervisor))
     }
 
+    /// Return raw usize value.
     pub fn raw(&self) -> usize {
         self.0
     }
@@ -36,8 +40,13 @@ impl ContextId {
 /// Interrupt controller for global interrupts.
 #[derive(Debug)]
 pub struct Plic {
+    /// Base address of memory map.
     base_addr: HostPhysicalAddress,
+    /// Memory map size.
     size: usize,
+    /// Claim complete flags for external interrupts emulation.
+    ///
+    /// Each bit indicates whether interrupts are claimed in context.
     claim_complete: [u32; MAX_CONTEXT_NUM],
 }
 

@@ -143,6 +143,11 @@ impl Guest {
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *mut u8,
     ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
+        /// Segment type `PT_LOAD`
+        ///
+        /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
+        const PT_LOAD: u32 = 1;
+
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let align_size =
@@ -154,7 +159,6 @@ impl Guest {
             .expect("failed to get segments from elf")
             .iter()
         {
-            const PT_LOAD: u32 = 1;
             if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
                 assert!(prog_header.p_align >= PAGE_SIZE as u64);
                 let aligned_segment_size = align_size(prog_header.p_filesz, prog_header.p_align);

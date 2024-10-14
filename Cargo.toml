@@ -5,6 +5,13 @@ edition = "2021"
 
 [lints.clippy]
 pedantic = "warn"
+missing_docs_in_private_items = "warn"
+
+[lints.rust]
+missing_docs = "warn"
+
+[lints.rustdoc]
+missing_crate_level_docs = "warn"
 
 [dependencies]
 elf = { version = "0.7.2", default-features = false }

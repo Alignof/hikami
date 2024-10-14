@@ -22,10 +22,12 @@ pub struct ContextData {
 /// Guest context
 #[derive(Debug, Copy, Clone)]
 pub struct Context {
+    /// Address of context storing.
     address: HostPhysicalAddress,
 }
 
 impl Context {
+    /// Constructor for `Context`.
     pub fn new(address: HostPhysicalAddress) -> Self {
         Context { address }
     }

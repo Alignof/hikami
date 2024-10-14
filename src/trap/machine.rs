@@ -9,6 +9,7 @@ use interrupt::trap_interrupt;
 use core::arch::asm;
 use riscv::register::mcause::{self, Trap};
 
+/// Epilogue of Machine trap vector
 #[inline(always)]
 #[allow(clippy::inline_always)]
 unsafe fn mtrap_exit() -> ! {
@@ -63,6 +64,10 @@ unsafe fn mtrap_exit() -> ! {
     );
 }
 
+/// Epilogue of Machine trap vector with SBI return value.
+///
+/// - error: Error code (store to `a0`).
+/// - value: Return value (store to `a1`).
 #[inline(always)]
 #[allow(clippy::inline_always)]
 unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {

@@ -9,7 +9,9 @@ use fdt::Fdt;
 /// to be used as part of the Linux startup process.
 #[derive(Debug)]
 pub struct Initrd {
+    /// Base address of memory map.
     base_addr: HostPhysicalAddress,
+    /// Memory map size.
     size: usize,
 }
 

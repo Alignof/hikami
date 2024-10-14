@@ -1,3 +1,16 @@
+//! hikami - Light weight type-1 hypervisor for RISC-V H-extension.
+//!
+//! ## Run
+//! ```no_run
+//! # The actual command to be executed is written in .cargo/config.toml.
+//! $ cargo r
+//! ```
+//!
+//! ## Documents
+//! ```no_run
+//! $ cargo doc --open
+//! ```
+
 #![no_main]
 #![no_std]
 
@@ -88,8 +101,11 @@ impl PageBlock {
 /// FIXME: Rename me!
 #[derive(Debug)]
 pub struct HypervisorData {
+    /// Current hart id (zero indexed).
     current_hart: usize,
+    /// Guests data
     guests: [Option<guest::Guest>; MAX_HART_NUM],
+    /// Devices data.
     devices: device::Devices,
 }
 
@@ -100,14 +116,15 @@ impl HypervisorData {
     /// It will be panic when parsing device tree failed.
     #[must_use]
     pub fn new(device_tree: Fdt) -> Self {
-        const ARRAY_INIT_VALUE: Option<Guest> = None;
         HypervisorData {
             current_hart: 0,
-            guests: [ARRAY_INIT_VALUE; MAX_HART_NUM],
+            guests: [const { None }; MAX_HART_NUM],
             devices: Devices::new(device_tree),
         }
     }
 
+    /// Return Device objects.
+    ///
     /// # Panics
     /// It will be panic if devices are uninitialized.
     #[must_use]
@@ -115,6 +132,8 @@ impl HypervisorData {
         &mut self.devices
     }
 
+    /// Return current hart's guest.
+    ///
     /// # Panics
     /// It will be panic if current HART's guest data is empty.
     #[must_use]
@@ -124,6 +143,8 @@ impl HypervisorData {
             .expect("guest data not found")
     }
 
+    /// Add new guest data.
+    ///
     /// # Panics
     /// It will be panic if `hart_id` is greater than `MAX_HART_NUM`.
     pub fn register_guest(&mut self, new_guest: Guest) {

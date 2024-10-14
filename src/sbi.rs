@@ -10,6 +10,7 @@ use rustsbi::RustSBI;
 
 /// Device reference for `RustSBI`.
 #[derive(RustSBI)]
+#[allow(clippy::doc_markdown)]
 pub struct Sbi {
     /// Core Local INTerrupt
     #[rustsbi(ipi, timer)]
@@ -26,6 +27,7 @@ pub struct Sbi {
 }
 
 impl Sbi {
+    /// Constructor for `Sbi`
     pub fn new(device_tree: Fdt) -> Self {
         Sbi {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
