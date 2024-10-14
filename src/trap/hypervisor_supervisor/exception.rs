@@ -1,20 +1,15 @@
 //! Trap VS-mode exception.
 
 mod instruction_handler;
+mod page_fault_handler;
 mod sbi_handler;
 
 use super::hstrap_exit;
-use crate::device::DeviceEmulateError;
 use crate::guest;
-use crate::h_extension::{
-    csrs::{htinst, htval, vstvec},
-    HvException,
-};
-use crate::memmap::HostPhysicalAddress;
+use crate::h_extension::{csrs::vstvec, HvException};
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
-use raki::Instruction;
 use riscv::register::{
     scause::{self, Exception},
     stval,
@@ -85,7 +80,6 @@ fn update_sepc_by_htinst_value(htinst_inst_value: usize, context: &mut guest::co
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::IllegalInstruction => instruction_handler::illegal_instruction(),
-
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
         // Enum not found in `riscv` crate.
         Exception::Unknown => match HvException::from(scause::read().code()) {
@@ -97,62 +91,8 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
             HvException::InstructionGuestPageFault => {
                 panic!("Instruction guest-page fault");
             }
-            HvException::LoadGuestPageFault => {
-                let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
-                let fault_inst_value = htinst::read().bits;
-                // htinst bit 1 replaced with a 0.
-                // thus it needed to flip bit 1.
-                // ref: vol. II p.161
-                let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
-                    .expect("decoding load fault instruction failed");
-
-                let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                match hypervisor_data
-                    .get_mut()
-                    .unwrap()
-                    .devices()
-                    .plic
-                    .emulate_read(fault_addr)
-                {
-                    Ok(value) => {
-                        let mut context = hypervisor_data.get().unwrap().guest().context;
-                        context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
-                        update_sepc_by_htinst_value(fault_inst_value, &mut context);
-                    }
-                    Err(
-                        DeviceEmulateError::InvalidAddress
-                        | DeviceEmulateError::InvalidContextId
-                        | DeviceEmulateError::ReservedRegister,
-                    ) => hs_forward_exception(),
-                }
-            }
-            HvException::StoreAmoGuestPageFault => {
-                let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
-                let fault_inst_value = htinst::read().bits;
-                // htinst bit 1 replaced with a 0.
-                // thus it needed to flip bit 1.
-                // ref: vol. II p.161
-                let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
-                    .expect("decoding load fault instruction failed");
-
-                let mut hypervisor_data = HYPERVISOR_DATA.lock();
-                let mut context = hypervisor_data.get().unwrap().guest().context;
-                let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
-
-                if let Ok(()) = hypervisor_data
-                    .get_mut()
-                    .unwrap()
-                    .devices()
-                    .plic
-                    .emulate_write(fault_addr, store_value.try_into().unwrap())
-                {
-                    update_sepc_by_htinst_value(fault_inst_value, &mut context);
-                    drop(hypervisor_data);
-                    hstrap_exit(); // exit handler
-                }
-
-                hs_forward_exception();
-            }
+            HvException::LoadGuestPageFault => page_fault_handler::load_guest_page_fault(),
+            HvException::StoreAmoGuestPageFault => page_fault_handler::store_guest_page_fault(),
             HvException::VirtualInstruction => instruction_handler::virtual_instruction(),
         },
         _ => hs_forward_exception(),

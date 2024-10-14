@@ -1,4 +1,7 @@
 //! Handle instruction exceptions.
+//!
+//! - Illegal Instruction
+//! - Virtual Instruction
 
 use crate::emulate_extension::zicfiss::ZICFISS_DATA;
 use crate::emulate_extension::EmulateExtension;
