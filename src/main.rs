@@ -1,3 +1,16 @@
+//! hikami - Light weight type-1 hypervisor for RISC-V H-extension.
+//!
+//! ## Run
+//! ```no_run
+//! # The actual command to be executed is written in .cargo/config.toml.
+//! $ cargo r
+//! ```
+//!
+//! ## Documents
+//! ```no_run
+//! $ cargo doc --open
+//! ```
+
 #![no_main]
 #![no_std]
 
