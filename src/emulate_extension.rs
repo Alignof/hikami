@@ -48,6 +48,13 @@ impl CsrData {
     }
 }
 
+/// Initialize singletons for extension emulation.
+/// TODO: Remove it when `OnceCell` is replaced to `LazyCell`.
+pub fn initialize() {
+    use zicfiss::{Zicfiss, ZICFISS_DATA};
+    unsafe { ZICFISS_DATA.lock() }.get_or_init(Zicfiss::new);
+}
+
 /// Throw an VS-level exception.
 /// * `exception_num`: Exception number. (store to vscause)
 /// * `trap_value`: Trap value. (store to vstval)
