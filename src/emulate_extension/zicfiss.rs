@@ -43,19 +43,17 @@ impl Zicfiss {
     }
 
     /// Return host physical shadow stack pointer as `*mut usize`.
+    #[allow(clippy::similar_names, clippy::cast_possible_truncation)]
     fn ssp_hp_ptr(&self) -> *mut usize {
-        match vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize)) {
-            Ok(gpa) => {
-                let hpa = g_stage_trans_addr(gpa);
-                hpa.0 as *mut usize
+        if let Ok(gpa) = vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize)) {
+            let hpa = g_stage_trans_addr(gpa);
+            hpa.0 as *mut usize
+        } else {
+            unsafe {
+                HYPERVISOR_DATA.force_unlock();
+                ZICFISS_DATA.force_unlock();
             }
-            Err(()) => {
-                unsafe {
-                    HYPERVISOR_DATA.force_unlock();
-                    ZICFISS_DATA.force_unlock();
-                }
-                pseudo_vs_exception(STORE_AMO_PAGE_FAULT, self.ssp.0 as usize);
-            }
+            pseudo_vs_exception(STORE_AMO_PAGE_FAULT, self.ssp.0 as usize);
         }
     }
 
@@ -93,6 +91,7 @@ impl Zicfiss {
 
 impl EmulateExtension for Zicfiss {
     /// Emulate Zicfiss instruction.
+    #[allow(clippy::cast_possible_truncation)]
     fn instruction(&mut self, inst: &Instruction) {
         let mut context = unsafe { HYPERVISOR_DATA.lock() }
             .get()
@@ -202,47 +201,29 @@ impl EmulateExtension for Zicfiss {
         const CSR_SENVCFG: usize = 0x10a;
 
         let csr_num = inst.rs2.unwrap();
-        match csr_num {
-            CSR_SENVCFG => {
-                // overwritten emulated csr field
-                *read_csr_value |= u64::from(self.senv_sse) << 3;
+        if csr_num == CSR_SENVCFG {
+            // overwritten emulated csr field
+            *read_csr_value |= u64::from(self.senv_sse) << 3;
 
-                // update emulated csr field
-                match inst.opc {
-                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRW) => {
-                        if write_to_csr_value >> 3 & 0x1 == 1 {
-                            self.senv_sse = true;
-                        }
+            // update emulated csr field
+            match inst.opc {
+                OpcodeKind::Zicsr(
+                    ZicsrOpcode::CSRRW
+                    | ZicsrOpcode::CSRRS
+                    | ZicsrOpcode::CSRRWI
+                    | ZicsrOpcode::CSRRSI,
+                ) => {
+                    if write_to_csr_value >> 3 & 0x1 == 1 {
+                        self.senv_sse = true;
                     }
-                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRS) => {
-                        if write_to_csr_value >> 3 & 0x1 == 1 {
-                            self.senv_sse = true;
-                        }
-                    }
-                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRC) => {
-                        if write_to_csr_value >> 3 & 0x1 == 1 {
-                            self.senv_sse = false;
-                        }
-                    }
-                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRWI) => {
-                        if write_to_csr_value >> 3 & 0x1 == 1 {
-                            self.senv_sse = true;
-                        }
-                    }
-                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRSI) => {
-                        if write_to_csr_value >> 3 & 0x1 == 1 {
-                            self.senv_sse = true;
-                        }
-                    }
-                    OpcodeKind::Zicsr(ZicsrOpcode::CSRRCI) => {
-                        if write_to_csr_value >> 3 & 0x1 == 1 {
-                            self.senv_sse = false;
-                        }
-                    }
-                    _ => unreachable!(),
                 }
+                OpcodeKind::Zicsr(ZicsrOpcode::CSRRC | ZicsrOpcode::CSRRCI) => {
+                    if write_to_csr_value >> 3 & 0x1 == 1 {
+                        self.senv_sse = false;
+                    }
+                }
+                _ => unreachable!(),
             }
-            _ => (),
         }
     }
 }
