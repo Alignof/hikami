@@ -68,6 +68,17 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     context.set_xreg(11, sbiret.value as u64);
 }
 
+/// Update sepc by htinst value.
+fn update_sepc_by_htinst_value(htinst_inst_value: usize, context: &mut guest::context::Context) {
+    if (htinst_inst_value & 0b10) >> 1 == 0 {
+        // compressed instruction
+        context.set_sepc(context.sepc() + 2);
+    } else {
+        // normal size instruction
+        context.set_sepc(context.sepc() + 4);
+    }
+}
+
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
@@ -137,7 +148,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     Ok(value) => {
                         let mut context = hypervisor_data.get().unwrap().guest().context;
                         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
-                        context.update_sepc_by_inst(&fault_inst);
+                        update_sepc_by_htinst_value(fault_inst_value, &mut context);
                     }
                     Err(
                         DeviceEmulateError::InvalidAddress
@@ -166,7 +177,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                     .plic
                     .emulate_write(fault_addr, store_value.try_into().unwrap())
                 {
-                    context.update_sepc_by_inst(&fault_inst);
+                    update_sepc_by_htinst_value(fault_inst_value, &mut context);
                     drop(hypervisor_data);
                     hstrap_exit(); // exit handler
                 }
