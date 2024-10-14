@@ -39,7 +39,9 @@ pub extern "C" fn hs_forward_exception() {
 /// Handler for Ecall from VS-mode exception
 #[allow(clippy::cast_possible_truncation)]
 fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
+    /// Extension ID of FWFT(Firmware Features) Extension.
     const EID_FWFT: usize = 0x4657_4654;
+
     let ext_id: usize = context.xreg(17) as usize;
     let func_id: usize = context.xreg(16) as usize;
     let arguments: &[u64; 5] = &[

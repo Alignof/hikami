@@ -95,7 +95,9 @@ impl TryFrom<usize> for FwftFeature {
 /// FWFT ecall will be emulated because `sbi_rt` is not supported.
 #[allow(clippy::cast_possible_truncation)]
 pub fn sbi_fwft_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
+    /// Firmware Features Set (FID #0)
     const FWFT_SET: usize = 0;
+    /// Firmware Features Get (FID #1)
     const FWFT_GET: usize = 1;
 
     let feature = args[0] as usize;
