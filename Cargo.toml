@@ -5,6 +5,7 @@ edition = "2021"
 
 [lints.clippy]
 pedantic = "warn"
+missing_docs_in_private_items = "warn"
 
 [lints.rust]
 missing_docs = "warn"
