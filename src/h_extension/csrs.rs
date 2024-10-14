@@ -357,7 +357,7 @@ pub mod hstateen0 {
     /// Clear `ENVCFG` (62 bit)
     pub fn clear_envcfg() {
         unsafe {
-            core::arch::asm!("csrs hstateen0, {bits}", bits = in(reg) 1u64 << 62);
+            core::arch::asm!("csrc hstateen0, {bits}", bits = in(reg) 1u64 << 62);
         }
     }
 }

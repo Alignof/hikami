@@ -1,8 +1,6 @@
 //! Handle VS-mode Ecall exception  
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
-use crate::emulate_extension::zicfiss::ZICFISS_DATA;
-
 use sbi_rt::SbiRet;
 
 /// SBI ecall handler for Base Extension (EID: #0x10)
@@ -95,16 +93,12 @@ impl TryFrom<usize> for FwftFeature {
 /// SBI ecall handler for Firmware Features Extension (EID #0x46574654)
 ///
 /// FWFT ecall will be emulated because `sbi_rt` is not supported.
-#[allow(clippy::items_after_statements, clippy::cast_possible_truncation)] // TODO
+#[allow(clippy::cast_possible_truncation)]
 pub fn sbi_fwft_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     const FWFT_SET: usize = 0;
     const FWFT_GET: usize = 1;
 
     let feature = args[0] as usize;
-
-    // TODO remove it.
-    use crate::emulate_extension::zicfiss::Zicfiss;
-    unsafe { ZICFISS_DATA.lock().get_or_init(Zicfiss::new) };
 
     match func_id {
         FWFT_SET => match FwftFeature::try_from(feature).unwrap() {

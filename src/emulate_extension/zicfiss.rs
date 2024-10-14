@@ -13,7 +13,7 @@ use raki::{Instruction, OpcodeKind, ZicfissOpcode, ZicsrOpcode};
 use spin::Mutex;
 
 /// Singleton for Zicfiss.
-/// TODO: change `OnceCell` to `LazyCell`.
+/// TODO: change `OnceCell` to `LazyCell` when stable `LazyCell::force_mut`.
 pub static mut ZICFISS_DATA: Mutex<OnceCell<Zicfiss>> = Mutex::new(OnceCell::new());
 
 /// Software-check exception. (cause value)

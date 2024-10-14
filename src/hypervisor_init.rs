@@ -1,6 +1,7 @@
 //! HS-mode level initialization.
 
 use crate::device::MmioDevice;
+use crate::emulate_extension;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
@@ -147,6 +148,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
+
+    // initialize emulate_extension data
+    emulate_extension::initialize();
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0
