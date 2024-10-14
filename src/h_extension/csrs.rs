@@ -9,7 +9,7 @@ macro_rules! impl_bits {
         #[allow(dead_code)]
         impl $register {
             pub fn bits(&self) -> usize {
-                self.bits
+                self.0
             }
         }
     };
@@ -22,15 +22,11 @@ macro_rules! read_csr_as {
         #[inline]
         #[allow(dead_code)]
         pub fn read() -> $register {
-            $register {
-                bits: {
-                    let csr_out;
-                    unsafe {
-                        core::arch::asm!(concat!("csrrs {0}, ", stringify!($csr_number), ", x0"), out(reg) csr_out);
-                    }
-                    csr_out
-                }
+            let csr_out;
+            unsafe {
+                core::arch::asm!(concat!("csrrs {0}, ", stringify!($csr_number), ", x0"), out(reg) csr_out);
             }
+            $register(csr_out)
         }
     };
 }
@@ -104,13 +100,9 @@ pub mod vstvec {
     /// vstvec register number.
     const VSTVEC: usize = 0x205;
     /// Virtual supervisor trap handler base address.
-    pub struct Vstvec {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Vstvec(usize);
 
     impl_bits!(Vstvec);
-
     read_csr_as!(Vstvec, 0x205);
     write_csr_as!(0x205);
 }
@@ -122,10 +114,7 @@ pub mod vsip {
     /// vsip register number.
     const VSIP: usize = 0x244;
     /// Virtual supervisor interrupt pending.
-    pub struct Vsip {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Vsip(usize);
 
     read_csr_as!(Vsip, 0x244);
     write_csr_as!(0x244);
@@ -158,16 +147,13 @@ pub mod vsatp {
     /// vsatp register number.
     const VSATP: usize = 0x280;
     /// Virtual supervisor address translation and protection.
-    pub struct Vsatp {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Vsatp(usize);
 
     impl Vsatp {
         /// Current address-translation scheme
         #[inline]
         pub fn mode(&self) -> Mode {
-            match self.bits >> 60 {
+            match self.0 >> 60 {
                 0 => Mode::Bare,
                 8 => Mode::Sv39,
                 9 => Mode::Sv48,
@@ -180,7 +166,7 @@ pub mod vsatp {
         /// Physical page number
         #[inline]
         pub fn ppn(&self) -> usize {
-            self.bits & 0xFFF_FFFF_FFFF // bits 0-43
+            self.0 & 0xFFF_FFFF_FFFF // bits 0-43
         }
     }
 
@@ -204,10 +190,7 @@ pub mod hstatus {
     /// hstatus register number.
     const HSTATUS: usize = 0x600;
     /// hstatus util functions.
-    pub struct Hstatus {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Hstatus(usize);
 
     read_csr_as!(Hstatus, 0x600);
     write_csr_as!(0x600);
@@ -230,10 +213,7 @@ pub mod hedeleg {
     /// hedeleg register number.
     const HEDELEG: usize = 0x602;
     /// Hypervisor exception delegation register.
-    pub struct Hedeleg {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Hedeleg(usize);
 
     /// Exception Kind that possible to delegate to lower privileged.
     ///
@@ -264,10 +244,7 @@ pub mod hideleg {
     /// hideleg register number.
     const HIDELEG: usize = 0x603;
     /// Hypervisor interrupt delegation register.
-    pub struct Hideleg {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Hideleg(usize);
 
     read_csr_as!(Hideleg, 0x603);
     write_csr_as!(0x603);
@@ -281,10 +258,7 @@ pub mod hie {
     /// hie register number.
     const HIE: usize = 0x604;
     /// Hypervisor interrupt-enable register.
-    pub struct Hie {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Hie(usize);
 
     set_csr_from_enum!(VsInterruptKind, 0x604);
 }
@@ -296,10 +270,7 @@ pub mod hcounteren {
     /// hcounteren register number.
     const HCOUNTEREN: usize = 0x606;
     /// Hypervisor counter enable.
-    pub struct Hcounteren {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Hcounteren(usize);
 
     set_csr_as!(0x606);
 }
@@ -311,10 +282,7 @@ pub mod henvcfg {
     /// henvcfg register number.
     const HENVCFG: usize = 0x60a;
     /// Hypervisor environment configuration register.
-    pub struct Henvcfg {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Henvcfg(usize);
 
     /// set STCE (63 bit)
     pub fn set_stce() {
@@ -372,10 +340,7 @@ pub mod hstateen0 {
     /// hstateen0 register number.
     const HSTATEEN0: usize = 0x60c;
     /// Hypervisor State Enable 0 Register.
-    pub struct HstateEn0 {
-        /// bitmap
-        pub bits: usize,
-    }
+    pub struct HstateEn0(usize);
 
     /// Enable all state except `C` bit
     pub fn all_state_set() {
@@ -399,11 +364,9 @@ pub mod htval {
     /// htval register number.
     const HTVAL: usize = 0x643;
     /// Hypervisor bad guest physical address.
-    pub struct Htval {
-        /// bitmap
-        pub bits: usize,
-    }
+    pub struct Htval(usize);
 
+    impl_bits!(Htval);
     read_csr_as!(Htval, 0x643);
 }
 
@@ -416,10 +379,7 @@ pub mod hvip {
     /// hvip register number.
     const HVIP: usize = 0x645;
     /// Hypervisor virtual interrupt pending.
-    pub struct Hvip {
-        /// bitmap
-        bits: usize,
-    }
+    pub struct Hvip(usize);
 
     set_csr_from_enum!(VsInterruptKind, 0x645);
     clear_csr_from_enum!(VsInterruptKind, 0x645);
@@ -435,11 +395,9 @@ pub mod htinst {
     /// htinst register number.
     const HTINST: usize = 0x64a;
     /// Hypervisor trap instruction (transformed).
-    pub struct Htinst {
-        /// bitmap
-        pub bits: usize,
-    }
+    pub struct Htinst(usize);
 
+    impl_bits!(Htinst);
     read_csr_as!(Htinst, 0x64a);
     write_csr_as!(0x64a);
 }
@@ -451,20 +409,17 @@ pub mod hgatp {
     /// hgatp register number.
     const HGATP: usize = 0x680;
     /// Hypervisor guest address translation and protection.
-    pub struct Hgatp {
-        /// bitmap
-        pub bits: usize,
-    }
+    pub struct Hgatp(usize);
 
     impl Hgatp {
         /// Return ppn.
         pub fn ppn(&self) -> usize {
-            self.bits & 0xfff_ffff_ffff // 44 bit
+            self.0 & 0xfff_ffff_ffff // 44 bit
         }
 
         /// Return translation mode.
         pub fn mode(&self) -> Mode {
-            match (self.bits >> 60) & 0b1111 {
+            match (self.0 >> 60) & 0b1111 {
                 0 => Mode::Bare,
                 8 => Mode::Sv39x4,
                 9 => Mode::Sv48x4,
@@ -488,6 +443,7 @@ pub mod hgatp {
         write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
     }
 
+    impl_bits!(Hgatp);
     read_csr_as!(Hgatp, 0x680);
     write_csr_as!(0x680);
 }

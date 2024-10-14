@@ -13,8 +13,8 @@ use raki::Instruction;
 
 /// Trap `Load guest page fault` exception.
 pub fn load_guest_page_fault() {
-    let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
-    let fault_inst_value = htinst::read().bits;
+    let fault_addr = HostPhysicalAddress(htval::read().bits() << 2);
+    let fault_inst_value = htinst::read().bits();
     // htinst bit 1 replaced with a 0.
     // thus it needed to flip bit 1.
     // ref: vol. II p.161
@@ -44,8 +44,8 @@ pub fn load_guest_page_fault() {
 
 /// Trap `Store guest page fault` exception.
 pub fn store_guest_page_fault() {
-    let fault_addr = HostPhysicalAddress(htval::read().bits << 2);
-    let fault_inst_value = htinst::read().bits;
+    let fault_addr = HostPhysicalAddress(htval::read().bits() << 2);
+    let fault_inst_value = htinst::read().bits();
     // htinst bit 1 replaced with a 0.
     // thus it needed to flip bit 1.
     // ref: vol. II p.161

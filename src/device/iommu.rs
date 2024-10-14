@@ -40,7 +40,7 @@ impl IoMmu {
 
             unsafe {
                 core::ptr::write_volatile(tc_addr.0 as *mut u64, 1);
-                core::ptr::write_volatile(iohgatp_addr.0 as *mut u64, hgatp::read().bits as u64);
+                core::ptr::write_volatile(iohgatp_addr.0 as *mut u64, hgatp::read().bits() as u64);
             }
         }
     }
