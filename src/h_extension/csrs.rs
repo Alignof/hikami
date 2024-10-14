@@ -354,12 +354,12 @@ pub mod hstateen0 {
         }
     }
 
-    /// Hypervisor State Enable 0 Register.
-    pub enum StateEnField {
-        /// It controls access to the senvcfg CSRs.
-        EnvCfg = 1 << 62,
+    /// Clear `ENVCFG` (62 bit)
+    pub fn clear_envcfg() {
+        unsafe {
+            core::arch::asm!("csrs hstateen0, {bits}", bits = in(reg) 1u64 << 62);
+        }
     }
-    clear_csr_from_enum!(StateEnField, 0x60c);
 }
 
 pub mod htval {
