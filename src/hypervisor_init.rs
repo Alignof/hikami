@@ -3,8 +3,8 @@
 use crate::device::MmioDevice;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hgatp::HgatpMode, hideleg, hie,
-    hstatus, hvip, vsatp, VsInterruptKind,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
+    hvip, vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
@@ -54,8 +54,16 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     henvcfg::set_cbze();
     henvcfg::set_cbcfe();
 
+    // disable `ENVCFG` state
+    hstateen0::all_state_set();
+    hstateen0::clear_envcfg();
+
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
+    // enable supervisor counter
+    unsafe {
+        asm!("csrw scounteren, {bits}", bits = in(reg) 0xffff_ffff_u32);
+    }
 
     // specify delegation exception kinds.
     hedeleg::write(
@@ -131,7 +139,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .device_mapping_g_stage(root_page_table_addr);
 
     // enable two-level address translation
-    hgatp::set(HgatpMode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
     hfence_gvma_all();
 
     // initialize IOMMU

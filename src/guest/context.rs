@@ -2,6 +2,8 @@
 
 use crate::memmap::HostPhysicalAddress;
 
+use raki::Instruction;
+
 /// Guest context on memory
 ///
 /// It place to hypervisor stack top.
@@ -58,6 +60,22 @@ impl Context {
     /// Set sepc.
     pub fn set_sepc(&mut self, value: usize) {
         self.get_context().sepc = value;
+    }
+
+    /// Update sepc address according to instruction.
+    pub fn update_sepc_by_inst(&mut self, inst: &Instruction) {
+        if inst.is_compressed {
+            // compressed instruction
+            self.set_sepc(self.sepc() + 2);
+        } else {
+            // normal size instruction
+            self.set_sepc(self.sepc() + 4);
+        }
+    }
+
+    /// Return sstatus value.
+    pub fn sstatus(self) -> usize {
+        self.get_context().sstatus
     }
 
     /// Set sstatus.

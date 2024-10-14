@@ -154,6 +154,36 @@ pub mod vsatp {
         bits: usize,
     }
 
+    impl Vsatp {
+        /// Current address-translation scheme
+        #[inline]
+        pub fn mode(&self) -> Mode {
+            match self.bits >> 60 {
+                0 => Mode::Bare,
+                8 => Mode::Sv39,
+                9 => Mode::Sv48,
+                10 => Mode::Sv57,
+                11 => Mode::Sv64,
+                _ => unreachable!(),
+            }
+        }
+
+        /// Physical page number
+        #[inline]
+        pub fn ppn(&self) -> usize {
+            self.bits & 0xFFF_FFFF_FFFF // bits 0-43
+        }
+    }
+
+    /// Translation mode.
+    pub enum Mode {
+        Bare = 0,
+        Sv39 = 8,
+        Sv48 = 9,
+        Sv57 = 10,
+        Sv64 = 11,
+    }
+
     read_csr_as!(Vsatp, 0x280);
     write_csr_as!(0x280);
 }
@@ -308,6 +338,30 @@ pub mod henvcfg {
     }
 }
 
+pub mod hstateen0 {
+    //! Hypervisor State Enable 0 Register.
+    #![allow(dead_code)]
+
+    const HSTATEEN0: usize = 0x60c;
+    pub struct HstateEn0 {
+        pub bits: usize,
+    }
+
+    /// Enable all state except `C` bit
+    pub fn all_state_set() {
+        unsafe {
+            core::arch::asm!("csrs hstateen0, {all_set}", all_set = in(reg) u64::MAX);
+        }
+    }
+
+    /// Clear `ENVCFG` (62 bit)
+    pub fn clear_envcfg() {
+        unsafe {
+            core::arch::asm!("csrs hstateen0, {bits}", bits = in(reg) 1u64 << 62);
+        }
+    }
+}
+
 pub mod htval {
     //! Hypervisor bad guest physical address.
     #![allow(dead_code)]
@@ -366,12 +420,12 @@ pub mod hgatp {
         }
 
         /// Return translation mode.
-        pub fn mode(&self) -> HgatpMode {
+        pub fn mode(&self) -> Mode {
             match (self.bits >> 60) & 0b1111 {
-                0 => HgatpMode::Bare,
-                8 => HgatpMode::Sv39x4,
-                9 => HgatpMode::Sv48x4,
-                10 => HgatpMode::Sv57x4,
+                0 => Mode::Bare,
+                8 => Mode::Sv39x4,
+                9 => Mode::Sv48x4,
+                10 => Mode::Sv57x4,
                 _ => unreachable!(),
             }
         }
@@ -379,14 +433,14 @@ pub mod hgatp {
 
     /// Translation mode in G-stage.
     #[allow(clippy::module_name_repetitions)]
-    pub enum HgatpMode {
+    pub enum Mode {
         Bare = 0,
         Sv39x4 = 8,
         Sv48x4 = 9,
         Sv57x4 = 10,
     }
 
-    pub fn set(mode: HgatpMode, vmid: usize, ppn: usize) {
+    pub fn set(mode: Mode, vmid: usize, ppn: usize) {
         write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
     }
 

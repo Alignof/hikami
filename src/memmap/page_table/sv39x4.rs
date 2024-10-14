@@ -7,7 +7,7 @@ use super::{
     constants::{PAGE_SIZE, PAGE_TABLE_LEN},
     PageTableAddress, PageTableEntry, PageTableLevel, PteFlag,
 };
-use crate::h_extension::csrs::{hgatp, hgatp::HgatpMode};
+use crate::h_extension::csrs::hgatp;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use alloc::boxed::Box;
@@ -20,6 +20,44 @@ pub const FIRST_LV_PAGE_TABLE_LEN: usize = 2048;
 #[link_section = ".root_page_table"]
 pub static ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
     [PageTableEntry(0u64); FIRST_LV_PAGE_TABLE_LEN];
+
+/// Pte field for Sv39x4
+trait PteFieldSv39x4 {
+    /// Return entire ppn field
+    fn ppn(self, index: usize) -> usize;
+}
+
+impl PteFieldSv39x4 for PageTableEntry {
+    /// Return ppn
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(dead_code)]
+    fn ppn(self, index: usize) -> usize {
+        match index {
+            2 => (self.0 as usize >> 28) & 0x3ff_ffff, // 26 bit
+            1 => (self.0 as usize >> 19) & 0x1ff,      // 9 bit
+            0 => (self.0 as usize >> 10) & 0x1ff,      // 9 bit
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// Virtual address field for Sv39
+trait AddressFieldSv39x4 {
+    /// Return virtual page number
+    fn vpn(self, index: usize) -> usize;
+}
+
+impl AddressFieldSv39x4 for GuestPhysicalAddress {
+    /// Return vpn value with index.
+    fn vpn(self, index: usize) -> usize {
+        match index {
+            2 => (self.0 >> 30) & 0x7ff,
+            1 => (self.0 >> 21) & 0x1ff,
+            0 => (self.0 >> 12) & 0x1ff,
+            _ => unreachable!(),
+        }
+    }
+}
 
 /// Zero filling root page table
 pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
@@ -76,6 +114,7 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
             ] {
                 let vpn = v_start.vpn(current_level as usize);
                 let current_page_table = match current_level {
+                    PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                     PageTableLevel::Lv1GB => &mut *first_lv_page_table,
                     PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
                         from_raw_parts_mut(next_table_addr.to_pte_ptr(), PAGE_TABLE_LEN)
@@ -114,17 +153,17 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
 
 /// Translate gpa to hpa in sv39x4
 #[allow(clippy::cast_possible_truncation)]
-#[allow(dead_code)]
 pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
     let hgatp = hgatp::read();
     let mut page_table_addr = PageTableAddress(hgatp.ppn() << 12);
-    assert!(matches!(hgatp.mode(), HgatpMode::Sv39x4));
+    assert!(matches!(hgatp.mode(), hgatp::Mode::Sv39x4));
     for level in [
         PageTableLevel::Lv1GB,
         PageTableLevel::Lv2MB,
         PageTableLevel::Lv4KB,
     ] {
         let page_table = match level {
+            PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
             PageTableLevel::Lv1GB => unsafe {
                 from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
             },
@@ -135,6 +174,7 @@ pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
         let pte = page_table[gpa.vpn(level as usize)];
         if pte.is_leaf() {
             match level {
+                PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                 PageTableLevel::Lv1GB => {
                     assert!(
                         pte.ppn(0) == 0,

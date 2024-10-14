@@ -16,7 +16,7 @@ use riscv::register::scause::{self, Trap};
 /// replace stringify macro to const when `asm_const` is stabled.
 #[inline(always)]
 #[allow(clippy::inline_always)]
-unsafe fn hstrap_exit() -> ! {
+pub unsafe fn hstrap_exit() -> ! {
     // aquire hypervisor data
     let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let stack_top = hypervisor_data.get().unwrap().guest().stack_top();

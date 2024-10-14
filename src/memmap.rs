@@ -12,6 +12,10 @@ trait AddressRangeUtil {
     fn len(&self) -> usize;
 }
 
+/// Guest Virtual Address
+#[derive(Default, Debug, Copy, Clone)]
+pub struct GuestVirtualAddress(pub usize);
+
 /// Guest Physical Address
 #[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq)]
 pub struct GuestPhysicalAddress(pub usize);
