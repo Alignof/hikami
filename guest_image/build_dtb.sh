@@ -74,13 +74,13 @@ if [ "$#" -eq 2 ]; then
         "build")
             case "$2" in
                 "host")
-                    dtc -I dts -O dtb -o ../host.dtb guest.dts
+                    dtc -I dts -O dtb -o ../host.dtb host.dts
                     ;;
                 "guest")
                     dtc -I dts -O dtb -o ../guest.dtb guest.dts
                     ;;
                 "all")
-                    dtc -I dts -O dtb -o ../host.dtb guest.dts
+                    dtc -I dts -O dtb -o ../host.dtb host.dts
                     dtc -I dts -O dtb -o ../guest.dtb guest.dts
                     ;;
                 *)

@@ -28,9 +28,9 @@
 		compatible = "qemu,platform", "simple-bus";
 	};
 
-	memory@90000000 {
+	memory@80000000 {
 		device_type = "memory";
-		reg = <0x00 0x90000000 0x00 0x10000000>;
+		reg = <0x00 0x80000000 0x00 0x10000000>;
 	};
 
 	cpus {
@@ -47,9 +47,9 @@
 			riscv,cbop-block-size = <0x40>;
 			riscv,cboz-block-size = <0x40>;
 			riscv,cbom-block-size = <0x40>;
-			riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "h", "zic64b", "zicbom", "zicbop", "zicboz", "ziccamoa", "ziccif", "zicclsm", "ziccrse", "zicfiss", "zicntr", "zicsr", "zifencei", "zihintntl", "zihintpause", "zihpm", "zmmul", "za64rs", "zaamo", "zalrsc", "zawrs", "zfa", "zca", "zcd", "zba", "zbb", "zbc", "zbs", "ssccptr", "sscounterenw", "sstc", "sstvala", "sstvecd", "svadu";
+			riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "h", "zic64b", "zicbom", "zicbop", "zicboz", "ziccamoa", "ziccif", "zicclsm", "ziccrse", "zicntr", "zicsr", "zifencei", "zihintntl", "zihintpause", "zihpm", "zmmul", "za64rs", "zaamo", "zalrsc", "zawrs", "zfa", "zca", "zcd", "zba", "zbb", "zbc", "zbs", "ssccptr", "sscounterenw", "sstc", "sstvala", "sstvecd", "svadu";
 			riscv,isa-base = "rv64i";
-			riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicfiss_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zmmul_za64rs_zaamo_zalrsc_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_ssccptr_sscounterenw_sstc_sstvala_sstvecd_svadu";
+			riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zmmul_za64rs_zaamo_zalrsc_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_ssccptr_sscounterenw_sstc_sstvala_sstvecd_svadu";
 			mmu-type = "riscv,sv57";
 
 			interrupt-controller {
@@ -93,7 +93,7 @@
 		linux,initrd-end = <0x00 0x9812b230>;
 		linux,initrd-start = <0x00 0x88000000>;
 		stdout-path = "/soc/serial@10000000";
-		rng-seed = <0x2b05a034 0xe739bfb7 0x512d2025 0xf0ec97e8 0x69399e86 0x1f2de5a9 0xcacea4aa 0xafb54655>;
+		rng-seed = <0x43b57d4e 0xc47d1e53 0xf72be401 0x8782f496 0x6b3aef66 0xccfa8bb3 0x710c4d0d 0x40c7b7c6>;
 	};
 
 	soc {
@@ -209,6 +209,14 @@
 			#size-cells = <0x02>;
 			#interrupt-cells = <0x01>;
 			#address-cells = <0x03>;
+			iommu-map = <0x00 0x8000 0x00 0x10 0x11 0x8000 0x11 0xffef>;
+
+			iommu@10 {
+				reg = <0x1000 0x00 0x00 0x00 0x00>;
+				phandle = <0x8000>;
+				#iommu-cells = <0x01>;
+				compatible = "riscv,pci-iommu";
+			};
 		};
 	};
 };
