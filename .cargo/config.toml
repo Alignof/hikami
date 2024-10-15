@@ -9,6 +9,8 @@ qemu-system-riscv64
 -initrd vmlinux_debug
 -drive file=rootfs.ext2,format=raw,id=hd0,if=none
 -device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on
+-netdev user,id=n1
+-device virtio-net-pci,netdev=n1,iommu_platform=true,disable-legacy=on
 -append root=/dev/vda,rw,console=ttyS0
 -device riscv-iommu-pci
 -kernel

@@ -33,6 +33,12 @@ SECTIONS
         _top_m_stack = .;
     } > MACHINE_RAM
 
+    .host_dtb : ALIGN(4K)
+    {
+        *(.host_dtb);
+        . = ALIGN(4K);
+    } > REGION_DATA
+
     .guest_dtb : ALIGN(4K)
     {
         *(.guest_dtb);

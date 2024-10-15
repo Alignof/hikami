@@ -28,10 +28,12 @@ pub struct IoMmu {
 impl IoMmu {
     /// Set page table in IOMMU.
     fn init_page_table(ddt_addr: HostPhysicalAddress) {
-        /// Offset of `iohgatp` register.
+        /// Offset of `iohgatp` register [byte].
         const OFFSET_IOHGATP: usize = 8;
-        /// Size of leaf ddt entry.
-        const LEAF_DDT_ENTRY_SIZE: usize = 512;
+        /// Size of leaf ddt entry [byte].
+        const LEAF_DDT_ENTRY_SIZE: usize = 64; // 512 / 8 = 64 [byte]
+        /// V field in TC regsiter.
+        const TC_V: u64 = 1;
 
         // set all ddt entry
         for offset in (0..PAGE_SIZE).step_by(LEAF_DDT_ENTRY_SIZE) {
@@ -39,7 +41,7 @@ impl IoMmu {
             let iohgatp_addr = ddt_addr + offset + OFFSET_IOHGATP;
 
             unsafe {
-                core::ptr::write_volatile(tc_addr.0 as *mut u64, 1);
+                core::ptr::write_volatile(tc_addr.0 as *mut u64, TC_V);
                 core::ptr::write_volatile(iohgatp_addr.0 as *mut u64, hgatp::read().bits() as u64);
             }
         }
@@ -60,6 +62,7 @@ impl PciDevice for IoMmu {
             | u32::from(pci_reg.address[2]) << 8
             | u32::from(pci_reg.address[3]);
 
+        // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
         Some(IoMmu {
             bus: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
             device: pci_first_reg >> 11 & 0b1_1111, // 5 bit
@@ -114,9 +117,9 @@ impl PciDevice for IoMmu {
         // Let k=log2(N) and B be the physical page number (PPN) of the allocated memory buffer.
         // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
         let command_queue = PageBlock::alloc();
-        let command_queue_ptr = command_queue.0 as *mut [u8; 0x1000];
+        let command_queue_ptr = command_queue.0 as *mut u8;
         unsafe {
-            core::ptr::write_bytes(command_queue_ptr, 0u8, 1);
+            core::ptr::write_bytes(command_queue_ptr, 0u8, PAGE_SIZE);
         }
         registers.cqb.set(command_queue, 4096);
         // cqt = 0
@@ -132,9 +135,9 @@ impl PciDevice for IoMmu {
         // Let k=log2(N) and B be the PPN of the allocated memory buffer.
         // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
         let fault_queue = PageBlock::alloc();
-        let fault_queue_ptr = fault_queue.0 as *mut [u8; 0x1000];
+        let fault_queue_ptr = fault_queue.0 as *mut u8;
         unsafe {
-            core::ptr::write_bytes(fault_queue_ptr, 0u8, 1);
+            core::ptr::write_bytes(fault_queue_ptr, 0u8, PAGE_SIZE);
         }
         registers.fqb.set(fault_queue, 4096);
         // fqt = 0
@@ -150,9 +153,9 @@ impl PciDevice for IoMmu {
         // Let k=log2(N) and B be the PPN of the allocated memory buffer.
         // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
         let page_request_queue = PageBlock::alloc();
-        let page_request_queue_ptr = page_request_queue.0 as *mut [u8; 0x1000];
+        let page_request_queue_ptr = page_request_queue.0 as *mut u8;
         unsafe {
-            core::ptr::write_bytes(page_request_queue_ptr, 0u8, 1);
+            core::ptr::write_bytes(page_request_queue_ptr, 0u8, PAGE_SIZE);
         }
         registers.pqb.set(page_request_queue, 4096);
         // pqt = 0
@@ -164,9 +167,9 @@ impl PciDevice for IoMmu {
 
         // 15. To program the DDT pointer, first determine the supported device_id width Dw and the format of the device-context data structure.
         let ddt_addr = PageBlock::alloc();
-        let ddt_ptr = ddt_addr.0 as *mut [u8; 0x1000];
+        let ddt_ptr = ddt_addr.0 as *mut u8;
         unsafe {
-            core::ptr::write_bytes(ddt_ptr, 0u8, 1);
+            core::ptr::write_bytes(ddt_ptr, 0u8, PAGE_SIZE);
         }
         Self::init_page_table(ddt_addr);
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
