@@ -54,6 +54,10 @@ static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCel
 /// Singleton for SBI handler.
 static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 
+/// Device tree blob that is passed to hypervisor
+#[link_section = ".host_dtb"]
+static HOST_DTB: [u8; include_bytes!("../host.dtb").len()] = *include_bytes!("../host.dtb");
+
 /// Device tree blob that is passed to guest
 #[link_section = ".guest_dtb"]
 static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
