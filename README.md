@@ -8,7 +8,7 @@ Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/up
 ## Run Linux
 ### Build QEMU
 We need to build manually the QEMU to support IOMMU.  
-```
+```sh
 $ git clone https://github.com/qemu/qemu.git -b staging
 $ cd qemu/
 # https://patchwork.ozlabs.org/project/qemu-devel/list/?series=417654
@@ -21,7 +21,7 @@ $ make -j $(nproc)
 Ver. 9.2 or later should officially support IOMMU, so it should no longer be necessary to apply patches.
 
 ### Build Linux
-```
+```sh
 $ git clone https://github.com/torvalds/linux -b v6.9
 
 $ cd /path/to/this/repository
@@ -35,7 +35,7 @@ $ mv vmlinux /path/to/this/repository
 See also for custom guest image: `guest_image/README.md`.
 
 ### Create rootfs
-```
+```sh
 $ git clone https://gitee.com/mirrors/busyboxsource.git
 $ cd busyboxsource
 
@@ -70,13 +70,13 @@ $ mv rootfs.img /path/to/this/repository
 ```
 
 ### Run
-```
+```sh
 # The actual command to be executed is written in .cargo/config.toml.
 $ cargo r
 ```
 
 ## Documents
-```
+```sh
 $ cargo doc --open
 ```
 
