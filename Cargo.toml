@@ -13,6 +13,11 @@ missing_docs = "warn"
 [lints.rustdoc]
 missing_crate_level_docs = "warn"
 
+
+[features]
+# for real device
+embedded_host_dtb = []
+
 [dependencies]
 elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"
