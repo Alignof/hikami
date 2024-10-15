@@ -30,8 +30,10 @@ impl IoMmu {
     fn init_page_table(ddt_addr: HostPhysicalAddress) {
         /// Offset of `iohgatp` register.
         const OFFSET_IOHGATP: usize = 8;
-        /// Size of leaf ddt entry.
-        const LEAF_DDT_ENTRY_SIZE: usize = 512;
+        /// Size of leaf ddt entry [byte].
+        const LEAF_DDT_ENTRY_SIZE: usize = 64; // 512 / 8 = 64 [byte]
+        /// V field in TC regsiter.
+        const TC_V: u64 = 1;
 
         // set all ddt entry
         for offset in (0..PAGE_SIZE).step_by(LEAF_DDT_ENTRY_SIZE) {
@@ -39,7 +41,7 @@ impl IoMmu {
             let iohgatp_addr = ddt_addr + offset + OFFSET_IOHGATP;
 
             unsafe {
-                core::ptr::write_volatile(tc_addr.0 as *mut u64, 1);
+                core::ptr::write_volatile(tc_addr.0 as *mut u64, TC_V);
                 core::ptr::write_volatile(iohgatp_addr.0 as *mut u64, hgatp::read().bits() as u64);
             }
         }
