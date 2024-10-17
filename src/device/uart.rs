@@ -112,7 +112,8 @@ impl MmioDevice for Uart {
 
 /// Ref: [https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/trait.Console.html](https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/trait.Console.html)
 ///
-/// TODO: Checking target address range?
+/// It doesn't seems to be used by linux.
+/// TODO: Checking target address?
 impl rustsbi::Console for Uart {
     /// Write bytes to the debug console from input memory.
     fn write(&self, bytes: Physical<&[u8]>) -> SbiRet {
