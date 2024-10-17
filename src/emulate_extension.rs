@@ -20,10 +20,10 @@ pub trait EmulateExtension {
     fn csr_field(&mut self, inst: &Instruction, write_to_csr_value: u64, read_csr_value: &mut u64);
 }
 
-/// CSR data for CSRs emulation.
-pub struct CsrData(u64);
+/// Holding a CSR value for CSRs emulation.
+pub struct EmulatedCsr(u64);
 
-impl CsrData {
+impl EmulatedCsr {
     /// Return raw data.
     pub fn bits(&self) -> u64 {
         self.0
@@ -56,8 +56,8 @@ pub fn initialize() {
 }
 
 /// Throw an VS-level exception.
-/// * `exception_num`: Exception number. (store to vscause)
-/// * `trap_value`: Trap value. (store to vstval)
+/// * `exception_num`: Exception number. (stored to vscause)
+/// * `trap_value`: Trap value. (stored to vstval)
 pub fn pseudo_vs_exception(exception_num: usize, trap_value: usize) -> ! {
     unsafe {
         let hypervisor_data = HYPERVISOR_DATA.lock();

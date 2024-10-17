@@ -1,7 +1,7 @@
 //! Emulation Zicfiss (Shadow Stack)
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
-use super::{pseudo_vs_exception, CsrData, EmulateExtension};
+use super::{pseudo_vs_exception, EmulateExtension, EmulatedCsr};
 use crate::memmap::{
     page_table::{g_stage_trans_addr, vs_stage_trans_addr},
     GuestVirtualAddress,
@@ -26,7 +26,7 @@ const SHADOW_STACK_FAULT: usize = 3;
 /// Singleton for Zicfiss extension
 pub struct Zicfiss {
     /// Shadow stack pointer
-    pub ssp: CsrData,
+    pub ssp: EmulatedCsr,
     /// Shadow Stack Enable in henvcfg (for VS-mode)
     pub henv_sse: bool,
     /// Shadow Stack Enable in senvcfg (for VU-mode)
@@ -37,7 +37,7 @@ impl Zicfiss {
     /// Constructor for `Zicfiss`.
     pub fn new() -> Self {
         Zicfiss {
-            ssp: CsrData(0),
+            ssp: EmulatedCsr(0),
             henv_sse: false,
             senv_sse: false,
         }
@@ -61,7 +61,7 @@ impl Zicfiss {
     /// Push value to shadow stack
     pub fn ss_push(&mut self, value: usize) {
         unsafe {
-            self.ssp = CsrData(
+            self.ssp = EmulatedCsr(
                 (self.ssp.0 as *const usize).byte_sub(core::mem::size_of::<usize>()) as u64,
             );
             self.ssp_hp_ptr().write_volatile(value);
@@ -72,7 +72,7 @@ impl Zicfiss {
     pub fn ss_pop(&mut self) -> usize {
         unsafe {
             let pop_value = self.ssp_hp_ptr().read_volatile();
-            self.ssp = CsrData(
+            self.ssp = EmulatedCsr(
                 (self.ssp.0 as *const usize).byte_add(core::mem::size_of::<usize>()) as u64,
             );
 
