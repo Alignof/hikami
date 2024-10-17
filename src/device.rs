@@ -81,8 +81,6 @@ pub struct Devices {
 
     /// PLIC: Platform-Level Interrupt Controller  
     pub plic: plic::Plic,
-    /// TODO: It is unused?
-    pub plic_context: usize,
 
     /// clint: Core Local INTerrupt
     pub clint: clint::Clint,
@@ -105,15 +103,6 @@ impl Devices {
             virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
             initrd: initrd::Initrd::new(&device_tree, "/chosen"),
             plic: plic::Plic::new(&device_tree, "/soc/plic"),
-            plic_context: device_tree
-                .find_node("/cpus/cpu")
-                .unwrap()
-                .children()
-                .next() // interrupt-controller
-                .unwrap()
-                .property("phandle")
-                .unwrap()
-                .value[0] as usize,
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
             pci: pci::Pci::new(&device_tree, "/soc/pci"),
