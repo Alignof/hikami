@@ -21,3 +21,4 @@ Cargo.lock
 .gdb_history
 vmlinux
 vmlinux_debug
+rootfs.*

@@ -1,7 +1,10 @@
+//! build.rs - For build script for cargo project.
+
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+/// Build script for cargo project
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 

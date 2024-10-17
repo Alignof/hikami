@@ -3,7 +3,7 @@
 
 use sbi_rt::SbiRet;
 
-/// sbi ecall handler for Base Extension (EID: #0x10)
+/// SBI ecall handler for Base Extension (EID: #0x10)
 ///
 /// All functions in the base extension must be supported by all SBI implementations,
 /// so there are no error returns defined. (p.13)
@@ -33,7 +33,7 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     }
 }
 
-/// sbi ecall handler for RFENCE Extension (EID: #0x52464E43)
+/// SBI ecall handler for RFENCE Extension (EID: #0x52464E43)
 #[allow(clippy::module_name_repetitions, clippy::cast_possible_truncation)]
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     use rustsbi::HartMask;
@@ -54,5 +54,69 @@ pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
             args[4] as usize,
         ),
         _ => panic!("unsupported fid: {}", func_id),
+    }
+}
+
+/// FWFT Feature
+/// Ref: [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/vv3.0-rc1/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/vv3.0-rc1/riscv-sbi.pdf) p.78
+#[derive(Debug)]
+enum FwftFeature {
+    /// Control misaligned access exception delegation to supervisor-mode if medeleg is present.
+    MisalignedExcDeleg,
+    /// Control landing pad support for supervisor-mode.
+    LandingPad,
+    /// Control shadow stack support for supervisor-mode.
+    ShadowStack,
+    /// Control double trap support for supervisor-mode.
+    DoubleTrap,
+    /// Control hardware updating of PTE A/D bits for supervisor-mode.
+    PteAdHwUpdating,
+    /// Control the pointer masking tag length for supervisor-mode.
+    PointerMaskingPmlen,
+}
+
+impl TryFrom<usize> for FwftFeature {
+    type Error = usize;
+    fn try_from(from: usize) -> Result<Self, Self::Error> {
+        match from {
+            0 => Ok(FwftFeature::MisalignedExcDeleg),
+            1 => Ok(FwftFeature::LandingPad),
+            2 => Ok(FwftFeature::ShadowStack),
+            3 => Ok(FwftFeature::DoubleTrap),
+            4 => Ok(FwftFeature::PteAdHwUpdating),
+            5 => Ok(FwftFeature::PointerMaskingPmlen),
+            _ => Err(from),
+        }
+    }
+}
+
+/// SBI ecall handler for Firmware Features Extension (EID #0x46574654)
+///
+/// FWFT ecall will be emulated because `sbi_rt` is not supported.
+#[allow(clippy::cast_possible_truncation)]
+pub fn sbi_fwft_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
+    /// Firmware Features Set (FID #0)
+    const FWFT_SET: usize = 0;
+    /// Firmware Features Get (FID #1)
+    const FWFT_GET: usize = 1;
+
+    let feature = args[0] as usize;
+
+    match func_id {
+        FWFT_SET => match FwftFeature::try_from(feature).unwrap() {
+            FwftFeature::ShadowStack => {
+                // hypervisor does not use shadow stack.
+                SbiRet::success(0)
+            }
+            feat => unimplemented!("unimplemented feature {:?}", feat),
+        },
+        FWFT_GET => match FwftFeature::try_from(feature).unwrap() {
+            FwftFeature::ShadowStack => {
+                // hypervisor does not use shadow stack.
+                SbiRet::success(0)
+            }
+            feat => unimplemented!("unimplemented feature {:?}", feat),
+        },
+        _ => unreachable!(),
     }
 }

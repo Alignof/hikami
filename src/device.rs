@@ -68,34 +68,41 @@ pub trait MmioDevice {
 /// `memory_map` has memory region data of each devices.  
 /// Each devices **must** be implemented Device trait.
 #[derive(Debug)]
+#[allow(clippy::doc_markdown)]
 pub struct Devices {
+    /// UART: Universal Asynchronous Receiver-Transmitter
     pub uart: uart::Uart,
+
+    /// Lists of Virtio.
     pub virtio_list: virtio::VirtIoList,
+
+    /// initrd: INITial RamDisk
     pub initrd: initrd::Initrd,
+
+    /// PLIC: Platform-Level Interrupt Controller  
     pub plic: plic::Plic,
-    pub plic_context: usize,
+
+    /// clint: Core Local INTerrupt
     pub clint: clint::Clint,
+
+    /// RTC: Real Time Clock.
     pub rtc: rtc::Rtc,
+
+    /// PCI: Peripheral Component Interconnect
     pub pci: pci::Pci,
+
+    /// IOMMU: I/O memory management unit.
     pub iommu: Option<iommu::IoMmu>,
 }
 
 impl Devices {
+    /// Constructor for `Devices`.
     pub fn new(device_tree: Fdt) -> Self {
         Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
             initrd: initrd::Initrd::new(&device_tree, "/chosen"),
             plic: plic::Plic::new(&device_tree, "/soc/plic"),
-            plic_context: device_tree
-                .find_node("/cpus/cpu")
-                .unwrap()
-                .children()
-                .next() // interrupt-controller
-                .unwrap()
-                .property("phandle")
-                .unwrap()
-                .value[0] as usize,
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
             pci: pci::Pci::new(&device_tree, "/soc/pci"),

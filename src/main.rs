@@ -1,8 +1,10 @@
+#![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
 
 extern crate alloc;
 mod device;
+mod emulate_extension;
 mod guest;
 mod h_extension;
 mod hypervisor_init;
@@ -39,6 +41,11 @@ static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCel
 
 /// Singleton for SBI handler.
 static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
+
+/// Device tree blob that is passed to hypervisor
+#[cfg(feature = "embedded_host_dtb")]
+#[link_section = ".host_dtb"]
+static HOST_DTB: [u8; include_bytes!("../host.dtb").len()] = *include_bytes!("../host.dtb");
 
 /// Device tree blob that is passed to guest
 #[link_section = ".guest_dtb"]
@@ -87,8 +94,11 @@ impl PageBlock {
 /// FIXME: Rename me!
 #[derive(Debug)]
 pub struct HypervisorData {
+    /// Current hart id (zero indexed).
     current_hart: usize,
+    /// Guests data
     guests: [Option<guest::Guest>; MAX_HART_NUM],
+    /// Devices data.
     devices: device::Devices,
 }
 
@@ -99,14 +109,15 @@ impl HypervisorData {
     /// It will be panic when parsing device tree failed.
     #[must_use]
     pub fn new(device_tree: Fdt) -> Self {
-        const ARRAY_INIT_VALUE: Option<Guest> = None;
         HypervisorData {
             current_hart: 0,
-            guests: [ARRAY_INIT_VALUE; MAX_HART_NUM],
+            guests: [const { None }; MAX_HART_NUM],
             devices: Devices::new(device_tree),
         }
     }
 
+    /// Return Device objects.
+    ///
     /// # Panics
     /// It will be panic if devices are uninitialized.
     #[must_use]
@@ -114,6 +125,8 @@ impl HypervisorData {
         &mut self.devices
     }
 
+    /// Return current hart's guest.
+    ///
     /// # Panics
     /// It will be panic if current HART's guest data is empty.
     #[must_use]
@@ -123,6 +136,8 @@ impl HypervisorData {
             .expect("guest data not found")
     }
 
+    /// Add new guest data.
+    ///
     /// # Panics
     /// It will be panic if `hart_id` is greater than `MAX_HART_NUM`.
     pub fn register_guest(&mut self, new_guest: Guest) {

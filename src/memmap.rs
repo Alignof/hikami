@@ -12,11 +12,16 @@ trait AddressRangeUtil {
     fn len(&self) -> usize;
 }
 
+/// Guest Virtual Address
+#[derive(Default, Debug, Copy, Clone)]
+pub struct GuestVirtualAddress(pub usize);
+
 /// Guest Physical Address
 #[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq)]
 pub struct GuestPhysicalAddress(pub usize);
 
 impl GuestPhysicalAddress {
+    /// Convert to usize.
     pub fn raw(self) -> usize {
         self.0
     }
@@ -47,6 +52,7 @@ impl AddressRangeUtil for Range<GuestPhysicalAddress> {
 pub struct HostPhysicalAddress(pub usize);
 
 impl HostPhysicalAddress {
+    /// Convert to usize.
     pub fn raw(self) -> usize {
         self.0
     }
@@ -91,6 +97,9 @@ pub struct MemoryMap {
 }
 
 impl MemoryMap {
+    /// Create new `MemoryMap`.
+    ///
+    /// `flags` is mapped to bitmap.
     pub fn new(
         virt: Range<GuestPhysicalAddress>,
         phys: Range<HostPhysicalAddress>,

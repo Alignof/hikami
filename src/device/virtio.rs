@@ -36,14 +36,19 @@ impl VirtIoList {
     }
 }
 
+/// Virtualization standard for IO device.
 #[derive(Debug)]
 pub struct VirtIo {
+    /// Base address of memory map.
     base_addr: HostPhysicalAddress,
+    /// Memory map size.
     size: usize,
+    /// Interrupt Reqeust bit.
     irq: u8,
 }
 
 impl VirtIo {
+    /// Return `irq`.
     pub fn irq(&self) -> u8 {
         self.irq
     }
