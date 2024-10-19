@@ -25,7 +25,7 @@ linked_list_allocator = "0.10.5"
 raki = "1.2.0"
 riscv = "0.11.1"
 riscv-rt = { git = "https://github.com/Alignof/riscv", branch = "fix/link_error_on_latest_rust" }
-rustsbi = { version = "0.4.0-alpha.1", features = ["machine"] }
+rustsbi = { version = "0.4.0", features = ["machine"] }
 sbi-rt = "0.0.3"
 sbi-spec = { version = "0.0.7", features = [ "legacy" ] }
 spin = "0.9.8"
