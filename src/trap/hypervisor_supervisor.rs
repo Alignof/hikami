@@ -3,9 +3,9 @@
 mod exception;
 mod interrupt;
 
+use crate::guest::context::ContextData;
 use exception::trap_exception;
 use interrupt::trap_interrupt;
-use crate::guest::context::ContextData;
 
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;

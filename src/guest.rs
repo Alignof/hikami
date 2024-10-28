@@ -44,8 +44,7 @@ impl Guest {
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
         memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
-        let stack_top_addr =
-            HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
+        let stack_top_addr = HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
         page_table::sv39x4::initialize_page_table(page_table_addr);

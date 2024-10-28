@@ -2,8 +2,8 @@
 
 use crate::device::MmioDevice;
 use crate::emulate_extension;
-use crate::guest::Guest;
 use crate::guest::context::ContextData;
+use crate::guest::Guest;
 use crate::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
     hvip, vsatp, VsInterruptKind,
