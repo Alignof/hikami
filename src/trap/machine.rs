@@ -9,6 +9,7 @@ use interrupt::trap_interrupt;
 use core::arch::asm;
 use riscv::register::mcause::{self, Trap};
 
+/// Size of context data in M-mode.
 const MACHINE_CONTEXT_SIZE: usize = 256;
 
 /// Epilogue of Machine trap vector
