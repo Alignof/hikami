@@ -45,7 +45,7 @@ impl Guest {
         memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
         let stack_top_addr =
-            unsafe { HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize) };
+            HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
         page_table::sv39x4::initialize_page_table(page_table_addr);
