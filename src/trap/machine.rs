@@ -9,6 +9,8 @@ use interrupt::trap_interrupt;
 use core::arch::asm;
 use riscv::register::mcause::{self, Trap};
 
+const MACHINE_CONTEXT_SIZE: usize = 256;
+
 /// Epilogue of Machine trap vector
 #[inline(always)]
 #[allow(clippy::inline_always)]
@@ -19,7 +21,7 @@ unsafe fn mtrap_exit() -> ! {
     1:
         auipc sp, %pcrel_hi(_top_m_stack)
         addi sp, sp, %pcrel_lo(1b)
-        addi sp, sp, -256
+        addi sp, sp, -{M_CONTEXT_SIZE}
         
         ld ra, 1*8(sp)
         ld gp, 3*8(sp)
@@ -53,13 +55,14 @@ unsafe fn mtrap_exit() -> ! {
         ld t6, 31*8(sp)
 
         // revert stack pointer top
-        addi sp, sp, 256
+        addi sp, sp, {M_CONTEXT_SIZE}
 
         // swap current sp for stored original mode sp
         csrrw sp, mscratch, sp
 
         mret
         ",
+        M_CONTEXT_SIZE = const MACHINE_CONTEXT_SIZE,
         options(noreturn),
     );
 }
@@ -76,7 +79,7 @@ unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
     1:
         auipc sp, %pcrel_hi(_top_m_stack)
         addi sp, sp, %pcrel_lo(1b)
-        addi sp, sp, -256
+        addi sp, sp, -{M_CONTEXT_SIZE}
 
         ld ra, 1*8(sp)
         ld gp, 3*8(sp)
@@ -110,13 +113,14 @@ unsafe fn mtrap_exit_sbi(error: usize, value: usize) -> ! {
         ld t6, 31*8(sp)
 
         // revert stack pointer to top (0x80800000)
-        addi sp, sp, 256
+        addi sp, sp, {M_CONTEXT_SIZE}
 
         // swap current sp for stored original mode sp
         csrrw sp, mscratch, sp
 
         mret
         ",
+        M_CONTEXT_SIZE = const MACHINE_CONTEXT_SIZE,
         error = in(reg) error,
         value = in(reg) value,
         options(noreturn),
@@ -132,7 +136,7 @@ pub unsafe extern "C" fn mtrap_vector() -> ! {
         fence.i
         // swap original mode sp for machine mode sp
         csrrw sp, mscratch, sp
-        addi sp, sp, -256
+        addi sp, sp, -{M_CONTEXT_SIZE}
 
         sd ra, 1*8(sp)
         sd gp, 3*8(sp)
@@ -165,6 +169,7 @@ pub unsafe extern "C" fn mtrap_vector() -> ! {
         sd t5, 30*8(sp)
         sd t6, 31*8(sp)
         ",
+        M_CONTEXT_SIZE = const MACHINE_CONTEXT_SIZE,
     );
 
     mtrap_vector2();

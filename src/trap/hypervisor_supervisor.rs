@@ -5,15 +5,13 @@ mod interrupt;
 
 use exception::trap_exception;
 use interrupt::trap_interrupt;
+use crate::guest::context::ContextData;
 
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
 use riscv::register::scause::{self, Trap};
 
 /// Switch to original mode stack and save contexts.
-///
-/// # TODO
-/// replace stringify macro to const when `asm_const` is stabled.
 #[inline(always)]
 #[allow(clippy::inline_always)]
 pub unsafe fn hstrap_exit() -> ! {
@@ -29,7 +27,7 @@ pub unsafe fn hstrap_exit() -> ! {
 
         // set to stack top
         mv sp, {stack_top}  
-        addi sp, sp, -272 // Size of ContextData = 8 * 34
+        addi sp, sp, -{HS_CONTEXT_SIZE}
 
         // restore sstatus 
         ld t0, 32*8(sp)
@@ -72,11 +70,12 @@ pub unsafe fn hstrap_exit() -> ! {
         ld t6, 31*8(sp)
 
         // swap HS-mode sp for original mode sp.
-        addi sp, sp, 272
+        addi sp, sp, {HS_CONTEXT_SIZE}
         csrrw sp, sscratch, sp
 
         sret
         ",
+        HS_CONTEXT_SIZE = const size_of::<ContextData>(),
         stack_top = in(reg) stack_top.raw(),
         options(noreturn)
     );
@@ -84,10 +83,6 @@ pub unsafe fn hstrap_exit() -> ! {
 
 /// Trap vector for HS-mode.
 /// Switch to hypervisor stack and save contexts.
-///
-/// # TODO
-/// ## `asm_const`
-/// replace stringify macro to const when `asm_const` is stabled.
 ///
 /// ## `fn_align`
 /// function alignment (feature `fn_align`).  
@@ -106,7 +101,7 @@ pub unsafe extern "C" fn hstrap_vector() -> ! {
 
             // swap original mode sp for HS-mode sp 
             csrrw sp, sscratch, sp
-            addi sp, sp, -272 // Size of ContextData = 8 * 34
+            addi sp, sp, -{HS_CONTEXT_SIZE}
 
             // save registers
             sd ra, 1*8(sp)
@@ -148,6 +143,7 @@ pub unsafe extern "C" fn hstrap_vector() -> ! {
             csrr t1, sepc
             sd t1, 33*8(sp)
             ",
+            HS_CONTEXT_SIZE = const size_of::<ContextData>(),
         );
     }
 

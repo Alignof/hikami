@@ -3,6 +3,7 @@
 use crate::device::MmioDevice;
 use crate::emulate_extension;
 use crate::guest::Guest;
+use crate::guest::context::ContextData;
 use crate::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
     hvip, vsatp, VsInterruptKind,
@@ -211,7 +212,7 @@ fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
 
             // set sp to scratch stack top
             mv sp, {stack_top}  
-            addi sp, sp, -272 // Size of ContextData = 8 * 34
+            addi sp, sp, -{HS_CONTEXT_SIZE}
 
             // restore sstatus 
             ld t0, 32*8(sp)
@@ -254,11 +255,12 @@ fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
             ld t6, 31*8(sp)
 
             // swap HS-mode sp for original mode sp.
-            addi sp, sp, 272
+            addi sp, sp, {HS_CONTEXT_SIZE}
             csrrw sp, sscratch, sp
 
             sret
             ",
+            HS_CONTEXT_SIZE = const size_of::<ContextData>(),
             in("a0") hart_id,
             in("a1") dtb_addr.raw(),
             stack_top = in(reg) stack_top.raw(),
