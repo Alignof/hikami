@@ -3,7 +3,7 @@ runner = """
 qemu-system-riscv64
 -cpu rv64,smstateen=true
 -machine virt
--bios none
+-bios default
 -nographic
 -m 2G
 -initrd vmlinux_debug
