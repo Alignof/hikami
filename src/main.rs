@@ -21,7 +21,6 @@ use core::panic::PanicInfo;
 
 use fdt::Fdt;
 use linked_list_allocator::LockedHeap;
-use riscv_rt::entry;
 use spin::Mutex;
 
 use crate::device::Devices;
@@ -151,7 +150,8 @@ impl HypervisorData {
 /// * set stack pointer
 /// * init mtvec and stvec
 /// * jump to mstart
-#[entry]
+#[link_section = ".text.entry"]
+#[no_mangle]
 fn _start(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         // Initialize global allocator
