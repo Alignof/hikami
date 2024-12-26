@@ -11,7 +11,6 @@ mod guest;
 mod h_extension;
 mod hypervisor_init;
 mod memmap;
-mod sbi;
 mod trap;
 
 use alloc::boxed::Box;
@@ -29,7 +28,6 @@ use crate::guest::Guest;
 use crate::hypervisor_init::hstart;
 use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::memmap::HostPhysicalAddress;
-use crate::sbi::Sbi;
 
 #[global_allocator]
 /// Global allocator.
@@ -40,7 +38,7 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
 
 /// Singleton for SBI handler.
-static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
+//static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
 
 /// Device tree blob that is passed to hypervisor
 #[cfg(feature = "embedded_host_dtb")]
