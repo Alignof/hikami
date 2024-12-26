@@ -1,6 +1,8 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
+// TODO: remove nightly when `naked_functions` become stable.
+#![feature(naked_functions)]
 
 extern crate alloc;
 mod device;
@@ -14,7 +16,7 @@ mod trap;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::arch::asm;
+use core::arch::naked_asm;
 use core::cell::OnceCell;
 use core::panic::PanicInfo;
 
@@ -150,32 +152,28 @@ impl HypervisorData {
 /// - set stack pointer
 /// - init stvec
 /// - jump to hstart
-///
-/// TODO: add `naked` attribute.
 #[link_section = ".text.entry"]
 #[no_mangle]
+#[naked]
 extern "C" fn _start() -> ! {
     unsafe {
         // set stack pointer
-        asm!(
+        naked_asm!(
             "
             li t0, {stack_size_per_hart}
             mul t1, a0, t0
-            mv sp, t1
-            add sp, sp, t0
+            la sp, {stack_top}
+            sub sp, sp, t1
 
             li t2, {DRAM_BASE}
             csrw stvec, t2
 
             call {hstart}
             ",
-            // avoid to use `a0` register.
-            in("t1") core::ptr::addr_of!(_top_b_stack) as usize,
+            stack_top = sym _top_b_stack,
             stack_size_per_hart = const STACK_SIZE_PER_HART,
             DRAM_BASE = const DRAM_BASE,
             hstart = sym hstart,
-        );
+        )
     }
-
-    unreachable!();
 }
