@@ -56,8 +56,8 @@ extern "C" {
     static mut _start_heap: u8;
     /// heap size (defined in `memory.x`)
     static _hv_heap_size: u8;
-    /// machine stack top (defined in `memory.x`)
-    static _top_m_stack: u8;
+    /// boot stack top (defined in `memory.x`)
+    static _top_b_stack: u8;
 }
 
 /// Panic handler
