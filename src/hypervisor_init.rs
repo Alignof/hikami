@@ -14,7 +14,9 @@ use crate::memmap::{
     HostPhysicalAddress,
 };
 use crate::trap::hypervisor_supervisor::hstrap_vector;
+use crate::ALLOCATOR;
 use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
+use crate::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
 
@@ -29,6 +31,14 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // dtb_addr test and hint for register usage.
     assert_ne!(dtb_addr, 0);
+
+    unsafe {
+        // Initialize global allocator
+        ALLOCATOR.lock().init(
+            core::ptr::addr_of_mut!(_start_heap),
+            core::ptr::addr_of!(_hv_heap_size) as usize,
+        );
+    }
 
     // clear all hs-mode to vs-mode interrupts.
     hvip::clear(VsInterruptKind::External);

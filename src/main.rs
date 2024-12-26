@@ -8,7 +8,6 @@ mod emulate_extension;
 mod guest;
 mod h_extension;
 mod hypervisor_init;
-mod machine_init;
 mod memmap;
 mod sbi;
 mod trap;
@@ -25,7 +24,7 @@ use spin::Mutex;
 
 use crate::device::Devices;
 use crate::guest::Guest;
-use crate::machine_init::mstart;
+use crate::hypervisor_init::hstart;
 use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::memmap::HostPhysicalAddress;
 use crate::sbi::Sbi;
@@ -146,41 +145,35 @@ impl HypervisorData {
     }
 }
 
-/// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
-/// * set stack pointer
-/// * init mtvec and stvec
-/// * jump to mstart
+/// Entry function of the hypervisor.
+///
+/// - set stack pointer
+/// - init stvec
+/// - jump to hstart
+///
+/// TODO: add `naked` attribute.
 #[link_section = ".text.entry"]
 #[no_mangle]
-fn _start(hart_id: usize, dtb_addr: usize) -> ! {
-    unsafe {
-        // Initialize global allocator
-        ALLOCATOR.lock().init(
-            core::ptr::addr_of_mut!(_start_heap),
-            core::ptr::addr_of!(_hv_heap_size) as usize,
-        );
-    }
-
+extern "C" fn _start() -> ! {
     unsafe {
         // set stack pointer
         asm!(
             "
-            mv a0, {hart_id}
-            mv a1, {dtb_addr}
-            mv t1, {stack_size_per_hart}
-            mul t0, a0, t1
-            mv sp, {stack_base}
+            li t0, {stack_size_per_hart}
+            mul t1, a0, t0
+            mv sp, t1
             add sp, sp, t0
-            csrw mtvec, {DRAM_BASE}
-            csrw stvec, {DRAM_BASE}
-            j {mstart}
+
+            li t2, {DRAM_BASE}
+            csrw stvec, t2
+
+            call {hstart}
             ",
-            hart_id = in(reg) hart_id,
-            dtb_addr = in(reg) dtb_addr,
-            stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) core::ptr::addr_of!(_top_m_stack) as usize,
-            DRAM_BASE = in(reg) DRAM_BASE,
-            mstart = sym mstart,
+            // avoid to use `a0` register.
+            in("t1") core::ptr::addr_of!(_top_b_stack) as usize,
+            stack_size_per_hart = const STACK_SIZE_PER_HART,
+            DRAM_BASE = const DRAM_BASE,
+            hstart = sym hstart,
         );
     }
 
