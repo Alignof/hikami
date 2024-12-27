@@ -2,6 +2,27 @@
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
 use sbi_rt::SbiRet;
+use sbi_rt::{ConfigFlags, StartFlags, StopFlags};
+
+/// SBI re-ecall
+///
+/// For now, pass all arguments regardless of the actual number of arguments.
+fn sbi_call(ext_id: usize, func_id: usize, args: &[u64; 5]) -> SbiRet {
+    let (error, value);
+    unsafe {
+        core::arch::asm!(
+            "ecall",
+            in("a7") ext_id,
+            in("a6") func_id,
+            inlateout("a0") args[0] => error,
+            inlateout("a1") args[1] => value,
+            in("a2") args[2],
+            in("a3") args[3],
+            in("a4") args[4],
+        );
+    }
+    SbiRet { error, value }
+}
 
 /// SBI ecall handler for Base Extension (EID: #0x10)
 ///
