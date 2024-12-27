@@ -18,7 +18,7 @@ pub fn mstart(hart_id: usize, dtb_addr: usize) -> ! {
         mideleg::set_sext();
         mideleg::set_ssoft();
         mideleg::set_stimer();
-        // medeleg = 0xb1ff
+        // medeleg = 0xb5ff
         medeleg::set_instruction_misaligned();
         medeleg::set_instruction_fault();
         medeleg::set_illegal_instruction();

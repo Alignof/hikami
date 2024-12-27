@@ -54,6 +54,65 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     }
 }
 
+struct PmuFlag(u64);
+impl PmuFlag {
+    pub fn new(val: u64) -> Self {
+        PmuFlag(0b1111_1111 & val)
+    }
+}
+impl ConfigFlags for PmuFlag {
+    fn raw(&self) -> usize {
+        self.0 as usize
+    }
+}
+impl StartFlags for PmuFlag {
+    fn raw(&self) -> usize {
+        self.0 as usize
+    }
+}
+impl StopFlags for PmuFlag {
+    fn raw(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// SBI ecall handler for PMU Extension (EID: #0x504D55)
+pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
+    use sbi_spec::pmu::{
+        COUNTER_CONFIG_MATCHING, COUNTER_FW_READ, COUNTER_FW_READ_HI, COUNTER_GET_INFO,
+        COUNTER_START, COUNTER_STOP, EID_PMU, NUM_COUNTERS, SNAPSHOT_SET_SHMEM,
+    };
+    match func_id {
+        NUM_COUNTERS => SbiRet {
+            error: 0,
+            value: sbi_rt::pmu_num_counters(),
+        },
+        COUNTER_GET_INFO => sbi_rt::pmu_counter_get_info(args[0] as usize),
+        COUNTER_CONFIG_MATCHING => sbi_rt::pmu_counter_config_matching(
+            args[0] as usize,
+            args[1] as usize,
+            PmuFlag::new(args[2]),
+            args[3] as usize,
+            args[4],
+        ),
+        COUNTER_START => sbi_rt::pmu_counter_start(
+            args[0] as usize,
+            args[1] as usize,
+            PmuFlag::new(args[2]),
+            args[3],
+        ),
+        COUNTER_STOP => {
+            sbi_rt::pmu_counter_stop(args[0] as usize, args[1] as usize, PmuFlag::new(args[2]))
+        }
+        COUNTER_FW_READ => sbi_rt::pmu_counter_fw_read(args[0] as usize),
+        COUNTER_FW_READ_HI => sbi_rt::pmu_counter_fw_read_hi(args[0] as usize),
+        // `sbi_rt::pmu_snapshot_set_shmem` is unimplemented.
+        // thus it is called by ecall instruction directly.
+        SNAPSHOT_SET_SHMEM => sbi_call(EID_PMU, SNAPSHOT_SET_SHMEM, args),
+        _ => panic!("unsupported fid: {}", func_id),
+    }
+}
+
 /// SBI ecall handler for RFENCE Extension (EID: #0x52464E43)
 #[allow(clippy::module_name_repetitions, clippy::cast_possible_truncation)]
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
