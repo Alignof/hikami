@@ -138,8 +138,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let (guest_entry_point, elf_end_addr) =
         new_guest.load_guest_elf(&guest_elf, initrd.paddr().raw() as *mut u8);
 
-    // filling remain memory region
-    new_guest.filling_memory_region(
+    // allocate all remain memory region
+    new_guest.allocate_memory_region(
         elf_end_addr..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
     );
 

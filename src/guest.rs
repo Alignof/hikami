@@ -209,7 +209,7 @@ impl Guest {
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
-    pub fn filling_memory_region(&self, region: Range<GuestPhysicalAddress>) {
+    pub fn allocate_memory_region(&self, region: Range<GuestPhysicalAddress>) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
