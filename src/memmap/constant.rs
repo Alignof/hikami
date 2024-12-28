@@ -21,20 +21,6 @@ pub const DRAM_BASE: usize = 0x8000_0000;
 /// Stack size for each HART.
 pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 
-pub mod device {
-    //! Device memory map
-    //! TODO?: parse device tree in `machine_init.rs`
-
-    use crate::memmap::HostPhysicalAddress;
-
-    /// CLINT address
-    /// For trap `SupervisorSoftware` interrupt
-    pub const CLINT_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x200_0000);
-
-    /// mtimecmp CSRs address
-    pub const MTIMECMP_ADDR: HostPhysicalAddress = HostPhysicalAddress(0x200_4000);
-}
-
 pub mod guest_memory {
     //! Guest memory region on Guest Physical Address
 
