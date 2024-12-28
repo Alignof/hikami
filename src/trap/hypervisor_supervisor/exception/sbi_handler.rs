@@ -54,29 +54,35 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     }
 }
 
+/// Type of flag for SBI PMU extension.
 struct PmuFlag(u64);
 impl PmuFlag {
+    /// Create `PmuFlag` from a register value.
     pub fn new(val: u64) -> Self {
         PmuFlag(0b1111_1111 & val)
     }
 }
 impl ConfigFlags for PmuFlag {
+    #[allow(clippy::cast_possible_truncation)]
     fn raw(&self) -> usize {
         self.0 as usize
     }
 }
 impl StartFlags for PmuFlag {
+    #[allow(clippy::cast_possible_truncation)]
     fn raw(&self) -> usize {
         self.0 as usize
     }
 }
 impl StopFlags for PmuFlag {
+    #[allow(clippy::cast_possible_truncation)]
     fn raw(&self) -> usize {
         self.0 as usize
     }
 }
 
 /// SBI ecall handler for PMU Extension (EID: #0x504D55)
+#[allow(clippy::cast_possible_truncation)]
 pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     use sbi_spec::pmu::{
         COUNTER_CONFIG_MATCHING, COUNTER_FW_READ, COUNTER_FW_READ_HI, COUNTER_GET_INFO,
