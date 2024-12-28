@@ -13,7 +13,7 @@ use crate::memmap::{
     constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
     HostPhysicalAddress,
 };
-use crate::trap::hypervisor_supervisor::hstrap_vector;
+use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;
 use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
 use crate::{_hv_heap_size, _start_heap};

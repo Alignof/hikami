@@ -3,7 +3,7 @@
 pub mod zicfiss;
 
 use crate::h_extension::csrs::vstvec;
-use crate::trap::hypervisor_supervisor::hstrap_exit;
+use crate::trap::hstrap_exit;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
