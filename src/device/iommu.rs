@@ -57,16 +57,16 @@ impl PciDevice for IoMmu {
             .next()
             .unwrap();
         assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
-        let pci_first_reg = u32::from(pci_reg.address[0]) << 24
-            | u32::from(pci_reg.address[1]) << 16
-            | u32::from(pci_reg.address[2]) << 8
+        let pci_first_reg = (u32::from(pci_reg.address[0]) << 24)
+            | (u32::from(pci_reg.address[1]) << 16)
+            | (u32::from(pci_reg.address[2]) << 8)
             | u32::from(pci_reg.address[3]);
 
         // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
         Some(IoMmu {
-            bus: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
-            device: pci_first_reg >> 11 & 0b1_1111, // 5 bit
-            function: pci_first_reg >> 8 & 0b111,   // 3 bit
+            bus: (pci_first_reg >> 16) & 0b1111_1111, // 8 bit
+            device: (pci_first_reg >> 11) & 0b1_1111, // 5 bit
+            function: (pci_first_reg >> 8) & 0b111,   // 3 bit
         })
     }
 

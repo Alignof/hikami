@@ -440,7 +440,7 @@ pub mod hgatp {
 
     /// Set Hgatp fields.
     pub fn set(mode: Mode, vmid: usize, ppn: usize) {
-        write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
+        write(((0xF & (mode as usize)) << 60) | ((0x3FFF & vmid) << 44) | 0x0FFF_FFFF_FFFF & ppn);
     }
 
     impl_bits!(Hgatp);

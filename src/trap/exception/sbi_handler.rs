@@ -37,7 +37,7 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     let result_value = match func_id {
         GET_SBI_SPEC_VERSION => {
             let spec = sbi_rt::get_spec_version();
-            spec.major() << 24 | spec.minor()
+            (spec.major() << 24) | spec.minor()
         }
         GET_SBI_IMPL_ID => sbi_rt::get_sbi_impl_id(),
         GET_SBI_IMPL_VERSION => sbi_rt::get_sbi_impl_version(),

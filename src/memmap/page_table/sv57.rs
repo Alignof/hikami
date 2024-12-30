@@ -87,11 +87,11 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
                         "Address translation failed: pte.ppn[0] != 0"
                     );
                     return Ok(GuestPhysicalAddress(
-                        pte.ppn(4) << 48
-                            | gva.vpn(3) << 39
-                            | gva.vpn(2) << 30
-                            | gva.vpn(1) << 21
-                            | gva.vpn(0) << 12
+                        (pte.ppn(4) << 48)
+                            | (gva.vpn(3) << 39)
+                            | (gva.vpn(2) << 30)
+                            | (gva.vpn(1) << 21)
+                            | (gva.vpn(0) << 12)
                             | gva.page_offset(),
                     ));
                 }
@@ -109,11 +109,11 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
                         "Address translation failed: pte.ppn[0] != 0"
                     );
                     return Ok(GuestPhysicalAddress(
-                        pte.ppn(4) << 48
-                            | pte.ppn(3) << 39
-                            | gva.vpn(2) << 30
-                            | gva.vpn(1) << 21
-                            | gva.vpn(0) << 12
+                        (pte.ppn(4) << 48)
+                            | (pte.ppn(3) << 39)
+                            | (gva.vpn(2) << 30)
+                            | (gva.vpn(1) << 21)
+                            | (gva.vpn(0) << 12)
                             | gva.page_offset(),
                     ));
                 }
@@ -127,11 +127,11 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
                         "Address translation failed: pte.ppn[0] != 0"
                     );
                     return Ok(GuestPhysicalAddress(
-                        pte.ppn(4) << 48
-                            | pte.ppn(3) << 39
-                            | pte.ppn(2) << 30
-                            | gva.vpn(1) << 21
-                            | gva.vpn(0) << 12
+                        (pte.ppn(4) << 48)
+                            | (pte.ppn(3) << 39)
+                            | (pte.ppn(2) << 30)
+                            | (gva.vpn(1) << 21)
+                            | (gva.vpn(0) << 12)
                             | gva.page_offset(),
                     ));
                 }
@@ -141,21 +141,21 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
                         "Address translation failed: pte.ppn[0] != 0"
                     );
                     return Ok(GuestPhysicalAddress(
-                        pte.ppn(4) << 48
-                            | pte.ppn(3) << 39
-                            | pte.ppn(2) << 30
-                            | pte.ppn(1) << 21
-                            | gva.vpn(0) << 12
+                        (pte.ppn(4) << 48)
+                            | (pte.ppn(3) << 39)
+                            | (pte.ppn(2) << 30)
+                            | (pte.ppn(1) << 21)
+                            | (gva.vpn(0) << 12)
                             | gva.page_offset(),
                     ));
                 }
                 PageTableLevel::Lv4KB => {
                     return Ok(GuestPhysicalAddress(
-                        pte.ppn(4) << 48
-                            | pte.ppn(3) << 39
-                            | pte.ppn(2) << 30
-                            | pte.ppn(1) << 21
-                            | pte.ppn(0) << 12
+                        (pte.ppn(4) << 48)
+                            | (pte.ppn(3) << 39)
+                            | (pte.ppn(2) << 30)
+                            | (pte.ppn(1) << 21)
+                            | (pte.ppn(0) << 12)
                             | gva.page_offset(),
                     ));
                 }

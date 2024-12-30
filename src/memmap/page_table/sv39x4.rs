@@ -185,7 +185,10 @@ pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
                         "Address translation failed: pte.ppn[1] != 0"
                     );
                     return HostPhysicalAddress(
-                        pte.ppn(2) << 30 | gpa.vpn(1) << 21 | gpa.vpn(0) << 12 | gpa.page_offset(),
+                        (pte.ppn(2) << 30)
+                            | (gpa.vpn(1) << 21)
+                            | (gpa.vpn(0) << 12)
+                            | gpa.page_offset(),
                     );
                 }
                 PageTableLevel::Lv2MB => {
@@ -194,12 +197,18 @@ pub fn trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
                         "Address translation failed: pte.ppn[0] != 0"
                     );
                     return HostPhysicalAddress(
-                        pte.ppn(2) << 30 | pte.ppn(1) << 21 | gpa.vpn(0) << 12 | gpa.page_offset(),
+                        (pte.ppn(2) << 30)
+                            | (pte.ppn(1) << 21)
+                            | (gpa.vpn(0) << 12)
+                            | gpa.page_offset(),
                     );
                 }
                 PageTableLevel::Lv4KB => {
                     return HostPhysicalAddress(
-                        pte.ppn(2) << 30 | pte.ppn(1) << 21 | pte.ppn(0) << 12 | gpa.page_offset(),
+                        (pte.ppn(2) << 30)
+                            | (pte.ppn(1) << 21)
+                            | (pte.ppn(0) << 12)
+                            | gpa.page_offset(),
                     )
                 }
             }

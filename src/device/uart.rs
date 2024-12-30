@@ -124,7 +124,7 @@ impl rustsbi::Console for Uart {
         };
         for c in byte_data {
             unsafe {
-                while (uart_lsr_ptr.read_volatile() >> 5 & 0x1) == 1 {}
+                while ((uart_lsr_ptr.read_volatile() >> 5) & 0x1) == 1 {}
                 uart_ptr.write_volatile(u32::from(*c));
             }
         }
@@ -159,7 +159,7 @@ impl rustsbi::Console for Uart {
         let uart_ptr = self.base_addr.raw() as *mut u32;
         let uart_lsr_ptr = self.lsr_addr().raw() as *mut u32;
         unsafe {
-            while (uart_lsr_ptr.read_volatile() >> 5 & 0x1) == 1 {}
+            while ((uart_lsr_ptr.read_volatile() >> 5) & 0x1) == 1 {}
             uart_ptr.write_volatile(u32::from(byte));
         }
         SbiRet::success(0)
