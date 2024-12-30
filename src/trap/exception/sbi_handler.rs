@@ -7,7 +7,7 @@ use sbi_rt::{ConfigFlags, StartFlags, StopFlags};
 /// SBI re-ecall
 ///
 /// For now, pass all arguments regardless of the actual number of arguments.
-fn sbi_call(ext_id: usize, func_id: usize, args: &[u64; 5]) -> SbiRet {
+pub fn sbi_call(ext_id: usize, func_id: usize, args: &[u64; 5]) -> SbiRet {
     let (error, value);
     unsafe {
         core::arch::asm!(

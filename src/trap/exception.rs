@@ -8,6 +8,7 @@ use super::hstrap_exit;
 use crate::guest;
 use crate::h_extension::{csrs::vstvec, HvException};
 use crate::HYPERVISOR_DATA;
+use sbi_handler::sbi_call;
 
 use core::arch::asm;
 use riscv::register::{
@@ -57,10 +58,7 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
         sbi_spec::pmu::EID_PMU => sbi_pmu_handler(func_id, arguments),
         sbi_spec::rfnc::EID_RFNC => sbi_rfnc_handler(func_id, arguments),
         EID_FWFT => sbi_fwft_handler(func_id, arguments),
-        _ => panic!(
-            "Unsupported SBI call, eid: {:#x}, fid: {:#x}",
-            ext_id, func_id
-        ),
+        _ => sbi_call(ext_id, func_id, arguments),
     };
 
     context.set_xreg(10, sbiret.error as u64);

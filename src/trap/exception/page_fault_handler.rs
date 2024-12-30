@@ -38,7 +38,10 @@ pub fn load_guest_page_fault() {
             DeviceEmulateError::InvalidAddress
             | DeviceEmulateError::InvalidContextId
             | DeviceEmulateError::ReservedRegister,
-        ) => hs_forward_exception(),
+        ) => {
+            drop(hypervisor_data);
+            hs_forward_exception();
+        }
     }
 }
 
@@ -74,5 +77,6 @@ pub fn store_guest_page_fault() {
         }
     }
 
+    drop(hypervisor_data);
     hs_forward_exception();
 }
