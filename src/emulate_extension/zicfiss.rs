@@ -84,7 +84,7 @@ impl Zicfiss {
     ///
     /// Chack corresponding `SSE` bit of xenvcfg.
     fn is_ss_enable(&self, sstatus: usize) -> bool {
-        let spp = sstatus >> 8 & 0x1;
+        let spp = (sstatus >> 8) & 0x1;
         if spp == 0 {
             self.senv_sse
         } else {
@@ -219,12 +219,12 @@ impl EmulateExtension for Zicfiss {
                     | ZicsrOpcode::CSRRWI
                     | ZicsrOpcode::CSRRSI,
                 ) => {
-                    if write_to_csr_value >> 3 & 0x1 == 1 {
+                    if (write_to_csr_value >> 3) & 0x1 == 1 {
                         self.senv_sse = true;
                     }
                 }
                 OpcodeKind::Zicsr(ZicsrOpcode::CSRRC | ZicsrOpcode::CSRRCI) => {
-                    if write_to_csr_value >> 3 & 0x1 == 1 {
+                    if (write_to_csr_value >> 3) & 0x1 == 1 {
                         self.senv_sse = false;
                     }
                 }

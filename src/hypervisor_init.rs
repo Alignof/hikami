@@ -13,8 +13,10 @@ use crate::memmap::{
     constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
     HostPhysicalAddress,
 };
-use crate::trap::hypervisor_supervisor::hstrap_vector;
+use crate::trap::hstrap_vector;
+use crate::ALLOCATOR;
 use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
+use crate::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
 
@@ -29,6 +31,14 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // dtb_addr test and hint for register usage.
     assert_ne!(dtb_addr, 0);
+
+    unsafe {
+        // Initialize global allocator
+        ALLOCATOR.lock().init(
+            core::ptr::addr_of_mut!(_start_heap),
+            core::ptr::addr_of!(_hv_heap_size) as usize,
+        );
+    }
 
     // clear all hs-mode to vs-mode interrupts.
     hvip::clear(VsInterruptKind::External);
@@ -128,8 +138,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let (guest_entry_point, elf_end_addr) =
         new_guest.load_guest_elf(&guest_elf, initrd.paddr().raw() as *mut u8);
 
-    // filling remain memory region
-    new_guest.filling_memory_region(
+    // allocate all remain memory region
+    new_guest.allocate_memory_region(
         elf_end_addr..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
     );
 

@@ -35,7 +35,8 @@ pub fn illegal_instruction() {
             }
         },
         _ => unimplemented!(
-            "unsupported illegal instruction: {:#?}, at {:#x}",
+            "unsupported illegal instruction({:#x}): {:#?}, at {:#x}",
+            fault_inst_value,
             fault_inst,
             sepc::read()
         ),

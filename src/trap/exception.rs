@@ -8,13 +8,14 @@ use super::hstrap_exit;
 use crate::guest;
 use crate::h_extension::{csrs::vstvec, HvException};
 use crate::HYPERVISOR_DATA;
+use sbi_handler::sbi_call;
 
 use core::arch::asm;
 use riscv::register::{
     scause::{self, Exception},
     stval,
 };
-use sbi_handler::{sbi_base_handler, sbi_fwft_handler, sbi_rfnc_handler};
+use sbi_handler::{sbi_base_handler, sbi_fwft_handler, sbi_pmu_handler, sbi_rfnc_handler};
 
 /// Delegate exception to supervisor mode from VS-mode.
 #[no_mangle]
@@ -54,12 +55,10 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
 
     let sbiret = match ext_id {
         sbi_spec::base::EID_BASE => sbi_base_handler(func_id),
+        sbi_spec::pmu::EID_PMU => sbi_pmu_handler(func_id, arguments),
         sbi_spec::rfnc::EID_RFNC => sbi_rfnc_handler(func_id, arguments),
         EID_FWFT => sbi_fwft_handler(func_id, arguments),
-        _ => panic!(
-            "Unsupported SBI call, eid: {:#x}, fid: {:#x}",
-            ext_id, func_id
-        ),
+        _ => sbi_call(ext_id, func_id, arguments),
     };
 
     context.set_xreg(10, sbiret.error as u64);

@@ -10,7 +10,7 @@ function help() {
 function create_host() {
     $qemu_path -S -gdb tcp::10000 \
         -machine virt \
-        -bios none  \
+        -bios default \
         -m 256M \
         -initrd ../vmlinux_debug \
         -drive file=../rootfs.ext2,format=raw,id=hd0,if=none \
@@ -28,7 +28,7 @@ function create_host() {
 function create_guest() {
     $qemu_path -S -gdb tcp::10000 \
         -machine virt \
-        -bios none  \
+        -bios default \
         -m 256M \
         -initrd ../vmlinux_debug \
         -drive file=../rootfs.ext2,format=raw,id=hd0,if=none \

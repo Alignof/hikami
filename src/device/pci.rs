@@ -50,9 +50,9 @@ impl Pci {
         reg: ConfigSpaceRegister,
     ) -> u32 {
         let config_data_reg_addr = self.base_addr.0 as u32
-            | (bus_num & 0b1111_1111) << 20
-            | (device_num & 0b1_1111) << 15
-            | (function_num & 0b111) << 12
+            | ((bus_num & 0b1111_1111) << 20)
+            | ((device_num & 0b1_1111) << 15)
+            | ((function_num & 0b111) << 12)
             | reg as u32;
 
         match reg {
@@ -80,9 +80,9 @@ impl Pci {
         data: u32,
     ) {
         let config_data_reg_addr = self.base_addr.0 as u32
-            | (bus_num & 0b1111_1111) << 20
-            | (device_num & 0b1_1111) << 15
-            | (function_num & 0b111) << 12
+            | ((bus_num & 0b1111_1111) << 20)
+            | ((device_num & 0b1_1111) << 15)
+            | ((function_num & 0b111) << 12)
             | reg as u32;
         match reg {
             ConfigSpaceRegister::VendorId
@@ -133,9 +133,9 @@ impl MmioDevice for Pci {
 
         let get_u32 = |range: &[u8], four_bytes_index: usize| {
             let index = four_bytes_index * 4;
-            u32::from(range[index]) << 24
-                | u32::from(range[index + 1]) << 16
-                | u32::from(range[index + 2]) << 8
+            (u32::from(range[index]) << 24)
+                | (u32::from(range[index + 1]) << 16)
+                | (u32::from(range[index + 2]) << 8)
                 | u32::from(range[index + 3])
         };
         let mut memory_maps = Vec::new();
@@ -145,8 +145,8 @@ impl MmioDevice for Pci {
             // ignore I/O space map
             // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
             if (bus_address >> 24) & 0b11 != 0b01 {
-                let address = (get_u32(range, 3) as usize) << 32 | get_u32(range, 4) as usize;
-                let size = (get_u32(range, 5) as usize) << 32 | get_u32(range, 6) as usize;
+                let address = ((get_u32(range, 3) as usize) << 32) | get_u32(range, 4) as usize;
+                let size = ((get_u32(range, 5) as usize) << 32) | get_u32(range, 6) as usize;
 
                 memory_maps.push(MemoryMap::new(
                     GuestPhysicalAddress(address)..GuestPhysicalAddress(address) + size,

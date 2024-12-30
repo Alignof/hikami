@@ -3,7 +3,7 @@ runner = """
 qemu-system-riscv64
 -cpu rv64,smstateen=true
 -machine virt
--bios none
+-bios default
 -nographic
 -m 2G
 -initrd vmlinux_debug
@@ -22,7 +22,6 @@ qemu-system-riscv64
 
 rustflags = [
   "-C", "link-arg=-Tmemory.x",
-  "-C", "link-arg=-Tlink.x",
   "-C", "target-feature=+h",
 ]
 

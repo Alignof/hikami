@@ -78,14 +78,14 @@ pub struct PageTableEntry(u64);
 impl PageTableEntry {
     /// Constructor for `PageTableEntry`.
     fn new(ppn: u64, flags: u8) -> Self {
-        Self(ppn << 10 | u64::from(flags))
+        Self((ppn << 10) | u64::from(flags))
     }
 
     /// Is leaf page table entry
     fn is_leaf(self) -> bool {
-        let pte_r = self.0 >> 1 & 0x1;
-        let pte_w = self.0 >> 2 & 0x1;
-        let pte_x = self.0 >> 3 & 0x1;
+        let pte_r = (self.0 >> 1) & 0x1;
+        let pte_w = (self.0 >> 2) & 0x1;
+        let pte_x = (self.0 >> 3) & 0x1;
 
         // For Zicfilp (TODO: remove it)
         pte_r == 1 || pte_x == 1 || (pte_r == 0 && pte_w == 1 && pte_x == 0)

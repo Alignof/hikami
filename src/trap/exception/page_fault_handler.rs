@@ -38,7 +38,10 @@ pub fn load_guest_page_fault() {
             DeviceEmulateError::InvalidAddress
             | DeviceEmulateError::InvalidContextId
             | DeviceEmulateError::ReservedRegister,
-        ) => hs_forward_exception(),
+        ) => {
+            drop(hypervisor_data);
+            hs_forward_exception();
+        }
     }
 }
 
@@ -54,7 +57,11 @@ pub fn store_guest_page_fault() {
 
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let mut context = hypervisor_data.get().unwrap().guest().context;
-    let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
+    //let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
+    let store_value = context.xreg(match fault_inst.rs2 {
+        Some(x) => x,
+        None => panic!("rs2 is not found: {fault_inst:#?}"),
+    });
 
     if let Ok(()) = hypervisor_data
         .get_mut()
@@ -70,5 +77,6 @@ pub fn store_guest_page_fault() {
         }
     }
 
+    drop(hypervisor_data);
     hs_forward_exception();
 }

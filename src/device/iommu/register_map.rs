@@ -49,7 +49,7 @@ impl Capabilities {
     /// Return (major version, minor version)
     pub fn version(&self) -> (u8, u8) {
         let version_reg = self.0;
-        ((version_reg >> 4 & 0xf) as u8, (version_reg & 0xf) as u8)
+        (((version_reg >> 4) & 0xf) as u8, (version_reg & 0xf) as u8)
     }
 
     /// Is base format?
@@ -65,7 +65,7 @@ impl Capabilities {
         /// Field `Sv39x4` of `capabilities` register.
         const FIELD_CAPABILITIES_SV39X4: usize = 17;
 
-        self.0 >> FIELD_CAPABILITIES_SV39X4 & 0x1 == 1
+        (self.0 >> FIELD_CAPABILITIES_SV39X4) & 0x1 == 1
     }
 }
 
@@ -78,7 +78,7 @@ impl Cqb {
         assert!(queue_addr % 4096 == 0);
 
         // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
-        self.0 = (queue_addr.0 as u64 >> 12) << 10 | u64::from(size.ilog2() - 1);
+        self.0 = ((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1);
     }
 }
 
@@ -118,7 +118,7 @@ impl Fqb {
         assert!(queue_addr % 4096 == 0);
 
         // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
-        self.0 = (queue_addr.0 as u64 >> 12) << 10 | u64::from(size.ilog2() - 1);
+        self.0 = ((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1);
     }
 }
 
@@ -144,7 +144,7 @@ impl FqCsr {
         /// Field `fqon` of `fqcsr` register. (16 bit)
         const FIELD_FQCSR_FQON: usize = 0x10;
         let fqcsr = self.0;
-        fqcsr >> FIELD_FQCSR_FQON & 0x1 == 1
+        (fqcsr >> FIELD_FQCSR_FQON) & 0x1 == 1
     }
 }
 
@@ -157,7 +157,7 @@ impl Pqb {
         assert!(queue_addr % 4096 == 0);
 
         // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
-        self.0 = (queue_addr.0 as u64 >> 12) << 10 | u64::from(size.ilog2() - 1);
+        self.0 = ((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1);
     }
 }
 
@@ -184,7 +184,7 @@ impl PqCsr {
         const FIELD_PQCSR_PQON: usize = 0x10;
 
         let pqcsr = self.0;
-        pqcsr >> FIELD_PQCSR_PQON & 0x1 == 1
+        (pqcsr >> FIELD_PQCSR_PQON) & 0x1 == 1
     }
 }
 
@@ -211,6 +211,6 @@ impl Ddtp {
         /// Field `ppn` of `ddtp` register. (16 bit)
         const FIELD_DDTP_PPN: usize = 10;
 
-        self.0 = (ddt_addr.0 as u64 >> 12) << FIELD_DDTP_PPN | mode as u64;
+        self.0 = ((ddt_addr.0 as u64 >> 12) << FIELD_DDTP_PPN) | mode as u64;
     }
 }

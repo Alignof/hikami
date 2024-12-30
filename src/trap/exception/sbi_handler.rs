@@ -2,6 +2,27 @@
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
 use sbi_rt::SbiRet;
+use sbi_rt::{ConfigFlags, StartFlags, StopFlags};
+
+/// SBI re-ecall
+///
+/// For now, pass all arguments regardless of the actual number of arguments.
+pub fn sbi_call(ext_id: usize, func_id: usize, args: &[u64; 5]) -> SbiRet {
+    let (error, value);
+    unsafe {
+        core::arch::asm!(
+            "ecall",
+            in("a7") ext_id,
+            in("a6") func_id,
+            inlateout("a0") args[0] => error,
+            inlateout("a1") args[1] => value,
+            in("a2") args[2],
+            in("a3") args[3],
+            in("a4") args[4],
+        );
+    }
+    SbiRet { error, value }
+}
 
 /// SBI ecall handler for Base Extension (EID: #0x10)
 ///
@@ -16,7 +37,7 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     let result_value = match func_id {
         GET_SBI_SPEC_VERSION => {
             let spec = sbi_rt::get_spec_version();
-            spec.major() << 24 | spec.minor()
+            (spec.major() << 24) | spec.minor()
         }
         GET_SBI_IMPL_ID => sbi_rt::get_sbi_impl_id(),
         GET_SBI_IMPL_VERSION => sbi_rt::get_sbi_impl_version(),
@@ -30,6 +51,71 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     SbiRet {
         error: 0, // no error returns
         value: result_value,
+    }
+}
+
+/// Type of flag for SBI PMU extension.
+struct PmuFlag(u64);
+impl PmuFlag {
+    /// Create `PmuFlag` from a register value.
+    pub fn new(val: u64) -> Self {
+        PmuFlag(0b1111_1111 & val)
+    }
+}
+impl ConfigFlags for PmuFlag {
+    #[allow(clippy::cast_possible_truncation)]
+    fn raw(&self) -> usize {
+        self.0 as usize
+    }
+}
+impl StartFlags for PmuFlag {
+    #[allow(clippy::cast_possible_truncation)]
+    fn raw(&self) -> usize {
+        self.0 as usize
+    }
+}
+impl StopFlags for PmuFlag {
+    #[allow(clippy::cast_possible_truncation)]
+    fn raw(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// SBI ecall handler for PMU Extension (EID: #0x504D55)
+#[allow(clippy::cast_possible_truncation)]
+pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
+    use sbi_spec::pmu::{
+        COUNTER_CONFIG_MATCHING, COUNTER_FW_READ, COUNTER_FW_READ_HI, COUNTER_GET_INFO,
+        COUNTER_START, COUNTER_STOP, EID_PMU, NUM_COUNTERS, SNAPSHOT_SET_SHMEM,
+    };
+    match func_id {
+        NUM_COUNTERS => SbiRet {
+            error: 0,
+            value: sbi_rt::pmu_num_counters(),
+        },
+        COUNTER_GET_INFO => sbi_rt::pmu_counter_get_info(args[0] as usize),
+        COUNTER_CONFIG_MATCHING => sbi_rt::pmu_counter_config_matching(
+            args[0] as usize,
+            args[1] as usize,
+            PmuFlag::new(args[2]),
+            args[3] as usize,
+            args[4],
+        ),
+        COUNTER_START => sbi_rt::pmu_counter_start(
+            args[0] as usize,
+            args[1] as usize,
+            PmuFlag::new(args[2]),
+            args[3],
+        ),
+        COUNTER_STOP => {
+            sbi_rt::pmu_counter_stop(args[0] as usize, args[1] as usize, PmuFlag::new(args[2]))
+        }
+        COUNTER_FW_READ => sbi_rt::pmu_counter_fw_read(args[0] as usize),
+        COUNTER_FW_READ_HI => sbi_rt::pmu_counter_fw_read_hi(args[0] as usize),
+        // `sbi_rt::pmu_snapshot_set_shmem` is unimplemented.
+        // thus it is called by ecall instruction directly.
+        SNAPSHOT_SET_SHMEM => sbi_call(EID_PMU, SNAPSHOT_SET_SHMEM, args),
+        _ => panic!("unsupported fid: {}", func_id),
     }
 }
 
