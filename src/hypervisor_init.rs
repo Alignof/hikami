@@ -15,7 +15,7 @@ use crate::memmap::{
 };
 use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;
-use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
+use crate::{HypervisorData, GUEST_DTB, GUEST_KERNEL, HYPERVISOR_DATA};
 use crate::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
@@ -124,19 +124,18 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     hypervisor_data.get_or_init(|| HypervisorData::new(device_tree));
 
-    // load guest elf from address
-    let initrd = &hypervisor_data.get_mut().unwrap().devices().initrd;
+    // load guest elf `from GUEST_KERNEL`
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            initrd.paddr().raw() as *mut u8,
-            initrd.size(),
+            GUEST_KERNEL.as_ptr(),
+            GUEST_KERNEL.len(),
         ))
         .unwrap()
     };
 
     // load guest image
     let (guest_entry_point, elf_end_addr) =
-        new_guest.load_guest_elf(&guest_elf, initrd.paddr().raw() as *mut u8);
+        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
 
     // allocate all remain memory region
     new_guest.allocate_memory_region(

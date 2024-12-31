@@ -46,6 +46,10 @@ static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCel
 static HOST_DTB: [u8; include_bytes!("../host.dtb").len()] = *include_bytes!("../host.dtb");
 
 /// Device tree blob that is passed to guest
+#[link_section = ".guest_kernel"]
+static GUEST_KERNEL: [u8; include_bytes!("../vmlinux").len()] = *include_bytes!("../vmlinux");
+
+/// Device tree blob that is passed to guest
 #[link_section = ".guest_dtb"]
 static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
 
