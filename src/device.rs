@@ -77,7 +77,7 @@ pub struct Devices {
     pub virtio_list: virtio::VirtIoList,
 
     /// initrd: INITial RamDisk
-    pub initrd: initrd::Initrd,
+    pub initrd: Option<initrd::Initrd>,
 
     /// PLIC: Platform-Level Interrupt Controller  
     pub plic: plic::Plic,
@@ -101,7 +101,7 @@ impl Devices {
         Devices {
             uart: uart::Uart::new(&device_tree, "/soc/serial"),
             virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
-            initrd: initrd::Initrd::new(&device_tree, "/chosen"),
+            initrd: initrd::Initrd::try_new(&device_tree, "/chosen"),
             plic: plic::Plic::new(&device_tree, "/soc/plic"),
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
@@ -134,12 +134,15 @@ impl Devices {
 
         device_mapping.extend_from_slice(&[
             self.uart.memmap(),
-            self.initrd.memmap(),
             self.plic.memmap(),
             self.clint.memmap(),
             self.pci.memmap(),
             self.rtc.memmap(),
         ]);
+
+        if let Some(initrd) = &self.initrd {
+            device_mapping.extend_from_slice(&[initrd.memmap()]);
+        }
 
         device_mapping.extend_from_slice(self.pci.pci_memory_maps());
 

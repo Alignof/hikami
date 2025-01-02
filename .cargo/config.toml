@@ -6,7 +6,6 @@ qemu-system-riscv64
 -bios default
 -nographic
 -m 2G
--initrd vmlinux_debug
 -drive file=rootfs.ext2,format=raw,id=hd0,if=none
 -device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on
 -netdev user,id=n1
