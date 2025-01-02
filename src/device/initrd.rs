@@ -16,6 +16,7 @@ pub struct Initrd {
 }
 
 impl Initrd {
+    /// Get initrd data from device tree.
     pub fn try_new(device_tree: &Fdt, node_path: &str) -> Option<Self> {
         let start_prop = "linux,initrd-start";
         let end_prop = "linux,initrd-end";

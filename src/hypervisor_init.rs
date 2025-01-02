@@ -1,6 +1,5 @@
 //! HS-mode level initialization.
 
-use crate::device::MmioDevice;
 use crate::emulate_extension;
 use crate::guest::context::ContextData;
 use crate::guest::Guest;
