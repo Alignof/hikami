@@ -140,7 +140,7 @@ impl Guest {
     pub fn load_guest_elf(
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
-        elf_addr: *mut u8,
+        elf_addr: *const u8,
     ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
         /// Segment type `PT_LOAD`
         ///

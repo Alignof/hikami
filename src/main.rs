@@ -46,6 +46,10 @@ static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCel
 static HOST_DTB: [u8; include_bytes!("../host.dtb").len()] = *include_bytes!("../host.dtb");
 
 /// Device tree blob that is passed to guest
+#[link_section = ".guest_kernel"]
+static GUEST_KERNEL: [u8; include_bytes!("../vmlinux").len()] = *include_bytes!("../vmlinux");
+
+/// Device tree blob that is passed to guest
 #[link_section = ".guest_dtb"]
 static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
 
@@ -150,6 +154,8 @@ impl HypervisorData {
 /// - set stack pointer
 /// - init stvec
 /// - jump to hstart
+///
+/// TODO: Remove the `.attribute arch, "rv64gc"` directive when the LLVM problem is fixed.
 #[link_section = ".text.entry"]
 #[no_mangle]
 #[naked]
@@ -157,7 +163,8 @@ extern "C" fn _start() -> ! {
     unsafe {
         // set stack pointer
         naked_asm!(
-            "
+            r#"
+            .attribute arch, "rv64gc"
             li t0, {stack_size_per_hart}
             mul t1, a0, t0
             la sp, {stack_top}
@@ -167,7 +174,7 @@ extern "C" fn _start() -> ! {
             csrw stvec, t2
 
             call {hstart}
-            ",
+            "#,
             stack_top = sym _top_b_stack,
             stack_size_per_hart = const STACK_SIZE_PER_HART,
             DRAM_BASE = const DRAM_BASE,

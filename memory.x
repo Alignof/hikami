@@ -3,16 +3,16 @@ MEMORY
   FLASH (rx) : ORIGIN = 0x80200000, LENGTH = 2M
   BOOT_RAM (rw) : ORIGIN = 0x80400000, LENGTH = 6M
   RAM_HEAP (rwx) : ORIGIN = 0xc1000000, LENGTH = 528M
-  RAM (rwx) : ORIGIN = 0xe2000000, LENGTH = 16M
-  L2_LIM (rw) : ORIGIN = 0xe2000000, LENGTH = 8M
+  RAM (rwx) : ORIGIN = 0xe2000000, LENGTH = 32M
+  L2_LIM (rw) : ORIGIN = 0xe4000000, LENGTH = 8M
 }
 
 /*
  * FLASH (TEXT), 0x8020_0000..0x8040_0000
  * BOOT_RAM , 0x8040_0000..0x80a0_0000
  * RAM_HEAP (HEAP), 0xc100_0000..0xe200_0000
- * RAM (DATA, BSS), 0xe200_0000..0xe300_0000
- * L2_LIM (STACK), 0xe200_0000..0xa300_0000
+ * RAM (DATA, BSS), 0xe200_0000..0xe400_0000
+ * L2_LIM (STACK), 0xe400_0000..0xe480_0000
  */
 
 REGION_ALIAS("REGION_TEXT", FLASH);
@@ -51,6 +51,12 @@ SECTIONS
     .host_dtb : ALIGN(4K)
     {
         *(.host_dtb);
+        . = ALIGN(4K);
+    } > REGION_DATA
+
+    .guest_kernel : ALIGN(4K)
+    {
+        *(.guest_dtb);
         . = ALIGN(4K);
     } > REGION_DATA
 
