@@ -41,13 +41,22 @@ impl Guest {
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
-        memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
+        let guest_id = hart_id + 1;
+
+        // calculate guest memory region
+        let guest_memory_begin =
+            guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
+        let memory_region =
+            guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST;
+
         let stack_top_addr = HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
+        // init page table
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
+        // load guest dtb to memory
         let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
         Guest {

@@ -101,15 +101,8 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // create new guest data
-    let guest_id = hart_id + 1;
-    let guest_memory_begin = guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
+    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB);
     let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
-    let new_guest = Guest::new(
-        hart_id,
-        &ROOT_PAGE_TABLE,
-        &GUEST_DTB,
-        guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
-    );
 
     // parse device tree
     let device_tree = unsafe {
