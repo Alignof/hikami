@@ -9,8 +9,7 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
-    constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
-    HostPhysicalAddress,
+    page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress, HostPhysicalAddress,
 };
 use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;

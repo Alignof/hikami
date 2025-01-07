@@ -42,11 +42,9 @@ impl Guest {
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
     ) -> Self {
-        let guest_id = hart_id + 1;
-
         // calculate guest memory region
-        let guest_memory_begin =
-            guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
+        let guest_memory_begin: GuestPhysicalAddress =
+            guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
         let memory_region =
             guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST;
 
@@ -57,7 +55,7 @@ impl Guest {
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
         // load guest dtb to memory
-        let dtb_addr = Self::map_guest_dtb(&memory_region, page_table_addr, guest_dtb);
+        let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
         Guest {
             hart_id,
@@ -73,16 +71,17 @@ impl Guest {
     ///
     /// Guest device tree will be placed start of guest memory region.
     fn map_guest_dtb(
-        memory_region: &Range<GuestPhysicalAddress>,
+        hart_id: usize,
         page_table_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
-        assert!(guest_dtb.len() < guest_memory::GUEST_DTB_SIZE_PER_HART);
+        assert!(guest_dtb.len() < guest_memory::GUEST_DTB_REGION_SIZE);
 
-        // guest device tree is loaded at head of guest memory region.
-        let guest_dtb_addr = memory_region.start;
+        // guest device tree is loaded at end of guest memory region.
+        let guest_dtb_addr =
+            guest_memory::DRAM_BASE + hart_id * guest_memory::GUEST_DTB_REGION_SIZE;
         let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
 
         for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
