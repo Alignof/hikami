@@ -57,7 +57,7 @@ impl Guest {
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
         // load guest dtb to memory
-        let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
+        let dtb_addr = Self::map_guest_dtb(&memory_region, page_table_addr, guest_dtb);
 
         Guest {
             hart_id,
@@ -69,9 +69,11 @@ impl Guest {
         }
     }
 
-    /// Map guest device tree region
+    /// Load guest device tree and create corresponding page table
+    ///
+    /// Guest device tree will be placed start of guest memory region.
     fn map_guest_dtb(
-        hart_id: usize,
+        memory_region: &Range<GuestPhysicalAddress>,
         page_table_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
     ) -> GuestPhysicalAddress {
@@ -79,12 +81,12 @@ impl Guest {
 
         assert!(guest_dtb.len() < guest_memory::GUEST_DTB_SIZE_PER_HART);
 
-        let guest_dtb_gpa =
-            guest_memory::DRAM_BASE + hart_id * guest_memory::GUEST_DTB_SIZE_PER_HART;
+        // guest device tree is loaded at head of guest memory region.
+        let guest_dtb_addr = memory_region.start;
         let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
 
         for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
-            let guest_physical_addr = guest_dtb_gpa + offset;
+            let guest_physical_addr = guest_dtb_addr + offset;
 
             // allocate memory from heap
             let aligned_page_size_block_addr = PageBlock::alloc();
@@ -110,7 +112,7 @@ impl Guest {
             );
         }
 
-        guest_dtb_gpa
+        guest_dtb_addr
     }
 
     /// Return HART(HARdware Thread) id.
