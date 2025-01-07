@@ -129,6 +129,11 @@ impl Guest {
     }
 
     /// Return guest dram space start
+    pub fn memory_region(&self) -> &Range<GuestPhysicalAddress> {
+        &self.memory_region
+    }
+
+    /// Return guest dram space start
     fn dram_base(&self) -> GuestPhysicalAddress {
         self.memory_region.start
     }

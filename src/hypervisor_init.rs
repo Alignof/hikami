@@ -129,10 +129,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let (guest_entry_point, elf_end_addr) =
         new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
 
-    // allocate all remain memory region
-    new_guest.allocate_memory_region(
-        elf_end_addr..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
-    );
+    // allocate page tables to all remain guest memory region
+    let guest_memory_end = new_guest.memory_region().end;
+    new_guest.allocate_memory_region(elf_end_addr..guest_memory_end);
 
     // set device memory map
     hypervisor_data
