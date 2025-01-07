@@ -18,9 +18,8 @@ use elf::{endian::AnyEndian, ElfBytes};
 /// Guest Information
 #[derive(Debug)]
 pub struct Guest {
-    /// Guest ID
-    #[allow(clippy::struct_field_names)]
-    guest_id: usize,
+    /// HART ID
+    hart_id: usize,
     /// Page table that is passed to guest address
     page_table_addr: HostPhysicalAddress,
     /// Device tree address
@@ -52,7 +51,7 @@ impl Guest {
         let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
         Guest {
-            guest_id: hart_id,
+            hart_id,
             page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
             dtb_addr,
             stack_top_addr,
@@ -107,7 +106,7 @@ impl Guest {
 
     /// Return HART(HARdware Thread) id.
     pub fn hart_id(&self) -> usize {
-        self.guest_id
+        self.hart_id
     }
 
     /// Return Stack top (end of memory region)
