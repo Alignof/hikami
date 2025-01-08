@@ -53,7 +53,7 @@ SECTIONS
     } > REGION_DATA
 
     .guest_kernel : ALIGN(4K) {
-        *(.guest_dtb);
+        *(.guest_kernel);
         . = ALIGN(4K);
     } > REGION_DATA
 
