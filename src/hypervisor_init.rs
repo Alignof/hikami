@@ -9,8 +9,7 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
-    constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
-    HostPhysicalAddress,
+    page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress, HostPhysicalAddress,
 };
 use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;
@@ -101,15 +100,8 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // create new guest data
-    let guest_id = hart_id + 1;
-    let guest_memory_begin = guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
+    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB);
     let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
-    let new_guest = Guest::new(
-        hart_id,
-        &ROOT_PAGE_TABLE,
-        &GUEST_DTB,
-        guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
-    );
 
     // parse device tree
     let device_tree = unsafe {
@@ -136,10 +128,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let (guest_entry_point, elf_end_addr) =
         new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
 
-    // allocate all remain memory region
-    new_guest.allocate_memory_region(
-        elf_end_addr..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
-    );
+    // allocate page tables to all remain guest memory region
+    let guest_memory_end = new_guest.memory_region().end;
+    new_guest.allocate_memory_region(elf_end_addr..guest_memory_end);
 
     // set device memory map
     hypervisor_data
