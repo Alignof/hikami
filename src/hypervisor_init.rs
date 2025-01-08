@@ -30,6 +30,18 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // dtb_addr test and hint for register usage.
     assert_ne!(dtb_addr, 0);
 
+    // clear bss section
+    unsafe {
+        use crate::{_end_bss, _start_bss};
+        use core::ptr::addr_of;
+
+        core::slice::from_raw_parts_mut(
+            addr_of!(_start_bss) as *mut u8,
+            addr_of!(_end_bss) as usize - addr_of!(_start_bss) as usize,
+        )
+        .fill(0);
+    }
+
     unsafe {
         // Initialize global allocator
         ALLOCATOR.lock().init(

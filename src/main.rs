@@ -62,6 +62,10 @@ extern "C" {
     static _hv_heap_size: u8;
     /// boot stack top (defined in `memory.x`)
     static _top_b_stack: u8;
+    /// start of bss and sbss section.
+    static _start_bss: u8;
+    /// end of bss and sbss section.
+    static _end_bss: u8;
 }
 
 /// Panic handler

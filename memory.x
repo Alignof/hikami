@@ -41,34 +41,37 @@ SECTIONS
         _top_b_stack = .;
     } > BOOT_RAM
 
-    .hv_heap (NOLOAD) : ALIGN(1024K) 
-    {
+    .hv_heap (NOLOAD) : ALIGN(1024K) {
         _start_heap = .;
         . += _hv_heap_size;
         _end_heap = .;
     } > REGION_HEAP
 
-    .host_dtb : ALIGN(4K)
-    {
+    .host_dtb : ALIGN(4K) {
         *(.host_dtb);
         . = ALIGN(4K);
     } > REGION_DATA
 
-    .guest_kernel : ALIGN(4K)
-    {
+    .guest_kernel : ALIGN(4K) {
+        *(.guest_kernel);
+        . = ALIGN(4K);
+    } > REGION_DATA
+
+    .guest_dtb : ALIGN(4K) {
         *(.guest_dtb);
         . = ALIGN(4K);
     } > REGION_DATA
 
-    .guest_dtb : ALIGN(4K)
-    {
-        *(.guest_dtb);
-        . = ALIGN(4K);
-    } > REGION_DATA
-
-    .root_page_table : ALIGN(16K)
-    {
+    .root_page_table : ALIGN(16K) {
         *(.root_page_table);
         . = ALIGN(4K);
     } > REGION_DATA
+
+    .bss : ALIGN(4K) {
+        _start_bss = .;
+        *(.bss .bss.*)
+        *(.sbss .sbss.*)
+        . = ALIGN(4K);
+        _end_bss = .;
+    } > REGION_BSS
 }

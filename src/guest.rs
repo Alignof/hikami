@@ -172,9 +172,12 @@ impl Guest {
             .expect("failed to get segments from elf")
             .iter()
         {
-            if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
+            if prog_header.p_type == PT_LOAD {
                 assert!(prog_header.p_align >= PAGE_SIZE as u64);
-                let aligned_segment_size = align_size(prog_header.p_filesz, prog_header.p_align);
+
+                let aligned_segment_size = align_size(prog_header.p_memsz, prog_header.p_align);
+                let segment_file_offset = usize::try_from(prog_header.p_offset).unwrap();
+                let segment_file_size = usize::try_from(prog_header.p_filesz).unwrap();
 
                 for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
                     let guest_physical_addr =
@@ -184,15 +187,34 @@ impl Guest {
                     // allocate memory from heap
                     let aligned_page_size_block_addr = PageBlock::alloc();
 
-                    // copy elf segment to new heap block
+                    // Determine the range of data to copy
+                    let copy_start = segment_file_offset + offset;
+                    let copy_size = if offset + PAGE_SIZE <= segment_file_size {
+                        PAGE_SIZE
+                    } else if offset < segment_file_size {
+                        segment_file_size - offset
+                    } else {
+                        0
+                    };
+
                     unsafe {
-                        core::ptr::copy(
-                            elf_addr.wrapping_add(
-                                usize::try_from(prog_header.p_offset).unwrap() + offset,
-                            ),
-                            aligned_page_size_block_addr.raw() as *mut u8,
-                            PAGE_SIZE,
-                        );
+                        if copy_size > 0 {
+                            // Copy ELF segment data from file
+                            core::ptr::copy(
+                                elf_addr.wrapping_add(copy_start),
+                                aligned_page_size_block_addr.raw() as *mut u8,
+                                copy_size,
+                            );
+                        }
+
+                        if copy_size < PAGE_SIZE {
+                            // Zero-initialize the remaining part of the page
+                            core::ptr::write_bytes(
+                                (aligned_page_size_block_addr.raw() as *mut u8).add(copy_size),
+                                0,
+                                PAGE_SIZE - copy_size,
+                            );
+                        }
                     }
 
                     // create memory mapping
