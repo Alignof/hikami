@@ -29,23 +29,6 @@ pub enum DeviceEmulateError {
     ReservedRegister,
 }
 
-/// Pci device.
-///
-/// A struct that implement this trait **must** has `bus`, `device`, `function` number.
-#[allow(clippy::module_name_repetitions)]
-pub trait PciDevice {
-    /// Create self instance.
-    /// * `device_tree` - struct Fdt
-    /// * `node_path` - node path in fdt
-    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self>
-    where
-        Self: Sized;
-
-    /// Initialize pci device.
-    /// * `pci` - struct `Pci`
-    fn init(&self, pci: &pci::Pci);
-}
-
 /// Memory mapped I/O device.
 ///
 /// A struct that implement this trait **must** has `base_addr` and size member.

@@ -6,6 +6,23 @@ use fdt::Fdt;
 
 use alloc::vec::Vec;
 
+/// Pci device.
+///
+/// A struct that implement this trait **must** has `bus`, `device`, `function` number.
+#[allow(clippy::module_name_repetitions)]
+pub trait PciDevice {
+    /// Create self instance.
+    /// * `device_tree` - struct Fdt
+    /// * `node_path` - node path in fdt
+    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self>
+    where
+        Self: Sized;
+
+    /// Initialize pci device.
+    /// * `pci` - struct `Pci`
+    fn init(&self, pci: &Pci);
+}
+
 /// Registers in Common configuration Space Header.
 ///
 /// Ref: [https://astralvx.com/storage/2020/11/PCI_Express_Base_4.0_Rev0.3_February19-2014.pdf](https://astralvx.com/storage/2020/11/PCI_Express_Base_4.0_Rev0.3_February19-2014.pdf) p. 578  
