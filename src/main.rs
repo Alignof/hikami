@@ -3,6 +3,8 @@
 #![no_std]
 // TODO: remove nightly when `naked_functions` become stable.
 #![feature(naked_functions)]
+// TODO: FIX AND REMOVE IT!!!
+#![allow(static_mut_refs)]
 
 extern crate alloc;
 mod device;
