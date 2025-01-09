@@ -2,7 +2,6 @@
 
 pub mod clint;
 mod initrd;
-pub mod iommu;
 mod pci;
 pub mod plic;
 mod rtc;
@@ -73,9 +72,6 @@ pub struct Devices {
 
     /// PCI: Peripheral Component Interconnect
     pub pci: pci::Pci,
-
-    /// IOMMU: I/O memory management unit.
-    pub iommu: Option<iommu::IoMmu>,
 }
 
 impl Devices {
@@ -89,14 +85,6 @@ impl Devices {
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
             pci: pci::Pci::new(&device_tree, "/soc/pci"),
-            iommu: iommu::IoMmu::new(&device_tree, "/soc/pci/iommu"),
-        }
-    }
-
-    /// Initialization of IOMMU.
-    pub fn init_iommu(&mut self) {
-        if let Some(iommu) = &self.iommu {
-            iommu.init(&self.pci);
         }
     }
 

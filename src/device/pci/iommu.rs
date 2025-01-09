@@ -3,10 +3,7 @@
 
 mod register_map;
 
-use super::{
-    pci::{ConfigSpaceRegister, Pci},
-    PciDevice,
-};
+use super::{ConfigSpaceRegister, Pci, PciDevice};
 use crate::h_extension::csrs::hgatp;
 use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress};
 use crate::PageBlock;

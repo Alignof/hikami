@@ -1,5 +1,8 @@
 //! PCI: Peripheral Component Interconnect
 
+// PCI devices
+pub mod iommu;
+
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
@@ -54,6 +57,8 @@ pub struct Pci {
     size: usize,
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
+    /// IOMMU: I/O memory management unit.
+    iommu: Option<iommu::IoMmu>,
 }
 
 impl Pci {
@@ -177,6 +182,7 @@ impl MmioDevice for Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             memory_maps,
+            iommu: iommu::IoMmu::new(&device_tree, "soc/pci/iommu"),
         }
     }
 
