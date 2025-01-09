@@ -4,7 +4,6 @@ use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use core::cell::OnceCell;
-use core::fmt::{self, Write};
 use fdt::Fdt;
 use rustsbi::{Physical, SbiRet};
 use spin::Mutex;
@@ -18,24 +17,6 @@ mod register {
 
 /// Uart address for `UartWriter`.
 static UART_ADDR: Mutex<OnceCell<HostPhysicalAddress>> = Mutex::new(OnceCell::new());
-
-/// Struct for `Write` trait.
-struct UartWriter;
-
-impl Write for UartWriter {
-    /// Write string to tty via UART.
-    #[allow(clippy::cast_possible_wrap)]
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        let uart_addr = UART_ADDR.lock().get().unwrap().raw() as *mut u32;
-        for c in s.bytes() {
-            unsafe {
-                while (uart_addr.read_volatile() as i32) < 0 {}
-                uart_addr.write_volatile(u32::from(c));
-            }
-        }
-        Ok(())
-    }
-}
 
 /// UART: Universal asynchronous receiver-transmitter
 #[derive(Debug)]
