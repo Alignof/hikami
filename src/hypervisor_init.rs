@@ -36,7 +36,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         use core::ptr::addr_of;
 
         core::slice::from_raw_parts_mut(
-            addr_of!(_start_bss) as *mut u8,
+            addr_of!(_start_bss).cast_mut(),
             addr_of!(_end_bss) as usize - addr_of!(_start_bss) as usize,
         )
         .fill(0);

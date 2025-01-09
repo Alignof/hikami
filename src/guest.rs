@@ -191,10 +191,8 @@ impl Guest {
                     let copy_start = segment_file_offset + offset;
                     let copy_size = if offset + PAGE_SIZE <= segment_file_size {
                         PAGE_SIZE
-                    } else if offset < segment_file_size {
-                        segment_file_size - offset
                     } else {
-                        0
+                        segment_file_size.saturating_sub(offset)
                     };
 
                     unsafe {
