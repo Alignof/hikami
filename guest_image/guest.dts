@@ -90,8 +90,6 @@
 
 	chosen {
 		bootargs = "root=/dev/vda rw console=ttyS0";
-		linux,initrd-end = <0x00 0x9832b230>;
-		linux,initrd-start = <0x00 0x88200000>;
 		stdout-path = "/soc/serial@10000000";
 		rng-seed = <0x9775b34d 0xe39158f2 0x3e9d10b1 0x73692dfd 0x13c15814 0xa4ad203f 0x8b0d62f7 0x6bf8a79d>;
 	};

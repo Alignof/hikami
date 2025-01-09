@@ -45,7 +45,7 @@ static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCel
 #[link_section = ".host_dtb"]
 static HOST_DTB: [u8; include_bytes!("../host.dtb").len()] = *include_bytes!("../host.dtb");
 
-/// Device tree blob that is passed to guest
+/// Guest kernel image
 #[link_section = ".guest_kernel"]
 static GUEST_KERNEL: [u8; include_bytes!("../vmlinux").len()] = *include_bytes!("../vmlinux");
 
@@ -62,6 +62,10 @@ extern "C" {
     static _hv_heap_size: u8;
     /// boot stack top (defined in `memory.x`)
     static _top_b_stack: u8;
+    /// start of bss and sbss section.
+    static _start_bss: u8;
+    /// end of bss and sbss section.
+    static _end_bss: u8;
 }
 
 /// Panic handler

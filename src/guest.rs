@@ -18,9 +18,8 @@ use elf::{endian::AnyEndian, ElfBytes};
 /// Guest Information
 #[derive(Debug)]
 pub struct Guest {
-    /// Guest ID
-    #[allow(clippy::struct_field_names)]
-    guest_id: usize,
+    /// HART ID
+    hart_id: usize,
     /// Page table that is passed to guest address
     page_table_addr: HostPhysicalAddress,
     /// Device tree address
@@ -42,17 +41,24 @@ impl Guest {
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
-        memory_region: Range<GuestPhysicalAddress>,
     ) -> Self {
+        // calculate guest memory region
+        let guest_memory_begin: GuestPhysicalAddress =
+            guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
+        let memory_region =
+            guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST;
+
         let stack_top_addr = HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
+        // init page table
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
+        // load guest dtb to memory
         let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
         Guest {
-            guest_id: hart_id,
+            hart_id,
             page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
             dtb_addr,
             stack_top_addr,
@@ -61,7 +67,9 @@ impl Guest {
         }
     }
 
-    /// Map guest device tree region
+    /// Load guest device tree and create corresponding page table
+    ///
+    /// Guest device tree will be placed start of guest memory region.
     fn map_guest_dtb(
         hart_id: usize,
         page_table_addr: HostPhysicalAddress,
@@ -69,14 +77,15 @@ impl Guest {
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
-        assert!(guest_dtb.len() < guest_memory::GUEST_DTB_SIZE_PER_HART);
+        assert!(guest_dtb.len() < guest_memory::GUEST_DTB_REGION_SIZE);
 
-        let guest_dtb_gpa =
-            guest_memory::DRAM_BASE + hart_id * guest_memory::GUEST_DTB_SIZE_PER_HART;
+        // guest device tree is loaded at end of guest memory region.
+        let guest_dtb_addr =
+            guest_memory::DRAM_BASE + hart_id * guest_memory::GUEST_DTB_REGION_SIZE;
         let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
 
         for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
-            let guest_physical_addr = guest_dtb_gpa + offset;
+            let guest_physical_addr = guest_dtb_addr + offset;
 
             // allocate memory from heap
             let aligned_page_size_block_addr = PageBlock::alloc();
@@ -102,12 +111,12 @@ impl Guest {
             );
         }
 
-        guest_dtb_gpa
+        guest_dtb_addr
     }
 
     /// Return HART(HARdware Thread) id.
     pub fn hart_id(&self) -> usize {
-        self.guest_id
+        self.hart_id
     }
 
     /// Return Stack top (end of memory region)
@@ -118,6 +127,11 @@ impl Guest {
     /// Return guest device tree address. (GPA)
     pub fn guest_dtb_addr(&self) -> GuestPhysicalAddress {
         self.dtb_addr
+    }
+
+    /// Return guest dram space start
+    pub fn memory_region(&self) -> &Range<GuestPhysicalAddress> {
+        &self.memory_region
     }
 
     /// Return guest dram space start
@@ -158,9 +172,12 @@ impl Guest {
             .expect("failed to get segments from elf")
             .iter()
         {
-            if prog_header.p_type == PT_LOAD && prog_header.p_filesz > 0 {
+            if prog_header.p_type == PT_LOAD {
                 assert!(prog_header.p_align >= PAGE_SIZE as u64);
-                let aligned_segment_size = align_size(prog_header.p_filesz, prog_header.p_align);
+
+                let aligned_segment_size = align_size(prog_header.p_memsz, prog_header.p_align);
+                let segment_file_offset = usize::try_from(prog_header.p_offset).unwrap();
+                let segment_file_size = usize::try_from(prog_header.p_filesz).unwrap();
 
                 for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
                     let guest_physical_addr =
@@ -170,15 +187,32 @@ impl Guest {
                     // allocate memory from heap
                     let aligned_page_size_block_addr = PageBlock::alloc();
 
-                    // copy elf segment to new heap block
+                    // Determine the range of data to copy
+                    let copy_start = segment_file_offset + offset;
+                    let copy_size = if offset + PAGE_SIZE <= segment_file_size {
+                        PAGE_SIZE
+                    } else {
+                        segment_file_size.saturating_sub(offset)
+                    };
+
                     unsafe {
-                        core::ptr::copy(
-                            elf_addr.wrapping_add(
-                                usize::try_from(prog_header.p_offset).unwrap() + offset,
-                            ),
-                            aligned_page_size_block_addr.raw() as *mut u8,
-                            PAGE_SIZE,
-                        );
+                        if copy_size > 0 {
+                            // Copy ELF segment data from file
+                            core::ptr::copy(
+                                elf_addr.wrapping_add(copy_start),
+                                aligned_page_size_block_addr.raw() as *mut u8,
+                                copy_size,
+                            );
+                        }
+
+                        if copy_size < PAGE_SIZE {
+                            // Zero-initialize the remaining part of the page
+                            core::ptr::write_bytes(
+                                (aligned_page_size_block_addr.raw() as *mut u8).add(copy_size),
+                                0,
+                                PAGE_SIZE - copy_size,
+                            );
+                        }
                     }
 
                     // create memory mapping
