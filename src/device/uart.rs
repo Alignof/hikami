@@ -16,25 +16,6 @@ mod register {
     pub const LSR_OFFSET: usize = 3;
 }
 
-/// Print to standard output.
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::device::uart::_print(format_args!($($arg)*)));
-}
-
-/// Print with linebreak to standard output.
-#[macro_export]
-macro_rules! println {
-    ($fmt:expr) => (print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
-}
-
-/// Print function calling from print macro
-pub fn _print(args: fmt::Arguments) {
-    let mut writer = UartWriter {};
-    writer.write_fmt(args).unwrap();
-}
-
 /// Uart address for `UartWriter`.
 static UART_ADDR: Mutex<OnceCell<HostPhysicalAddress>> = Mutex::new(OnceCell::new());
 

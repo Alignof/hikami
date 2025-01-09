@@ -10,6 +10,7 @@ mod emulate_extension;
 mod guest;
 mod h_extension;
 mod hypervisor_init;
+mod log;
 mod memmap;
 mod trap;
 
