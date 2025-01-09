@@ -24,6 +24,8 @@ use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 /// Entry point to HS-mode.
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
+    crate::println!("welcome to hikami");
+
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
 

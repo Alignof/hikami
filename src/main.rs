@@ -3,6 +3,8 @@
 #![no_std]
 // TODO: remove nightly when `naked_functions` become stable.
 #![feature(naked_functions)]
+// TODO: FIX AND REMOVE IT!!!
+#![allow(static_mut_refs)]
 
 extern crate alloc;
 mod device;
@@ -10,6 +12,7 @@ mod emulate_extension;
 mod guest;
 mod h_extension;
 mod hypervisor_init;
+mod log;
 mod memmap;
 mod trap;
 
