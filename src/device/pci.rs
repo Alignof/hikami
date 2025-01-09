@@ -126,6 +126,13 @@ impl Pci {
     pub fn pci_memory_maps(&self) -> &[MemoryMap] {
         &self.memory_maps
     }
+
+    /// Initialize PCI devices.
+    pub fn init_pci_devices(&self) {
+        if let Some(iommu) = &self.iommu {
+            iommu.init(&self);
+        }
+    }
 }
 
 impl MmioDevice for Pci {

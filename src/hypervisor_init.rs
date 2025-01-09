@@ -158,7 +158,12 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hfence_gvma_all();
 
     // initialize IOMMU
-    hypervisor_data.get_mut().unwrap().devices().init_iommu();
+    hypervisor_data
+        .get_mut()
+        .unwrap()
+        .devices()
+        .pci
+        .init_pci_devices();
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
