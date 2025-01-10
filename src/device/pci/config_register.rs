@@ -1,6 +1,16 @@
-/// Utility for PCI configuration registers.
-///
-/// Ref: [https://www.macnica.co.jp/business/semiconductor/articles/microchip/140352/](https://www.macnica.co.jp/business/semiconductor/articles/microchip/140352/)
+//! Utility for PCI configuration registers.
+//!
+//! Ref: [https://www.macnica.co.jp/business/semiconductor/articles/microchip/140352/](https://www.macnica.co.jp/business/semiconductor/articles/microchip/140352/)
+
+/// Field size of Config Space Header
+enum FieldSize {
+    /// 1 byte
+    Byte1,
+    /// 2 byte
+    Byte2,
+    /// 4 byte
+    Byte4,
+}
 
 /// Registers in Common configuration Space Header.
 ///
