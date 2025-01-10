@@ -51,7 +51,7 @@ pub trait PciDevice {
 
     /// Initialize pci device.
     /// * `pci`: struct `Pci`
-    fn init(&self, pci: &Pci);
+    fn init(&self, pci_config_space_base_addr: HostPhysicalAddress);
 }
 
 /// Registers in Common configuration Space Header.
@@ -155,7 +155,7 @@ impl Pci {
     /// Initialize PCI devices.
     pub fn init_pci_devices(&self) {
         if let Some(iommu) = &self.pci_devices.iommu {
-            iommu.init(&self);
+            iommu.init(self.base_addr);
         }
     }
 }

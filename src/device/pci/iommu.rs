@@ -20,8 +20,6 @@ pub struct IoMmu {
     device: u32,
     /// PCI Function number
     function: u32,
-    /// PCI Configuration Space Header addr
-    config_space_header_addr: usize,
     /// PCI Vender ID
     _vender_id: u32,
     /// PCI Device ID
@@ -39,13 +37,6 @@ impl IoMmu {
             .unwrap()
             .next()
             .unwrap();
-        let region = device_tree
-            .find_node(node_path)
-            .unwrap()
-            .reg()
-            .unwrap()
-            .next()
-            .unwrap();
 
         assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
 
@@ -54,20 +45,11 @@ impl IoMmu {
             | (u32::from(pci_reg.address[2]) << 8)
             | u32::from(pci_reg.address[3]);
 
-        let bus = (pci_first_reg >> 16) & 0b1111_1111; // 8 bit
-        let device = (pci_first_reg >> 11) & 0b1_1111; // 5 bit
-        let function = (pci_first_reg >> 8) & 0b111; // 3 bit
-        let config_space_header_addr = region.starting_address as usize
-            | ((bus & 0b1111_1111) << 20) as usize
-            | ((device & 0b1_1111) << 15) as usize
-            | ((function & 0b111) << 12) as usize;
-
         // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
         Some(IoMmu {
-            bus,
-            device,
-            function,
-            config_space_header_addr,
+            bus: (pci_first_reg >> 16) & 0b1111_1111, // 8 bit
+            device: (pci_first_reg >> 11) & 0b1_1111, // 5 bit
+            function: (pci_first_reg >> 8) & 0b111,   // 3 bit
             // TODO: obtain from pci register.
             // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html
             _vender_id: 0x1efd,
@@ -102,20 +84,24 @@ impl PciDevice for IoMmu {
         unreachable!("use `IoMmu::new_from_dtb` instead.");
     }
 
-    fn init(&self, pci: &Pci) {
-        let iommu_reg_addr: u32 = u32::try_from(pci.pci_memory_maps()[0].phys.start.0).unwrap();
+    fn init(&self, pci_config_space_base_addr: HostPhysicalAddress) {
+        let iommu_reg_addr: u32 = pci_config_space_base_addr.0 as u32;
+        let config_space_header_addr = pci_config_space_base_addr.0
+            | ((self.bus & 0b1111_1111) << 20) as usize
+            | ((self.device & 0b1_1111) << 15) as usize
+            | ((self.function & 0b111) << 12) as usize;
         super::write_config_register(
-            self.config_space_header_addr,
+            config_space_header_addr,
             ConfigSpaceRegister::BaseAddressRegister1,
             iommu_reg_addr,
         );
         super::write_config_register(
-            self.config_space_header_addr,
+            config_space_header_addr,
             ConfigSpaceRegister::BaseAddressRegister2,
             0x0000_0000,
         );
         super::write_config_register(
-            self.config_space_header_addr,
+            config_space_header_addr,
             ConfigSpaceRegister::Command,
             0b10, // memory space enable
         );
