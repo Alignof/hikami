@@ -8,17 +8,14 @@ pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderField};
+use config_register::{read_config_register, ConfigSpaceHeaderField};
 
 use alloc::vec::Vec;
 use fdt::Fdt;
 
-/// PCI BAR count
-const PCI_BAR_COUNT: usize = 6;
-
 /// Bus - Device - Function
 #[derive(Debug)]
-struct Bdf {
+pub struct Bdf {
     /// PCI Bus number
     bus: u32,
     /// PCI Device number
@@ -53,7 +50,13 @@ impl Bdf {
 #[allow(clippy::module_name_repetitions)]
 pub trait PciDevice {
     /// Create self instance.
-    fn new(bus: u32, device: u32, function: u32) -> Self;
+    fn new(
+        bdf: Bdf,
+        vendor_id: u32,
+        device_id: u32,
+        pci_config_space_base_addr: HostPhysicalAddress,
+        memory_maps: &mut Vec<MemoryMap>,
+    ) -> Self;
 
     /// Initialize pci device.
     /// * `pci`: struct `Pci`
@@ -65,6 +68,8 @@ pub trait PciDevice {
 struct PciDevices {
     /// IOMMU: I/O memory management unit.
     iommu: Option<iommu::IoMmu>,
+    /// SATA: Serial ATA
+    sata: Option<sata::Sata>,
 }
 
 impl PciDevices {
@@ -80,13 +85,17 @@ impl PciDevices {
         /// Max PCI function size.
         const PCI_MAX_FUNCTION: u8 = 7;
 
+        let mut sata = None;
         for bus in 0..=PCI_MAX_BUS {
             for device in 0..=PCI_MAX_DEVICE {
                 for function in 0..=PCI_MAX_FUNCTION {
-                    let config_space_header_addr = pci_config_space_base_addr
-                        | ((bus & 0b1111_1111) << 20) as usize
-                        | ((device & 0b1_1111) << 15) as usize
-                        | ((function & 0b111) << 12) as usize;
+                    let bdf = Bdf {
+                        bus: bus.into(),
+                        device: device.into(),
+                        function: function.into(),
+                    };
+                    let config_space_header_addr =
+                        pci_config_space_base_addr | bdf.calc_config_space_header_offset();
 
                     let vendor_id = read_config_register(
                         config_space_header_addr,
@@ -97,36 +106,36 @@ impl PciDevices {
                         continue;
                     }
 
+                    let header_type = read_config_register(
+                        config_space_header_addr,
+                        ConfigSpaceHeaderField::HeaderType,
+                    ) as u8;
+                    let device_id = read_config_register(
+                        config_space_header_addr,
+                        ConfigSpaceHeaderField::DeviceId,
+                    ) as u16;
+
                     let class_code = read_config_register(
                         config_space_header_addr,
                         ConfigSpaceHeaderField::ClassCode,
                     );
-                    let device_id = (read_config_register(
-                        config_space_header_addr,
-                        ConfigSpaceHeaderField::DeviceId,
-                    )) as u16;
-                    let header_type = (read_config_register(
-                        config_space_header_addr,
-                        ConfigSpaceHeaderField::HeaderType,
-                    )) as u8;
+                    let (base_class, sub_class, interface) = (
+                        class_code >> 24 & 0xff,
+                        class_code >> 16 & 0xff,
+                        class_code >> 8 & 0xff,
+                    );
 
-                    let mut bar_range = [None; PCI_BAR_COUNT];
-                    const BARS: [ConfigSpaceHeaderField; 6] = [
-                        ConfigSpaceHeaderField::BaseAddressRegister0,
-                        ConfigSpaceHeaderField::BaseAddressRegister1,
-                        ConfigSpaceHeaderField::BaseAddressRegister2,
-                        ConfigSpaceHeaderField::BaseAddressRegister3,
-                        ConfigSpaceHeaderField::BaseAddressRegister4,
-                        ConfigSpaceHeaderField::BaseAddressRegister5,
-                    ];
-                    for (i, bar) in BARS.iter().enumerate() {
-                        let bar_value = read_config_register(config_space_header_addr, *bar);
-                        // memory map
-                        if bar_value & 0x1 == 0x0 {
-                            let start_address = (bar_value & 0xFFFFFFF0) as usize;
-                            let size = get_bar_size(config_space_header_addr, *bar);
-                            bar_range[i] = Some((start_address, size));
+                    match (base_class, sub_class, interface) {
+                        (1, 6, 1) => {
+                            sata = Some(sata::Sata::new(
+                                bdf,
+                                vendor_id.into(),
+                                device_id.into(),
+                                HostPhysicalAddress(pci_config_space_base_addr),
+                                memory_maps,
+                            ))
                         }
+                        _ => (),
                     }
 
                     // skip remain function id if it's not multi function device.
@@ -139,6 +148,7 @@ impl PciDevices {
 
         PciDevices {
             iommu: iommu::IoMmu::new_from_dtb(&device_tree, "soc/pci/iommu"),
+            sata,
         }
     }
 }
