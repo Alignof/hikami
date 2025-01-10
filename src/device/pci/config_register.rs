@@ -64,7 +64,8 @@ impl ConfigSpaceHeaderRegister {
 
 /// Get size of BAR.
 #[allow(clippy::cast_possible_truncation)]
-pub fn get_bar_size(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
+pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
+    let config_reg_addr = config_reg_base_addr + reg as usize;
     match reg {
         ConfigSpaceHeaderRegister::BaseAddressRegister0
         | ConfigSpaceHeaderRegister::BaseAddressRegister1
@@ -72,64 +73,50 @@ pub fn get_bar_size(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister)
         | ConfigSpaceHeaderRegister::BaseAddressRegister3
         | ConfigSpaceHeaderRegister::BaseAddressRegister4
         | ConfigSpaceHeaderRegister::BaseAddressRegister5 => unsafe {
-            let original_value = core::ptr::read_volatile(config_data_reg_addr as *const u32);
-            core::ptr::write_volatile(config_data_reg_addr as *mut u32, 0xffff_ffff);
-            let size = core::ptr::read_volatile(config_data_reg_addr as *const u32);
-            core::ptr::write_volatile(config_data_reg_addr as *mut u32, original_value);
+            let original_value = core::ptr::read_volatile(config_reg_addr as *const u32);
+            core::ptr::write_volatile(config_reg_addr as *mut u32, 0xffff_ffff);
+            let size = core::ptr::read_volatile(config_reg_addr as *const u32);
+            core::ptr::write_volatile(config_reg_addr as *mut u32, original_value);
 
             size
         },
         _ => unreachable!("please specify BAR"),
     }
 }
-/// Read config data from "PCI Configuration Space".
-#[allow(clippy::cast_possible_truncation)]
-pub fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
-    match reg {
-        ConfigSpaceHeaderRegister::HeaderType => unsafe {
-            u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u8))
-        },
-        ConfigSpaceHeaderRegister::VenderId
-        | ConfigSpaceHeaderRegister::DeviceId
-        | ConfigSpaceHeaderRegister::Command
-        | ConfigSpaceHeaderRegister::Status => unsafe {
-            u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u16))
-        },
-        ConfigSpaceHeaderRegister::BaseAddressRegister0
-        | ConfigSpaceHeaderRegister::BaseAddressRegister1
-        | ConfigSpaceHeaderRegister::BaseAddressRegister2
-        | ConfigSpaceHeaderRegister::BaseAddressRegister3
-        | ConfigSpaceHeaderRegister::BaseAddressRegister4
-        | ConfigSpaceHeaderRegister::BaseAddressRegister5 => unsafe {
-            core::ptr::read_volatile(config_data_reg_addr as *const u32)
-        },
-    }
-}
 
 /// Read config data from "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
+pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
+    // the register requires 32 bit size access.
+    let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
+    let offset_byte = (reg.field_size() as usize) & 0b11;
+    let mask = match reg.field_size() {
+        FieldSize::Byte1 => 0xff,
+        FieldSize::Byte2 => 0xffff,
+        FieldSize::Byte4 => 0xffff_ffff,
+    };
+
+    let read_value = unsafe { core::ptr::read_volatile(config_reg_32bit_addr as *const u32) };
+    read_value >> (offset_byte * 8) & mask
+}
+
+/// Write config data to "PCI Configuration Space".
+#[allow(clippy::cast_possible_truncation)]
 pub fn write_config_register(
-    config_data_reg_addr: usize,
+    config_reg_base_addr: usize,
     reg: ConfigSpaceHeaderRegister,
     data: u32,
 ) {
-    match reg {
-        ConfigSpaceHeaderRegister::HeaderType => unsafe {
-            core::ptr::write_volatile(config_data_reg_addr as *mut u8, data as u8)
-        },
-        ConfigSpaceHeaderRegister::VenderId
-        | ConfigSpaceHeaderRegister::DeviceId
-        | ConfigSpaceHeaderRegister::Command
-        | ConfigSpaceHeaderRegister::Status => unsafe {
-            core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16);
-        },
-        ConfigSpaceHeaderRegister::BaseAddressRegister0
-        | ConfigSpaceHeaderRegister::BaseAddressRegister1
-        | ConfigSpaceHeaderRegister::BaseAddressRegister2
-        | ConfigSpaceHeaderRegister::BaseAddressRegister3
-        | ConfigSpaceHeaderRegister::BaseAddressRegister4
-        | ConfigSpaceHeaderRegister::BaseAddressRegister5 => unsafe {
-            core::ptr::write_volatile(config_data_reg_addr as *mut u32, data);
-        },
-    }
+    // the register requires 32 bit size access.
+    let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
+    let offset_byte = (reg.field_size() as usize) & 0b11;
+    let mask = match reg.field_size() {
+        FieldSize::Byte1 => 0xff,
+        FieldSize::Byte2 => 0xffff,
+        FieldSize::Byte4 => 0xffff_ffff,
+    };
+
+    let read_value = unsafe { core::ptr::read_volatile(config_reg_32bit_addr as *const u32) };
+    let write_value = (read_value & !(mask << offset_byte * 8)) | data << (offset_byte * 8);
+    unsafe { core::ptr::write_volatile(config_reg_32bit_addr as *mut u32, write_value) };
 }
