@@ -94,7 +94,7 @@ pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) ->
 pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) -> u32 {
     // the register requires 32 bit size access.
     let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
-    let offset_byte = (reg.field_size() as usize) & 0b11;
+    let offset_byte = (reg as usize) & 0b11;
     let mask = match reg.field_size() {
         FieldSize::Byte1 => 0xff,
         FieldSize::Byte2 => 0xffff,
@@ -111,7 +111,7 @@ pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderF
 pub fn write_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField, data: u32) {
     // the register requires 32 bit size access.
     let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
-    let offset_byte = (reg.field_size() as usize) & 0b11;
+    let offset_byte = (reg as usize) & 0b11;
     let mask = match reg.field_size() {
         FieldSize::Byte1 => 0xff,
         FieldSize::Byte2 => 0xffff,

@@ -120,9 +120,9 @@ impl PciDevices {
                         ConfigSpaceHeaderField::ClassCode,
                     );
                     let (base_class, sub_class, interface) = (
-                        class_code >> 24 & 0xff,
                         class_code >> 16 & 0xff,
                         class_code >> 8 & 0xff,
+                        class_code & 0xff,
                     );
 
                     match (base_class, sub_class, interface) {
