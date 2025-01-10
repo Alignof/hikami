@@ -8,6 +8,8 @@ enum FieldSize {
     Byte1,
     /// 2 byte
     Byte2,
+    /// 3 byte
+    Byte3,
     /// 4 byte
     Byte4,
 }
@@ -27,6 +29,8 @@ pub enum ConfigSpaceHeaderRegister {
     Command = 0x4,
     /// Status
     Status = 0x6,
+    /// Class Code
+    ClassCode = 0x9,
     /// Header type
     HeaderType = 0xd,
     /// Base Address Register 0
@@ -45,12 +49,13 @@ pub enum ConfigSpaceHeaderRegister {
 
 impl ConfigSpaceHeaderRegister {
     /// Field size [byte]
-    pub fn field_size(&self) -> FieldSize {
+    fn field_size(&self) -> FieldSize {
         match self {
             ConfigSpaceHeaderRegister::VenderId => FieldSize::Byte2,
             ConfigSpaceHeaderRegister::DeviceId => FieldSize::Byte2,
             ConfigSpaceHeaderRegister::Command => FieldSize::Byte2,
             ConfigSpaceHeaderRegister::Status => FieldSize::Byte2,
+            ConfigSpaceHeaderRegister::ClassCode => FieldSize::Byte3,
             ConfigSpaceHeaderRegister::HeaderType => FieldSize::Byte1,
             ConfigSpaceHeaderRegister::BaseAddressRegister0 => FieldSize::Byte4,
             ConfigSpaceHeaderRegister::BaseAddressRegister1 => FieldSize::Byte4,
@@ -93,6 +98,7 @@ pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderR
     let mask = match reg.field_size() {
         FieldSize::Byte1 => 0xff,
         FieldSize::Byte2 => 0xffff,
+        FieldSize::Byte3 => 0xff_ffff,
         FieldSize::Byte4 => 0xffff_ffff,
     };
 
@@ -113,6 +119,7 @@ pub fn write_config_register(
     let mask = match reg.field_size() {
         FieldSize::Byte1 => 0xff,
         FieldSize::Byte2 => 0xffff,
+        FieldSize::Byte3 => 0xff_ffff,
         FieldSize::Byte4 => 0xffff_ffff,
     };
 
