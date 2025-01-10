@@ -20,6 +20,10 @@ pub struct IoMmu {
     device: u32,
     /// PCI Function number
     function: u32,
+    /// PCI Vender ID
+    _vender_id: u32,
+    /// PCI Device ID
+    _device_id: u32,
 }
 
 impl IoMmu {
@@ -46,6 +50,10 @@ impl IoMmu {
             bus: (pci_first_reg >> 16) & 0b1111_1111, // 8 bit
             device: (pci_first_reg >> 11) & 0b1_1111, // 5 bit
             function: (pci_first_reg >> 8) & 0b111,   // 3 bit
+            // TODO: obtain from pci register.
+            // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html
+            _vender_id: 0x1efd,
+            _device_id: 0xedf1,
         })
     }
 
