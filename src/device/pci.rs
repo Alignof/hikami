@@ -2,6 +2,7 @@
 
 // PCI devices
 pub mod iommu;
+mod sata;
 
 pub mod config_register;
 
