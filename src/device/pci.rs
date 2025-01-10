@@ -8,7 +8,7 @@ pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderRegister};
+use config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderField};
 
 use alloc::vec::Vec;
 use fdt::Fdt;
@@ -90,30 +90,34 @@ impl PciDevices {
 
                     let vendor_id = read_config_register(
                         config_space_header_addr,
-                        ConfigSpaceHeaderRegister::VenderId,
+                        ConfigSpaceHeaderField::VenderId,
                     ) as u16;
                     // device is disconnected (not a valid device)
                     if vendor_id == 0xFFFF {
                         continue;
                     }
 
+                    let class_code = read_config_register(
+                        config_space_header_addr,
+                        ConfigSpaceHeaderField::ClassCode,
+                    );
                     let device_id = (read_config_register(
                         config_space_header_addr,
-                        ConfigSpaceHeaderRegister::DeviceId,
+                        ConfigSpaceHeaderField::DeviceId,
                     )) as u16;
                     let header_type = (read_config_register(
                         config_space_header_addr,
-                        ConfigSpaceHeaderRegister::HeaderType,
+                        ConfigSpaceHeaderField::HeaderType,
                     )) as u8;
 
                     let mut bar_range = [None; PCI_BAR_COUNT];
-                    const BARS: [ConfigSpaceHeaderRegister; 6] = [
-                        ConfigSpaceHeaderRegister::BaseAddressRegister0,
-                        ConfigSpaceHeaderRegister::BaseAddressRegister1,
-                        ConfigSpaceHeaderRegister::BaseAddressRegister2,
-                        ConfigSpaceHeaderRegister::BaseAddressRegister3,
-                        ConfigSpaceHeaderRegister::BaseAddressRegister4,
-                        ConfigSpaceHeaderRegister::BaseAddressRegister5,
+                    const BARS: [ConfigSpaceHeaderField; 6] = [
+                        ConfigSpaceHeaderField::BaseAddressRegister0,
+                        ConfigSpaceHeaderField::BaseAddressRegister1,
+                        ConfigSpaceHeaderField::BaseAddressRegister2,
+                        ConfigSpaceHeaderField::BaseAddressRegister3,
+                        ConfigSpaceHeaderField::BaseAddressRegister4,
+                        ConfigSpaceHeaderField::BaseAddressRegister5,
                     ];
                     for (i, bar) in BARS.iter().enumerate() {
                         let bar_value = read_config_register(config_space_header_addr, *bar);

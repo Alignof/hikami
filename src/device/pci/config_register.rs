@@ -20,7 +20,7 @@ enum FieldSize {
 /// Ref: [https://osdev.jp/wiki/PCI-Memo](https://osdev.jp/wiki/PCI-Memo)  
 /// Ref: [http://oswiki.osask.jp/?PCI](http://oswiki.osask.jp/?PCI)  
 #[derive(Clone, Copy)]
-pub enum ConfigSpaceHeaderRegister {
+pub enum ConfigSpaceHeaderField {
     /// Vender ID
     VenderId = 0x0,
     /// Device ID
@@ -47,37 +47,37 @@ pub enum ConfigSpaceHeaderRegister {
     BaseAddressRegister5 = 0x24,
 }
 
-impl ConfigSpaceHeaderRegister {
+impl ConfigSpaceHeaderField {
     /// Field size [byte]
     fn field_size(&self) -> FieldSize {
         match self {
-            ConfigSpaceHeaderRegister::VenderId => FieldSize::Byte2,
-            ConfigSpaceHeaderRegister::DeviceId => FieldSize::Byte2,
-            ConfigSpaceHeaderRegister::Command => FieldSize::Byte2,
-            ConfigSpaceHeaderRegister::Status => FieldSize::Byte2,
-            ConfigSpaceHeaderRegister::ClassCode => FieldSize::Byte3,
-            ConfigSpaceHeaderRegister::HeaderType => FieldSize::Byte1,
-            ConfigSpaceHeaderRegister::BaseAddressRegister0 => FieldSize::Byte4,
-            ConfigSpaceHeaderRegister::BaseAddressRegister1 => FieldSize::Byte4,
-            ConfigSpaceHeaderRegister::BaseAddressRegister2 => FieldSize::Byte4,
-            ConfigSpaceHeaderRegister::BaseAddressRegister3 => FieldSize::Byte4,
-            ConfigSpaceHeaderRegister::BaseAddressRegister4 => FieldSize::Byte4,
-            ConfigSpaceHeaderRegister::BaseAddressRegister5 => FieldSize::Byte4,
+            ConfigSpaceHeaderField::VenderId => FieldSize::Byte2,
+            ConfigSpaceHeaderField::DeviceId => FieldSize::Byte2,
+            ConfigSpaceHeaderField::Command => FieldSize::Byte2,
+            ConfigSpaceHeaderField::Status => FieldSize::Byte2,
+            ConfigSpaceHeaderField::ClassCode => FieldSize::Byte3,
+            ConfigSpaceHeaderField::HeaderType => FieldSize::Byte1,
+            ConfigSpaceHeaderField::BaseAddressRegister0 => FieldSize::Byte4,
+            ConfigSpaceHeaderField::BaseAddressRegister1 => FieldSize::Byte4,
+            ConfigSpaceHeaderField::BaseAddressRegister2 => FieldSize::Byte4,
+            ConfigSpaceHeaderField::BaseAddressRegister3 => FieldSize::Byte4,
+            ConfigSpaceHeaderField::BaseAddressRegister4 => FieldSize::Byte4,
+            ConfigSpaceHeaderField::BaseAddressRegister5 => FieldSize::Byte4,
         }
     }
 }
 
 /// Get size of BAR.
 #[allow(clippy::cast_possible_truncation)]
-pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
+pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) -> u32 {
     let config_reg_addr = config_reg_base_addr + reg as usize;
     match reg {
-        ConfigSpaceHeaderRegister::BaseAddressRegister0
-        | ConfigSpaceHeaderRegister::BaseAddressRegister1
-        | ConfigSpaceHeaderRegister::BaseAddressRegister2
-        | ConfigSpaceHeaderRegister::BaseAddressRegister3
-        | ConfigSpaceHeaderRegister::BaseAddressRegister4
-        | ConfigSpaceHeaderRegister::BaseAddressRegister5 => unsafe {
+        ConfigSpaceHeaderField::BaseAddressRegister0
+        | ConfigSpaceHeaderField::BaseAddressRegister1
+        | ConfigSpaceHeaderField::BaseAddressRegister2
+        | ConfigSpaceHeaderField::BaseAddressRegister3
+        | ConfigSpaceHeaderField::BaseAddressRegister4
+        | ConfigSpaceHeaderField::BaseAddressRegister5 => unsafe {
             let original_value = core::ptr::read_volatile(config_reg_addr as *const u32);
             core::ptr::write_volatile(config_reg_addr as *mut u32, 0xffff_ffff);
             let size = core::ptr::read_volatile(config_reg_addr as *const u32);
@@ -91,7 +91,7 @@ pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderRegister)
 
 /// Read config data from "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
-pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
+pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) -> u32 {
     // the register requires 32 bit size access.
     let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
     let offset_byte = (reg.field_size() as usize) & 0b11;
@@ -108,11 +108,7 @@ pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderR
 
 /// Write config data to "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
-pub fn write_config_register(
-    config_reg_base_addr: usize,
-    reg: ConfigSpaceHeaderRegister,
-    data: u32,
-) {
+pub fn write_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField, data: u32) {
     // the register requires 32 bit size access.
     let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
     let offset_byte = (reg.field_size() as usize) & 0b11;
