@@ -9,6 +9,38 @@ use fdt::Fdt;
 
 use alloc::vec::Vec;
 
+/// Read config data from "PCI Configuration Space".
+#[allow(clippy::cast_possible_truncation)]
+fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceRegister) -> u32 {
+    match reg {
+        ConfigSpaceRegister::VendorId
+        | ConfigSpaceRegister::DeviceId
+        | ConfigSpaceRegister::Command
+        | ConfigSpaceRegister::Status => unsafe {
+            u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u16))
+        },
+        ConfigSpaceRegister::BaseAddressRegister1 | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
+            core::ptr::read_volatile(config_data_reg_addr as *const u32)
+        },
+    }
+}
+
+/// Read config data from "PCI Configuration Space".
+#[allow(clippy::cast_possible_truncation)]
+fn write_config_register(config_data_reg_addr: usize, reg: ConfigSpaceRegister, data: u32) {
+    match reg {
+        ConfigSpaceRegister::VendorId
+        | ConfigSpaceRegister::DeviceId
+        | ConfigSpaceRegister::Command
+        | ConfigSpaceRegister::Status => unsafe {
+            core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16);
+        },
+        ConfigSpaceRegister::BaseAddressRegister1 | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
+            core::ptr::write_volatile(config_data_reg_addr as *mut u32, data);
+        },
+    }
+}
+
 /// Pci device.
 ///
 /// A struct that implement this trait **must** has `bus`, `device`, `function` number.
@@ -113,64 +145,6 @@ pub struct Pci {
 }
 
 impl Pci {
-    /// Read config data from "PCI Configuration Space".
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn read_config_register(
-        &self,
-        bus_num: u32,
-        device_num: u32,
-        function_num: u32,
-        reg: ConfigSpaceRegister,
-    ) -> u32 {
-        let config_data_reg_addr = self.base_addr.0 as u32
-            | ((bus_num & 0b1111_1111) << 20)
-            | ((device_num & 0b1_1111) << 15)
-            | ((function_num & 0b111) << 12)
-            | reg as u32;
-
-        match reg {
-            ConfigSpaceRegister::VendorId
-            | ConfigSpaceRegister::DeviceId
-            | ConfigSpaceRegister::Command
-            | ConfigSpaceRegister::Status => unsafe {
-                u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u16))
-            },
-            ConfigSpaceRegister::BaseAddressRegister1
-            | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
-                core::ptr::read_volatile(config_data_reg_addr as *const u32)
-            },
-        }
-    }
-
-    /// Read config data from "PCI Configuration Space".
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn write_config_register(
-        &self,
-        bus_num: u32,
-        device_num: u32,
-        function_num: u32,
-        reg: ConfigSpaceRegister,
-        data: u32,
-    ) {
-        let config_data_reg_addr = self.base_addr.0 as u32
-            | ((bus_num & 0b1111_1111) << 20)
-            | ((device_num & 0b1_1111) << 15)
-            | ((function_num & 0b111) << 12)
-            | reg as u32;
-        match reg {
-            ConfigSpaceRegister::VendorId
-            | ConfigSpaceRegister::DeviceId
-            | ConfigSpaceRegister::Command
-            | ConfigSpaceRegister::Status => unsafe {
-                core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16);
-            },
-            ConfigSpaceRegister::BaseAddressRegister1
-            | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
-                core::ptr::write_volatile(config_data_reg_addr as *mut u32, data);
-            },
-        }
-    }
-
     /// Return memory maps of Generic PCI host controller
     ///
     /// Ref: [https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt](https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt)
