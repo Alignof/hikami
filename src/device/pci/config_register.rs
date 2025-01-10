@@ -17,24 +17,41 @@ pub enum ConfigSpaceHeaderRegister {
     Command = 0x4,
     /// Status
     Status = 0x6,
+    /// Header type
+    HeaderType = 0xd,
+    /// Base Address Register 0
+    BaseAddressRegister0 = 0x10,
     /// Base Address Register 1
-    BaseAddressRegister1 = 0x10,
+    BaseAddressRegister1 = 0x14,
     /// Base Address Register 2
-    BaseAddressRegister2 = 0x14,
+    BaseAddressRegister2 = 0x18,
+    /// Base Address Register 3
+    BaseAddressRegister3 = 0x1c,
+    /// Base Address Register 4
+    BaseAddressRegister4 = 0x20,
+    /// Base Address Register 5
+    BaseAddressRegister5 = 0x24,
 }
 
 /// Read config data from "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
 pub fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
     match reg {
+        ConfigSpaceHeaderRegister::HeaderType => unsafe {
+            u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u8))
+        },
         ConfigSpaceHeaderRegister::VenderId
         | ConfigSpaceHeaderRegister::DeviceId
         | ConfigSpaceHeaderRegister::Command
         | ConfigSpaceHeaderRegister::Status => unsafe {
             u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u16))
         },
-        ConfigSpaceHeaderRegister::BaseAddressRegister1
-        | ConfigSpaceHeaderRegister::BaseAddressRegister2 => unsafe {
+        ConfigSpaceHeaderRegister::BaseAddressRegister0
+        | ConfigSpaceHeaderRegister::BaseAddressRegister1
+        | ConfigSpaceHeaderRegister::BaseAddressRegister2
+        | ConfigSpaceHeaderRegister::BaseAddressRegister3
+        | ConfigSpaceHeaderRegister::BaseAddressRegister4
+        | ConfigSpaceHeaderRegister::BaseAddressRegister5 => unsafe {
             core::ptr::read_volatile(config_data_reg_addr as *const u32)
         },
     }
@@ -48,14 +65,21 @@ pub fn write_config_register(
     data: u32,
 ) {
     match reg {
+        ConfigSpaceHeaderRegister::HeaderType => unsafe {
+            core::ptr::write_volatile(config_data_reg_addr as *mut u8, data as u8)
+        },
         ConfigSpaceHeaderRegister::VenderId
         | ConfigSpaceHeaderRegister::DeviceId
         | ConfigSpaceHeaderRegister::Command
         | ConfigSpaceHeaderRegister::Status => unsafe {
             core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16);
         },
-        ConfigSpaceHeaderRegister::BaseAddressRegister1
-        | ConfigSpaceHeaderRegister::BaseAddressRegister2 => unsafe {
+        ConfigSpaceHeaderRegister::BaseAddressRegister0
+        | ConfigSpaceHeaderRegister::BaseAddressRegister1
+        | ConfigSpaceHeaderRegister::BaseAddressRegister2
+        | ConfigSpaceHeaderRegister::BaseAddressRegister3
+        | ConfigSpaceHeaderRegister::BaseAddressRegister4
+        | ConfigSpaceHeaderRegister::BaseAddressRegister5 => unsafe {
             core::ptr::write_volatile(config_data_reg_addr as *mut u32, data);
         },
     }
