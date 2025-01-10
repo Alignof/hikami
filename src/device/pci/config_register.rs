@@ -9,8 +9,8 @@
 /// Ref: [http://oswiki.osask.jp/?PCI](http://oswiki.osask.jp/?PCI)  
 #[derive(Clone, Copy)]
 pub enum ConfigSpaceHeaderRegister {
-    /// Vendor ID
-    VendorId = 0x0,
+    /// Vender ID
+    VenderId = 0x0,
     /// Device ID
     DeviceId = 0x2,
     /// Command
@@ -25,9 +25,9 @@ pub enum ConfigSpaceHeaderRegister {
 
 /// Read config data from "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
-fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
+pub fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
     match reg {
-        ConfigSpaceHeaderRegister::VendorId
+        ConfigSpaceHeaderRegister::VenderId
         | ConfigSpaceHeaderRegister::DeviceId
         | ConfigSpaceHeaderRegister::Command
         | ConfigSpaceHeaderRegister::Status => unsafe {
@@ -48,7 +48,7 @@ pub fn write_config_register(
     data: u32,
 ) {
     match reg {
-        ConfigSpaceHeaderRegister::VendorId
+        ConfigSpaceHeaderRegister::VenderId
         | ConfigSpaceHeaderRegister::DeviceId
         | ConfigSpaceHeaderRegister::Command
         | ConfigSpaceHeaderRegister::Status => unsafe {
