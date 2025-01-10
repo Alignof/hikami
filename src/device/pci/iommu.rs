@@ -23,6 +23,32 @@ pub struct IoMmu {
 }
 
 impl IoMmu {
+    /// Create self instance from device tree.
+    /// * `device_tree`: struct Fdt
+    /// * `node_path`: node path in fdt
+    pub fn new_from_dtb(device_tree: &Fdt, node_path: &str) -> Option<Self> {
+        let pci_reg = device_tree
+            .find_node(node_path)?
+            .raw_reg()
+            .unwrap()
+            .next()
+            .unwrap();
+
+        assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
+
+        let pci_first_reg = (u32::from(pci_reg.address[0]) << 24)
+            | (u32::from(pci_reg.address[1]) << 16)
+            | (u32::from(pci_reg.address[2]) << 8)
+            | u32::from(pci_reg.address[3]);
+
+        // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
+        Some(IoMmu {
+            bus: (pci_first_reg >> 16) & 0b1111_1111, // 8 bit
+            device: (pci_first_reg >> 11) & 0b1_1111, // 5 bit
+            function: (pci_first_reg >> 8) & 0b111,   // 3 bit
+        })
+    }
+
     /// Set page table in IOMMU.
     fn init_page_table(ddt_addr: HostPhysicalAddress) {
         /// Offset of `iohgatp` register [byte].
@@ -46,25 +72,8 @@ impl IoMmu {
 }
 
 impl PciDevice for IoMmu {
-    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self> {
-        let pci_reg = device_tree
-            .find_node(node_path)?
-            .raw_reg()
-            .unwrap()
-            .next()
-            .unwrap();
-        assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
-        let pci_first_reg = (u32::from(pci_reg.address[0]) << 24)
-            | (u32::from(pci_reg.address[1]) << 16)
-            | (u32::from(pci_reg.address[2]) << 8)
-            | u32::from(pci_reg.address[3]);
-
-        // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
-        Some(IoMmu {
-            bus: (pci_first_reg >> 16) & 0b1111_1111, // 8 bit
-            device: (pci_first_reg >> 11) & 0b1_1111, // 5 bit
-            function: (pci_first_reg >> 8) & 0b111,   // 3 bit
-        })
+    fn new(_bus: u32, _device: u32, _function: u32) -> Self {
+        unreachable!("use `IoMmu::new_from_dtb` instead.");
     }
 
     fn init(&self, pci: &Pci) {

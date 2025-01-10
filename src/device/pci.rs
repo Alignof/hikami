@@ -15,14 +15,10 @@ use alloc::vec::Vec;
 #[allow(clippy::module_name_repetitions)]
 pub trait PciDevice {
     /// Create self instance.
-    /// * `device_tree` - struct Fdt
-    /// * `node_path` - node path in fdt
-    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self>
-    where
-        Self: Sized;
+    fn new(bus: u32, device: u32, function: u32) -> Self;
 
     /// Initialize pci device.
-    /// * `pci` - struct `Pci`
+    /// * `pci`: struct `Pci`
     fn init(&self, pci: &Pci);
 }
 
@@ -167,10 +163,10 @@ impl MmioDevice for Pci {
                 | (u32::from(range[index + 2]) << 8)
                 | u32::from(range[index + 3])
         };
+
         let mut memory_maps = Vec::new();
         for range in ranges.chunks(RANGE_NUM * BYTES_U32) {
             let bus_address = get_u32(range, 0);
-
             // ignore I/O space map
             // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
             if (bus_address >> 24) & 0b11 != 0b01 {
@@ -189,7 +185,7 @@ impl MmioDevice for Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             memory_maps,
-            iommu: iommu::IoMmu::new(&device_tree, "soc/pci/iommu"),
+            iommu: iommu::IoMmu::new_from_dtb(&device_tree, "soc/pci/iommu"),
         }
     }
 
