@@ -3,7 +3,7 @@
 
 mod register_map;
 
-use super::{ConfigSpaceRegister, Pci, PciDevice};
+use super::{ConfigSpaceHeaderRegister, PciDevice};
 use crate::h_extension::csrs::hgatp;
 use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress};
 use crate::PageBlock;
@@ -92,17 +92,17 @@ impl PciDevice for IoMmu {
             | ((self.function & 0b111) << 12) as usize;
         super::write_config_register(
             config_space_header_addr,
-            ConfigSpaceRegister::BaseAddressRegister1,
+            ConfigSpaceHeaderRegister::BaseAddressRegister1,
             iommu_reg_addr,
         );
         super::write_config_register(
             config_space_header_addr,
-            ConfigSpaceRegister::BaseAddressRegister2,
+            ConfigSpaceHeaderRegister::BaseAddressRegister2,
             0x0000_0000,
         );
         super::write_config_register(
             config_space_header_addr,
-            ConfigSpaceRegister::Command,
+            ConfigSpaceHeaderRegister::Command,
             0b10, // memory space enable
         );
         let registers = iommu_reg_addr as *mut IoMmuRegisters;

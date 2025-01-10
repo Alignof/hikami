@@ -11,15 +11,16 @@ use alloc::vec::Vec;
 
 /// Read config data from "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
-fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceRegister) -> u32 {
+fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
     match reg {
-        ConfigSpaceRegister::VendorId
-        | ConfigSpaceRegister::DeviceId
-        | ConfigSpaceRegister::Command
-        | ConfigSpaceRegister::Status => unsafe {
+        ConfigSpaceHeaderRegister::VendorId
+        | ConfigSpaceHeaderRegister::DeviceId
+        | ConfigSpaceHeaderRegister::Command
+        | ConfigSpaceHeaderRegister::Status => unsafe {
             u32::from(core::ptr::read_volatile(config_data_reg_addr as *const u16))
         },
-        ConfigSpaceRegister::BaseAddressRegister1 | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
+        ConfigSpaceHeaderRegister::BaseAddressRegister1
+        | ConfigSpaceHeaderRegister::BaseAddressRegister2 => unsafe {
             core::ptr::read_volatile(config_data_reg_addr as *const u32)
         },
     }
@@ -27,15 +28,16 @@ fn read_config_register(config_data_reg_addr: usize, reg: ConfigSpaceRegister) -
 
 /// Read config data from "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
-fn write_config_register(config_data_reg_addr: usize, reg: ConfigSpaceRegister, data: u32) {
+fn write_config_register(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister, data: u32) {
     match reg {
-        ConfigSpaceRegister::VendorId
-        | ConfigSpaceRegister::DeviceId
-        | ConfigSpaceRegister::Command
-        | ConfigSpaceRegister::Status => unsafe {
+        ConfigSpaceHeaderRegister::VendorId
+        | ConfigSpaceHeaderRegister::DeviceId
+        | ConfigSpaceHeaderRegister::Command
+        | ConfigSpaceHeaderRegister::Status => unsafe {
             core::ptr::write_volatile(config_data_reg_addr as *mut u16, data as u16);
         },
-        ConfigSpaceRegister::BaseAddressRegister1 | ConfigSpaceRegister::BaseAddressRegister2 => unsafe {
+        ConfigSpaceHeaderRegister::BaseAddressRegister1
+        | ConfigSpaceHeaderRegister::BaseAddressRegister2 => unsafe {
             core::ptr::write_volatile(config_data_reg_addr as *mut u32, data);
         },
     }
@@ -60,7 +62,7 @@ pub trait PciDevice {
 /// Ref: [https://osdev.jp/wiki/PCI-Memo](https://osdev.jp/wiki/PCI-Memo)  
 /// Ref: [http://oswiki.osask.jp/?PCI](http://oswiki.osask.jp/?PCI)  
 #[derive(Clone, Copy)]
-pub enum ConfigSpaceRegister {
+pub enum ConfigSpaceHeaderRegister {
     /// Vendor ID
     VendorId = 0x0,
     /// Device ID
