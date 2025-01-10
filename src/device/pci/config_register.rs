@@ -43,6 +43,25 @@ pub enum ConfigSpaceHeaderRegister {
     BaseAddressRegister5 = 0x24,
 }
 
+impl ConfigSpaceHeaderRegister {
+    /// Field size [byte]
+    pub fn field_size(&self) -> FieldSize {
+        match self {
+            ConfigSpaceHeaderRegister::VenderId => FieldSize::Byte2,
+            ConfigSpaceHeaderRegister::DeviceId => FieldSize::Byte2,
+            ConfigSpaceHeaderRegister::Command => FieldSize::Byte2,
+            ConfigSpaceHeaderRegister::Status => FieldSize::Byte2,
+            ConfigSpaceHeaderRegister::HeaderType => FieldSize::Byte1,
+            ConfigSpaceHeaderRegister::BaseAddressRegister0 => FieldSize::Byte4,
+            ConfigSpaceHeaderRegister::BaseAddressRegister1 => FieldSize::Byte4,
+            ConfigSpaceHeaderRegister::BaseAddressRegister2 => FieldSize::Byte4,
+            ConfigSpaceHeaderRegister::BaseAddressRegister3 => FieldSize::Byte4,
+            ConfigSpaceHeaderRegister::BaseAddressRegister4 => FieldSize::Byte4,
+            ConfigSpaceHeaderRegister::BaseAddressRegister5 => FieldSize::Byte4,
+        }
+    }
+}
+
 /// Get size of BAR.
 #[allow(clippy::cast_possible_truncation)]
 pub fn get_bar_size(config_data_reg_addr: usize, reg: ConfigSpaceHeaderRegister) -> u32 {
