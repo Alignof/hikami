@@ -4,7 +4,7 @@
 mod register_map;
 
 use super::config_register::{write_config_register, ConfigSpaceHeaderRegister};
-use super::PciDevice;
+use super::{Bdf, PciDevice};
 use crate::h_extension::csrs::hgatp;
 use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress};
 use crate::PageBlock;
@@ -15,12 +15,8 @@ use fdt::Fdt;
 /// IOMMU: I/O memory management unit.
 #[derive(Debug)]
 pub struct IoMmu {
-    /// PCI Bus number
-    bus: u32,
-    /// PCI Device number
-    device: u32,
-    /// PCI Function number
-    function: u32,
+    /// Bus - device - function
+    ident: Bdf,
     /// PCI Vender ID
     _vender_id: u32,
     /// PCI Device ID
@@ -48,9 +44,7 @@ impl IoMmu {
 
         // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
         Some(IoMmu {
-            bus: (pci_first_reg >> 16) & 0b1111_1111, // 8 bit
-            device: (pci_first_reg >> 11) & 0b1_1111, // 5 bit
-            function: (pci_first_reg >> 8) & 0b111,   // 3 bit
+            ident: Bdf::new(pci_first_reg),
             // TODO: obtain from pci register.
             // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html
             _vender_id: 0x1efd,
@@ -87,10 +81,8 @@ impl PciDevice for IoMmu {
 
     fn init(&self, pci_config_space_base_addr: HostPhysicalAddress) {
         let iommu_reg_addr: u32 = pci_config_space_base_addr.0 as u32;
-        let config_space_header_addr = pci_config_space_base_addr.0
-            | ((self.bus & 0b1111_1111) << 20) as usize
-            | ((self.device & 0b1_1111) << 15) as usize
-            | ((self.function & 0b111) << 12) as usize;
+        let config_space_header_addr =
+            pci_config_space_base_addr.0 | self.ident.calc_config_space_header_offset();
         write_config_register(
             config_space_header_addr,
             ConfigSpaceHeaderRegister::BaseAddressRegister1,

@@ -15,6 +15,37 @@ use fdt::Fdt;
 /// PCI BAR count
 const PCI_BAR_COUNT: usize = 6;
 
+/// Bus - Device - Function
+#[derive(Debug)]
+struct Bdf {
+    /// PCI Bus number
+    bus: u32,
+    /// PCI Device number
+    device: u32,
+    /// PCI Function number
+    function: u32,
+}
+impl Bdf {
+    /// Create BDF from high 32-bit of PCI addresses.
+    ///
+    /// - range_phys_hi: Upper 32-bit data of child addresses.
+    /// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
+    pub fn new(range_phys_hi: u32) -> Self {
+        Bdf {
+            bus: (range_phys_hi >> 16) & 0b1111_1111, // 8 bit
+            device: (range_phys_hi >> 11) & 0b1_1111, // 5 bit
+            function: (range_phys_hi >> 8) & 0b111,   // 3 bit
+        }
+    }
+
+    /// Calculate offset of config space header
+    pub fn calc_config_space_header_offset(&self) -> usize {
+        ((self.bus & 0b1111_1111) << 20) as usize
+            | ((self.device & 0b1_1111) << 15) as usize
+            | ((self.function & 0b111) << 12) as usize
+    }
+}
+
 /// Pci device.
 ///
 /// A struct that implement this trait **must** has `bus`, `device`, `function` number.
