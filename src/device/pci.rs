@@ -7,9 +7,13 @@ pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use fdt::Fdt;
+use config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderRegister};
 
 use alloc::vec::Vec;
+use fdt::Fdt;
+
+/// PCI BAR count
+const PCI_BAR_COUNT: usize = 6;
 
 /// Pci device.
 ///
@@ -32,7 +36,71 @@ struct PciDevices {
 }
 
 impl PciDevices {
-    pub fn new(device_tree: &Fdt, memory_maps: &mut Vec<MemoryMap>) -> Self {
+    pub fn new(
+        device_tree: &Fdt,
+        memory_maps: &mut Vec<MemoryMap>,
+        pci_config_space_base_addr: usize,
+    ) -> Self {
+        /// Max PCI bus size.
+        const PCI_MAX_BUS: u8 = 255;
+        /// Max PCI device size.
+        const PCI_MAX_DEVICE: u8 = 31;
+        /// Max PCI function size.
+        const PCI_MAX_FUNCTION: u8 = 7;
+
+        for bus in 0..=PCI_MAX_BUS {
+            for device in 0..=PCI_MAX_DEVICE {
+                for function in 0..=PCI_MAX_FUNCTION {
+                    let config_space_header_addr = pci_config_space_base_addr
+                        | ((bus & 0b1111_1111) << 20) as usize
+                        | ((device & 0b1_1111) << 15) as usize
+                        | ((function & 0b111) << 12) as usize;
+
+                    let vendor_id = read_config_register(
+                        config_space_header_addr,
+                        ConfigSpaceHeaderRegister::VenderId,
+                    ) as u16;
+                    // device is disconnected (not a valid device)
+                    if vendor_id == 0xFFFF {
+                        continue;
+                    }
+
+                    let device_id = (read_config_register(
+                        config_space_header_addr,
+                        ConfigSpaceHeaderRegister::DeviceId,
+                    )) as u16;
+                    let header_type = (read_config_register(
+                        config_space_header_addr,
+                        ConfigSpaceHeaderRegister::HeaderType,
+                    )) as u8;
+
+                    let mut bar_range = [None; PCI_BAR_COUNT];
+                    const BARS: [ConfigSpaceHeaderRegister; 6] = [
+                        ConfigSpaceHeaderRegister::BaseAddressRegister0,
+                        ConfigSpaceHeaderRegister::BaseAddressRegister1,
+                        ConfigSpaceHeaderRegister::BaseAddressRegister2,
+                        ConfigSpaceHeaderRegister::BaseAddressRegister3,
+                        ConfigSpaceHeaderRegister::BaseAddressRegister4,
+                        ConfigSpaceHeaderRegister::BaseAddressRegister5,
+                    ];
+                    for (i, bar) in BARS.iter().enumerate() {
+                        let bar_value = read_config_register(config_space_header_addr, *bar);
+                        // memory map
+                        if bar_value & 0x1 == 0x0 {
+                            let start_address = (bar_value & 0xFFFFFFF0) as usize;
+                            let size = get_bar_size(config_space_header_addr, *bar);
+                            bar_range[i] = Some((start_address, size));
+                        }
+                    }
+
+                    // skip remain function id if it's not multi function device.
+                    if function == 0 && header_type & 0x80 == 0 {
+                        break;
+                    }
+                }
+            }
+        }
+
         PciDevices {
             iommu: iommu::IoMmu::new_from_dtb(&device_tree, "soc/pci/iommu"),
         }
@@ -80,16 +148,15 @@ impl MmioDevice for Pci {
             .unwrap();
 
         let mut memory_maps = Vec::new();
-        let pci_devices = PciDevices::new(device_tree, &mut memory_maps);
-
         // TODO: Verify that this process is needed.
-        let address = region.starting_address as usize;
+        let base_address = region.starting_address as usize;
         let size = region.size.unwrap() as usize;
         memory_maps.push(MemoryMap::new(
-            GuestPhysicalAddress(address)..GuestPhysicalAddress(address) + size,
-            HostPhysicalAddress(address)..HostPhysicalAddress(address) + size,
+            GuestPhysicalAddress(base_address)..GuestPhysicalAddress(base_address) + size,
+            HostPhysicalAddress(base_address)..HostPhysicalAddress(base_address) + size,
             &PTE_FLAGS_FOR_DEVICE,
         ));
+        let pci_devices = PciDevices::new(device_tree, &mut memory_maps, base_address);
 
         Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
