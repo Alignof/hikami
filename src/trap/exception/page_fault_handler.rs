@@ -27,7 +27,7 @@ pub fn load_guest_page_fault() {
         .unwrap()
         .devices()
         .plic
-        .emulate_read(fault_addr)
+        .emulate_loading(fault_addr)
     {
         let mut context = hypervisor_data.get().unwrap().guest().context;
         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
@@ -43,7 +43,7 @@ pub fn load_guest_page_fault() {
         .pci_devices
         .sata
     {
-        if let Ok(value) = sata.emulate_read(fault_addr) {
+        if let Ok(value) = sata.emulate_loading(fault_addr) {
             let mut context = hypervisor_data.get().unwrap().guest().context;
             context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
             update_sepc_by_htinst_value(fault_inst_value, &mut context);
@@ -78,7 +78,7 @@ pub fn store_guest_page_fault() {
         .unwrap()
         .devices()
         .plic
-        .emulate_write(fault_addr, store_value as u32)
+        .emulate_storing(fault_addr, store_value as u32)
     {
         update_sepc_by_htinst_value(fault_inst_value, &mut context);
         return;
@@ -92,7 +92,7 @@ pub fn store_guest_page_fault() {
         .pci_devices
         .sata
     {
-        if let Ok(()) = sata.emulate_write(fault_addr, store_value as u32) {
+        if let Ok(()) = sata.emulate_storing(fault_addr, store_value as u32) {
             update_sepc_by_htinst_value(fault_inst_value, &mut context);
             return;
         }

@@ -25,7 +25,7 @@ pub struct Sata {
 
 impl Sata {
     /// Pass through loading memory
-    fn pass_through_reading(&self, dst_addr: HostPhysicalAddress) -> u32 {
+    fn pass_through_loading(&self, dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
         crate::println!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
             dst_ptr.read_volatile()
@@ -33,17 +33,20 @@ impl Sata {
         unsafe { dst_ptr.read_volatile() }
     }
 
-    /// Emulate reading HBA Memory Registers.
-    pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError> {
+    /// Emulate loading HBA Memory Registers.
+    pub fn emulate_loading(
+        &self,
+        dst_addr: HostPhysicalAddress,
+    ) -> Result<u32, DeviceEmulateError> {
         if !self.abar.contains(&dst_addr) {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        Ok(self.pass_through_reading(dst_addr))
+        Ok(self.pass_through_loading(dst_addr))
     }
 
     /// Pass through storing memory
-    fn pass_through_writing(&self, dst_addr: HostPhysicalAddress, value: u32) {
+    fn pass_through_storing(&self, dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
         crate::println!("[write] {:#x} <- {:#x}", dst_addr.0, value);
         unsafe {
@@ -51,8 +54,8 @@ impl Sata {
         }
     }
 
-    /// Emulate writing HBA Memory Registers.
-    pub fn emulate_write(
+    /// Emulate storing HBA Memory Registers.
+    pub fn emulate_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
@@ -61,7 +64,7 @@ impl Sata {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        self.pass_through_writing(dst_addr, value);
+        self.pass_through_storing(dst_addr, value);
 
         Ok(())
     }
