@@ -22,27 +22,21 @@ pub fn load_guest_page_fault() {
         .expect("decoding load fault instruction failed");
 
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    match hypervisor_data
+    if let Ok(value) = hypervisor_data
         .get_mut()
         .unwrap()
         .devices()
         .plic
         .emulate_read(fault_addr)
     {
-        Ok(value) => {
-            let mut context = hypervisor_data.get().unwrap().guest().context;
-            context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
-            update_sepc_by_htinst_value(fault_inst_value, &mut context);
-        }
-        Err(
-            DeviceEmulateError::InvalidAddress
-            | DeviceEmulateError::InvalidContextId
-            | DeviceEmulateError::ReservedRegister,
-        ) => {
-            drop(hypervisor_data);
-            hs_forward_exception();
-        }
+        let mut context = hypervisor_data.get().unwrap().guest().context;
+        context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
+        update_sepc_by_htinst_value(fault_inst_value, &mut context);
+        return;
     }
+
+    drop(hypervisor_data);
+    hs_forward_exception();
 }
 
 /// Trap `Store guest page fault` exception.
@@ -71,10 +65,7 @@ pub fn store_guest_page_fault() {
         .emulate_write(fault_addr, store_value.try_into().unwrap())
     {
         update_sepc_by_htinst_value(fault_inst_value, &mut context);
-        drop(hypervisor_data);
-        unsafe {
-            hstrap_exit(); // exit handler
-        }
+        return;
     }
 
     drop(hypervisor_data);
