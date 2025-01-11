@@ -2,7 +2,7 @@
 
 use super::{
     constants::{PAGE_SIZE, PAGE_TABLE_LEN},
-    PageTableAddress, PageTableEntry, PageTableLevel,
+    PageTableAddress, PageTableEntry, PageTableLevel, TransAddrError,
 };
 use crate::h_extension::csrs::vsatp;
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress};
@@ -52,7 +52,9 @@ impl AddressFieldSv57 for GuestVirtualAddress {
 
 /// Translate gva to gpa in sv57
 #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
-pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> {
+pub fn trans_addr(
+    gva: GuestVirtualAddress,
+) -> Result<GuestPhysicalAddress, (TransAddrError, &'static str)> {
     let vsatp = vsatp::read();
     assert!(matches!(vsatp.mode(), vsatp::Mode::Sv57));
     let mut page_table_addr = PageTableAddress(vsatp.ppn() << 12);
@@ -70,22 +72,31 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
         if pte.is_leaf() {
             match level {
                 PageTableLevel::Lv256TB => {
-                    assert!(
-                        pte.ppn(3) == 0,
-                        "Address translation failed: pte.ppn[3] != 0"
-                    );
-                    assert!(
-                        pte.ppn(2) == 0,
-                        "Address translation failed: pte.ppn[2] != 0"
-                    );
-                    assert!(
-                        pte.ppn(1) == 0,
-                        "Address translation failed: pte.ppn[1] != 0"
-                    );
-                    assert!(
-                        pte.ppn(0) == 0,
-                        "Address translation failed: pte.ppn[0] != 0"
-                    );
+                    if pte.ppn(0) != 0 {
+                        return Err((
+                            TransAddrError::InvalidEntry,
+                            "Address translation failed: pte.ppn[0] != 0",
+                        ));
+                    }
+                    if pte.ppn(1) != 0 {
+                        return Err((
+                            TransAddrError::InvalidEntry,
+                            "Address translation failed: pte.ppn[1] != 0",
+                        ));
+                    }
+                    if pte.ppn(2) != 0 {
+                        return Err((
+                            TransAddrError::InvalidEntry,
+                            "Address translation failed: pte.ppn[2] != 0",
+                        ));
+                    }
+                    if pte.ppn(3) != 0 {
+                        return Err((
+                            TransAddrError::InvalidEntry,
+                            "Address translation failed: pte.ppn[3] != 0",
+                        ));
+                    }
+
                     return Ok(GuestPhysicalAddress(
                         (pte.ppn(4) << 48)
                             | (gva.vpn(3) << 39)
@@ -118,14 +129,19 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
                     ));
                 }
                 PageTableLevel::Lv1GB => {
-                    assert!(
-                        pte.ppn(1) == 0,
-                        "Address translation failed: pte.ppn[1] != 0"
-                    );
-                    assert!(
-                        pte.ppn(0) == 0,
-                        "Address translation failed: pte.ppn[0] != 0"
-                    );
+                    if pte.ppn(1) != 0 {
+                        return Err((
+                            TransAddrError::InvalidEntry,
+                            "Address translation failed: pte.ppn[1] != 0",
+                        ));
+                    }
+                    if pte.ppn(0) != 0 {
+                        return Err((
+                            TransAddrError::InvalidEntry,
+                            "Address translation failed: pte.ppn[0] != 0",
+                        ));
+                    }
+
                     return Ok(GuestPhysicalAddress(
                         (pte.ppn(4) << 48)
                             | (pte.ppn(3) << 39)
@@ -136,10 +152,12 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
                     ));
                 }
                 PageTableLevel::Lv2MB => {
-                    assert!(
-                        pte.ppn(0) == 0,
-                        "Address translation failed: pte.ppn[0] != 0"
-                    );
+                    if pte.ppn(0) != 0 {
+                        return Err((
+                            TransAddrError::InvalidEntry,
+                            "Address translation failed: pte.ppn[0] != 0",
+                        ));
+                    }
                     return Ok(GuestPhysicalAddress(
                         (pte.ppn(4) << 48)
                             | (pte.ppn(3) << 39)
@@ -165,5 +183,8 @@ pub fn trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> 
         page_table_addr = PageTableAddress(pte.entire_ppn() as usize * PAGE_SIZE);
     }
 
-    Err(())
+    Err((
+        TransAddrError::NoLeafEntry,
+        "[sv57] cannnot reach to leaf entry",
+    ))
 }

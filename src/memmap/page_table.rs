@@ -134,7 +134,7 @@ impl PageTableAddress {
 
     /// Convert guest physical page table address to host physical one.
     fn to_host_physical_ptr(self) -> *mut PageTableEntry {
-        let hpa = g_stage_trans_addr(GuestPhysicalAddress(self.0));
+        let hpa = g_stage_trans_addr(GuestPhysicalAddress(self.0)).unwrap();
         hpa.0 as *mut PageTableEntry
     }
 }
@@ -161,20 +161,24 @@ impl HostPhysicalAddress {
 }
 
 /// VS-stage address translation.
-pub fn vs_stage_trans_addr(gva: GuestVirtualAddress) -> Result<GuestPhysicalAddress, ()> {
+pub fn vs_stage_trans_addr(
+    gva: GuestVirtualAddress,
+) -> Result<GuestPhysicalAddress, (TransAddrError, &'static str)> {
     use crate::h_extension::csrs::vsatp;
 
     let vsatp = vsatp::read();
     match vsatp.mode() {
         vsatp::Mode::Bare => unreachable!("no trans addr"),
-        vsatp::Mode::Sv39 => Ok(sv39::trans_addr(gva)),
+        vsatp::Mode::Sv39 => sv39::trans_addr(gva),
         vsatp::Mode::Sv57 => sv57::trans_addr(gva),
         vsatp::Mode::Sv48 | vsatp::Mode::Sv64 => unimplemented!(),
     }
 }
 
 /// G-stage address translation.
-pub fn g_stage_trans_addr(gpa: GuestPhysicalAddress) -> HostPhysicalAddress {
+pub fn g_stage_trans_addr(
+    gpa: GuestPhysicalAddress,
+) -> Result<HostPhysicalAddress, (TransAddrError, &'static str)> {
     use crate::h_extension::csrs::hgatp;
 
     let hgatp = hgatp::read();
