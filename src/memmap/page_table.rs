@@ -17,6 +17,15 @@ pub mod constants {
     pub const PAGE_TABLE_LEN: usize = 512;
 }
 
+/// Error of address translation
+#[derive(Debug)]
+pub enum TransAddrError {
+    /// Invalid page table entry.
+    InvalidEntry,
+    /// Cannot reach leaf entry.
+    NoLeafEntry,
+}
+
 /// Page table level.
 ///
 /// ref: The RISC-V Instruction Set Manual: Volume II p151.
