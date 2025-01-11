@@ -24,17 +24,31 @@ pub struct Sata {
 }
 
 impl Sata {
+    /// Pass through loading memory
+    fn pass_through_reading(&self, dst_addr: HostPhysicalAddress) -> u32 {
+        let dst_ptr = dst_addr.raw() as *const u32;
+        crate::println!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
+            dst_ptr.read_volatile()
+        });
+        unsafe { dst_ptr.read_volatile() }
+    }
+
     /// Emulate reading HBA Memory Registers.
     pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError> {
         if !self.abar.contains(&dst_addr) {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        let dst_ptr = dst_addr.raw() as *const u32;
-        crate::println!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
-            dst_ptr.read_volatile()
-        });
-        unsafe { Ok(dst_ptr.read_volatile()) }
+        Ok(self.pass_through_reading(dst_addr))
+    }
+
+    /// Pass through storing memory
+    fn pass_through_writing(&self, dst_addr: HostPhysicalAddress, value: u32) {
+        let dst_ptr = dst_addr.raw() as *mut u32;
+        crate::println!("[write] {:#x} <- {:#x}", dst_addr.0, value);
+        unsafe {
+            dst_ptr.write_volatile(value);
+        }
     }
 
     /// Emulate writing HBA Memory Registers.
@@ -47,11 +61,7 @@ impl Sata {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        let dst_ptr = dst_addr.raw() as *mut u32;
-        crate::println!("[write] {:#x} <- {:#x}", dst_addr.0, value);
-        unsafe {
-            dst_ptr.write_volatile(value);
-        }
+        self.pass_through_writing(dst_addr, value);
 
         Ok(())
     }
