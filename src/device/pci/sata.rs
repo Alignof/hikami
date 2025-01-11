@@ -91,22 +91,30 @@ impl Sata {
                         };
                         GuestPhysicalAddress((value as usize) << 32 | lower_addr)
                     };
-                    crate::println!("cmd_list_gpa: {}", cmd_list_gpa.raw());
-                    let cmd_list_hpa = g_stage_trans_addr(cmd_list_gpa);
-                    if (0x9000_0000..0xa000_0000).contains(&cmd_list_hpa.raw()) {
-                        unsafe {
-                            core::ptr::write_volatile(
-                                (base_addr.raw() + offset) as *mut u32,
-                                (cmd_list_hpa.raw() & 0xffff_ffff) as u32,
+                    if (0x9000_0000..0xa000_0000).contains(&cmd_list_gpa.raw()) {
+                        if let Ok(cmd_list_hpa) = g_stage_trans_addr(cmd_list_gpa) {
+                            crate::println!(
+                                "[translate] {:#x}(GPA) -> {:#x}(HPA)",
+                                cmd_list_gpa.raw(),
+                                cmd_list_hpa.raw()
                             );
-                            core::ptr::write_volatile(
-                                (base_addr.raw() + offset + 4) as *mut u32,
-                                (cmd_list_hpa.raw() >> 32 & 0xffff_ffff) as u32,
-                            );
+                            unsafe {
+                                core::ptr::write_volatile(
+                                    (base_addr.raw() + offset) as *mut u32,
+                                    (cmd_list_hpa.raw() & 0xffff_ffff) as u32,
+                                );
+                                core::ptr::write_volatile(
+                                    (base_addr.raw() + offset + 4) as *mut u32,
+                                    (cmd_list_hpa.raw() >> 32 & 0xffff_ffff) as u32,
+                                );
+                            }
+
+                            return Ok(());
                         }
-                    } else {
-                        self.pass_through_storing(dst_addr, value);
                     }
+
+                    // pass through as if it is in the middle of a translation
+                    self.pass_through_storing(dst_addr, value);
                 }
                 // other registers
                 _ => self.pass_through_storing(dst_addr, value),
