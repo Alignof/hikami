@@ -66,11 +66,11 @@ pub trait PciDevice {
 
 #[derive(Debug)]
 /// Pci devices
-struct PciDevices {
+pub struct PciDevices {
     /// IOMMU: I/O memory management unit.
     iommu: Option<iommu::IoMmu>,
     /// SATA: Serial ATA
-    sata: Option<sata::Sata>,
+    pub sata: Option<sata::Sata>,
 }
 
 impl PciDevices {
@@ -225,7 +225,7 @@ pub struct Pci {
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
     /// PCI devices
-    pci_devices: PciDevices,
+    pub pci_devices: PciDevices,
 }
 
 impl Pci {

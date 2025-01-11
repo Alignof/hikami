@@ -35,6 +35,22 @@ pub fn load_guest_page_fault() {
         return;
     }
 
+    if let Some(sata) = &mut hypervisor_data
+        .get_mut()
+        .unwrap()
+        .devices()
+        .pci
+        .pci_devices
+        .sata
+    {
+        if let Ok(value) = sata.emulate_read(fault_addr) {
+            let mut context = hypervisor_data.get().unwrap().guest().context;
+            context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
+            update_sepc_by_htinst_value(fault_inst_value, &mut context);
+            return;
+        }
+    }
+
     drop(hypervisor_data);
     hs_forward_exception();
 }
@@ -62,10 +78,24 @@ pub fn store_guest_page_fault() {
         .unwrap()
         .devices()
         .plic
-        .emulate_write(fault_addr, store_value.try_into().unwrap())
+        .emulate_write(fault_addr, store_value as u32)
     {
         update_sepc_by_htinst_value(fault_inst_value, &mut context);
         return;
+    }
+
+    if let Some(sata) = &mut hypervisor_data
+        .get_mut()
+        .unwrap()
+        .devices()
+        .pci
+        .pci_devices
+        .sata
+    {
+        if let Ok(()) = sata.emulate_write(fault_addr, store_value as u32) {
+            update_sepc_by_htinst_value(fault_inst_value, &mut context);
+            return;
+        }
     }
 
     drop(hypervisor_data);
