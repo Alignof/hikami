@@ -3,7 +3,7 @@
 //! Ref: [https://osdev.jp/wiki/AHCI-Memo](https://osdev.jp/wiki/AHCI-Memo)
 
 use super::config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderField};
-use super::{Bdf, PciDevice};
+use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 use alloc::vec::Vec;
@@ -28,6 +28,7 @@ impl PciDevice for Sata {
         vender_id: u32,
         device_id: u32,
         pci_config_space_base_addr: HostPhysicalAddress,
+        pci_addr_space: &PciAddressSpace,
         _memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
         let config_space_header_addr =

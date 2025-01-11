@@ -55,6 +55,7 @@ pub trait PciDevice {
         vendor_id: u32,
         device_id: u32,
         pci_config_space_base_addr: HostPhysicalAddress,
+        pci_addr_space: &PciAddressSpace,
         memory_maps: &mut Vec<MemoryMap>,
     ) -> Self;
 
@@ -75,8 +76,9 @@ struct PciDevices {
 impl PciDevices {
     pub fn new(
         device_tree: &Fdt,
-        memory_maps: &mut Vec<MemoryMap>,
         pci_config_space_base_addr: usize,
+        pci_addr_space: &PciAddressSpace,
+        memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
         /// Max PCI bus size.
         const PCI_MAX_BUS: u8 = 255;
@@ -132,6 +134,7 @@ impl PciDevices {
                                 vendor_id.into(),
                                 device_id.into(),
                                 HostPhysicalAddress(pci_config_space_base_addr),
+                                pci_addr_space,
                                 memory_maps,
                             ))
                         }
@@ -153,6 +156,62 @@ impl PciDevices {
     }
 }
 
+/// PCI address space
+///
+/// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
+#[derive(Debug)]
+struct PciAddressSpace {
+    /// Base address of address space.
+    base_addr: HostPhysicalAddress,
+    /// Memory space size.
+    size: usize,
+}
+
+impl PciAddressSpace {
+    pub fn new(device_tree: &Fdt, node_path: &str) -> Self {
+        /// Bytes size of u32.
+        const BYTES_U32: usize = 4;
+        /// Number of bytes in each range chunks.
+        /// `BUS_ADDRESS(3)` - `CPU_PHYSICAL(2)` - `SIZE(2)`
+        const RANGE_NUM: usize = 7;
+
+        let ranges = device_tree
+            .find_node(node_path)
+            .unwrap()
+            .property("ranges")
+            .unwrap()
+            .value;
+
+        assert!(ranges.len() % 4 == 0);
+        assert!((ranges.len() / 4) % 7 == 0);
+
+        let get_u32 = |range: &[u8], four_bytes_index: usize| {
+            let index = four_bytes_index * 4;
+            (u32::from(range[index]) << 24)
+                | (u32::from(range[index + 1]) << 16)
+                | (u32::from(range[index + 2]) << 8)
+                | u32::from(range[index + 3])
+        };
+
+        let mut base_addr = HostPhysicalAddress(0);
+        let mut size = 0;
+        for range in ranges.chunks(RANGE_NUM * BYTES_U32) {
+            let bus_address = get_u32(range, 0);
+
+            // ignore I/O space map
+            // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
+            if (bus_address >> 24) & 0b11 != 0b01 {
+                base_addr = HostPhysicalAddress(
+                    ((get_u32(range, 3) as usize) << 32) | get_u32(range, 4) as usize,
+                );
+                size = ((get_u32(range, 5) as usize) << 32) | get_u32(range, 6) as usize;
+            }
+        }
+
+        PciAddressSpace { base_addr, size }
+    }
+}
+
 /// PCI: Peripheral Component Interconnect
 /// Local computer bus.
 #[derive(Debug)]
@@ -161,6 +220,8 @@ pub struct Pci {
     base_addr: HostPhysicalAddress,
     /// Memory map size.
     size: usize,
+    /// PCI address space manager
+    pci_addr_space: PciAddressSpace,
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
     /// PCI devices
@@ -194,19 +255,15 @@ impl MmioDevice for Pci {
             .unwrap();
 
         let mut memory_maps = Vec::new();
-        // TODO: Verify that this process is needed.
         let base_address = region.starting_address as usize;
-        let size = region.size.unwrap() as usize;
-        memory_maps.push(MemoryMap::new(
-            GuestPhysicalAddress(base_address)..GuestPhysicalAddress(base_address) + size,
-            HostPhysicalAddress(base_address)..HostPhysicalAddress(base_address) + size,
-            &PTE_FLAGS_FOR_DEVICE,
-        ));
-        let pci_devices = PciDevices::new(device_tree, &mut memory_maps, base_address);
+        let pci_addr_space = PciAddressSpace::new(device_tree, node_path);
+        let pci_devices =
+            PciDevices::new(device_tree, base_address, &pci_addr_space, &mut memory_maps);
 
         Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
+            pci_addr_space,
             memory_maps,
             pci_devices,
         }
