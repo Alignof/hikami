@@ -71,6 +71,10 @@ impl Plic {
 
     /// Emulate reading plic register.
     pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError> {
+        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
@@ -119,6 +123,10 @@ impl Plic {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
+        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
