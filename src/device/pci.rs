@@ -160,7 +160,7 @@ impl PciDevices {
 ///
 /// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
 #[derive(Debug)]
-struct PciAddressSpace {
+pub struct PciAddressSpace {
     /// Base address of address space.
     base_addr: HostPhysicalAddress,
     /// Memory space size.
@@ -200,7 +200,7 @@ impl PciAddressSpace {
 
             // ignore I/O space map
             // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
-            if (bus_address >> 24) & 0b11 != 0b01 {
+            if (bus_address >> 24) & 0b11 == 0b10 {
                 base_addr = HostPhysicalAddress(
                     ((get_u32(range, 3) as usize) << 32) | get_u32(range, 4) as usize,
                 );

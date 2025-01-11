@@ -41,7 +41,11 @@ impl PciDevice for Sata {
 
         // memory map
         assert_eq!(bar_value & 0x1, 0x0);
-        let start_address = HostPhysicalAddress((bar_value & 0xfffffff0) as usize);
+        let start_address = if bar_value == 0 {
+            pci_addr_space.base_addr
+        } else {
+            HostPhysicalAddress((bar_value & 0xfffffff0) as usize)
+        };
         let size = get_bar_size(
             config_space_header_addr,
             ConfigSpaceHeaderField::BaseAddressRegister5,
