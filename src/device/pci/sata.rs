@@ -5,7 +5,8 @@
 use super::config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderField};
 use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::device::DeviceEmulateError;
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use crate::memmap::page_table::g_stage_trans_addr;
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -64,7 +65,54 @@ impl Sata {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        self.pass_through_storing(dst_addr, value);
+        let base_addr = self.abar.start;
+        let offset = dst_addr.raw() - base_addr.raw();
+
+        match offset {
+            // 0x00 - 0x2b: Generic Host Control
+            // 0x2c - 0x9f: Reserved
+            // 0xa0 - 0xff: Vendor specific registers
+            0x0..=0xff => self.pass_through_storing(dst_addr, value),
+            // Port control registers
+            0x100..=0x10ff => match offset % 0x80 {
+                // 0x00: command list base address, 1K-byte aligned
+                // 0x04: command list base address upper 32 bits
+                port_offset @ (0x00 | 0x04) => {
+                    let cmd_list_gpa = if port_offset == 0x0 {
+                        let upper_addr = unsafe {
+                            core::ptr::read_volatile((base_addr.raw() + offset + 0x4) as *const u32)
+                                as usize
+                        };
+                        GuestPhysicalAddress(upper_addr << 32 | value as usize)
+                    } else {
+                        let lower_addr = unsafe {
+                            core::ptr::read_volatile((base_addr.raw() + offset) as *const u32)
+                                as usize
+                        };
+                        GuestPhysicalAddress((value as usize) << 32 | lower_addr)
+                    };
+                    crate::println!("cmd_list_gpa: {}", cmd_list_gpa.raw());
+                    let cmd_list_hpa = g_stage_trans_addr(cmd_list_gpa);
+                    if (0x9000_0000..0xa000_0000).contains(&cmd_list_hpa.raw()) {
+                        unsafe {
+                            core::ptr::write_volatile(
+                                (base_addr.raw() + offset) as *mut u32,
+                                (cmd_list_hpa.raw() & 0xffff_ffff) as u32,
+                            );
+                            core::ptr::write_volatile(
+                                (base_addr.raw() + offset + 4) as *mut u32,
+                                (cmd_list_hpa.raw() >> 32 & 0xffff_ffff) as u32,
+                            );
+                        }
+                    } else {
+                        self.pass_through_storing(dst_addr, value);
+                    }
+                }
+                // other registers
+                _ => self.pass_through_storing(dst_addr, value),
+            },
+            _ => unreachable!("[HBA Memory Registers] out of range"),
+        }
 
         Ok(())
     }

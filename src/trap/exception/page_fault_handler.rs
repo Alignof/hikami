@@ -3,8 +3,7 @@
 //! - Load guest page fault
 //! - Store AMO guest page fault
 
-use super::{hs_forward_exception, hstrap_exit, update_sepc_by_htinst_value};
-use crate::device::DeviceEmulateError;
+use super::{hs_forward_exception, update_sepc_by_htinst_value};
 use crate::h_extension::csrs::{htinst, htval};
 use crate::memmap::HostPhysicalAddress;
 use crate::HYPERVISOR_DATA;
