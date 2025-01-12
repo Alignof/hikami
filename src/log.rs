@@ -22,6 +22,21 @@ pub fn print_for_macro(args: fmt::Arguments) {
     writer.write_fmt(args).unwrap();
 }
 
+/// Print debug message to standard output.
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "debug_log")]
+        $crate::log::print_for_macro(format_args!($($arg)*))
+    };
+}
+
+/// Print debug message with linebreak to standard output.
+#[macro_export]
+macro_rules! debugln {
+    ($fmt:expr) => ($crate::debug!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::debug!(concat!($fmt, "\n"), $($arg)*));
+}
 /// Print to standard output.
 #[macro_export]
 macro_rules! print {

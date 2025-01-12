@@ -91,14 +91,14 @@ impl HbaPort {
         if (0x9000_0000..0xa000_0000).contains(&base_gpa.raw()) {
             if let Ok(base_hpa) = g_stage_trans_addr(base_gpa) {
                 if port_offset == 0x0 || port_offset == 0x4 {
-                    crate::println!(
+                    crate::debugln!(
                         "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
                         (offset - 0x100) / 0x80,
                         base_gpa.raw(),
                         base_hpa.raw()
                     );
                 } else {
-                    crate::println!(
+                    crate::debugln!(
                         "[translate] P{}FB: {:#x}(GPA) -> {:#x}(HPA)",
                         (offset - 0x100) / 0x80,
                         base_gpa.raw(),
@@ -138,7 +138,7 @@ impl HbaPort {
     ) {
         let offset = dst_addr.raw() - base_addr.raw();
         let port_offset = offset % 0x80;
-        crate::println!(
+        crate::debugln!(
             "[port{} write] {:#x} <- {:#x}",
             (offset - 0x100) / 0x80,
             offset % 0x80,
@@ -157,8 +157,8 @@ impl HbaPort {
             }
             // command issue
             0x38 => {
-                crate::println!("[command issue] {}", value.trailing_zeros());
-                crate::println!("[command issue] count one {}", value.count_ones());
+                crate::debugln!("[command issue] {}", value.trailing_zeros());
+                crate::debugln!("[command issue] count one {}", value.count_ones());
                 self.pass_through_storing(dst_addr, value);
             }
             // other registers
@@ -186,7 +186,7 @@ impl Sata {
     /// Pass through loading memory
     fn pass_through_loading(&self, dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
-        crate::println!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
+        crate::debugln!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
             dst_ptr.read_volatile()
         });
         unsafe { dst_ptr.read_volatile() }
@@ -213,7 +213,7 @@ impl Sata {
             0x100..=0x10ff => {
                 let port_num = (offset - 0x100) / 0x80;
                 let loaded_data = self.ports[port_num].emulate_loading(base_addr, dst_addr);
-                crate::println!(
+                crate::debugln!(
                     "[port{}  read] {:#x} -> {:#x}",
                     port_num,
                     offset % 0x80,
@@ -228,7 +228,7 @@ impl Sata {
     /// Pass through storing memory
     fn pass_through_storing(&self, dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
-        crate::println!("[write] {:#x} <- {:#x}", dst_addr.0, value);
+        crate::debugln!("[write] {:#x} <- {:#x}", dst_addr.0, value);
         unsafe {
             dst_ptr.write_volatile(value);
         }
