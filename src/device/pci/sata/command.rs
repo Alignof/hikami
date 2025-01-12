@@ -3,7 +3,7 @@
 /// Size of command header
 pub const COMMAND_HEADER_SIZE: usize = 0x20;
 
-/// ATA command header
+/// HBA command header
 ///
 /// Ref: [https://wiki.osdev.org/AHCI#AHCI_Registers_and_Memory_Structures](https://wiki.osdev.org/AHCI#AHCI_Registers_and_Memory_Structures): 4) Command List
 #[repr(C)]
@@ -21,4 +21,10 @@ pub struct CommandHeader {
     pub ctba_u: u32,
     /// DW4-7: Reserved
     _reserved: [u32; 4],
+}
+
+impl CommandHeader {
+    pub fn prdtl(&self) -> u32 {
+        self.dw0 >> 16 & 0xffff
+    }
 }
