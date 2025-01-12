@@ -148,12 +148,12 @@ impl HbaPort {
             // 0x00: command list base address, 1K-byte aligned
             // 0x04: command list base address upper 32 bits
             port_offset @ (0x00 | 0x04) => {
-                self.storing_base_addr(base_addr, offset, port_offset, value)
+                self.storing_base_addr(base_addr, offset, port_offset, value);
             }
             // 0x08: FIS base address, 256-byte aligned
             // 0x0c: FIS base address upper 32 bits
             port_offset @ (0x08 | 0x0c) => {
-                self.storing_base_addr(base_addr, offset, port_offset, value)
+                self.storing_base_addr(base_addr, offset, port_offset, value);
             }
             // command issue
             0x38 => {

@@ -87,6 +87,7 @@ impl PciDevice for IoMmu {
         unreachable!("use `IoMmu::new_from_dtb` instead.");
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn init(&self, pci_config_space_base_addr: HostPhysicalAddress) {
         let iommu_reg_addr: u32 = pci_config_space_base_addr.0 as u32;
         let config_space_header_addr =

@@ -26,7 +26,7 @@ pub struct Bdf {
 impl Bdf {
     /// Create BDF from high 32-bit of PCI addresses.
     ///
-    /// - range_phys_hi: Upper 32-bit data of child addresses.
+    /// - `range_phys_hi`: Upper 32-bit data of child addresses.
     /// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
     pub fn new(range_phys_hi: u32) -> Self {
         Bdf {
@@ -127,18 +127,15 @@ impl PciDevices {
                         class_code & 0xff,
                     );
 
-                    match (base_class, sub_class, interface) {
-                        (1, 6, 1) => {
-                            sata = Some(sata::Sata::new(
-                                bdf,
-                                vendor_id.into(),
-                                device_id.into(),
-                                HostPhysicalAddress(pci_config_space_base_addr),
-                                pci_addr_space,
-                                memory_maps,
-                            ))
-                        }
-                        _ => (),
+                    if let (1, 6, 1) = (base_class, sub_class, interface) {
+                        sata = Some(sata::Sata::new(
+                            bdf,
+                            vendor_id.into(),
+                            device_id.into(),
+                            HostPhysicalAddress(pci_config_space_base_addr),
+                            pci_addr_space,
+                            memory_maps,
+                        ));
                     }
 
                     // skip remain function id if it's not multi function device.
@@ -150,7 +147,7 @@ impl PciDevices {
         }
 
         PciDevices {
-            iommu: iommu::IoMmu::new_from_dtb(&device_tree, "soc/pci/iommu"),
+            iommu: iommu::IoMmu::new_from_dtb(device_tree, "soc/pci/iommu"),
             sata,
         }
     }

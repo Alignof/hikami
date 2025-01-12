@@ -93,7 +93,7 @@ pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) ->
 #[allow(clippy::cast_possible_truncation)]
 pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) -> u32 {
     // the register requires 32 bit size access.
-    let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
+    let config_reg_32bit_addr = (config_reg_base_addr + (reg as usize)) & !0b11;
     let offset_byte = (reg as usize) & 0b11;
     let mask = match reg.field_size() {
         FieldSize::Byte1 => 0xff,
@@ -110,7 +110,7 @@ pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderF
 #[allow(clippy::cast_possible_truncation)]
 pub fn write_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField, data: u32) {
     // the register requires 32 bit size access.
-    let config_reg_32bit_addr = config_reg_base_addr + (reg as usize) & !0b11;
+    let config_reg_32bit_addr = (config_reg_base_addr + (reg as usize)) & !0b11;
     let offset_byte = (reg as usize) & 0b11;
     let mask = match reg.field_size() {
         FieldSize::Byte1 => 0xff,
@@ -120,6 +120,6 @@ pub fn write_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeader
     };
 
     let read_value = unsafe { core::ptr::read_volatile(config_reg_32bit_addr as *const u32) };
-    let write_value = (read_value & !(mask << offset_byte * 8)) | data << (offset_byte * 8);
+    let write_value = (read_value & !(mask << (offset_byte * 8))) | data << (offset_byte * 8);
     unsafe { core::ptr::write_volatile(config_reg_32bit_addr as *mut u32, write_value) };
 }
