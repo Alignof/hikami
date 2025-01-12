@@ -2,11 +2,14 @@
 //!
 //! Ref: [https://osdev.jp/wiki/AHCI-Memo](https://osdev.jp/wiki/AHCI-Memo)
 
+mod command;
+
 use super::config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderField};
 use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::device::DeviceEmulateError;
 use crate::memmap::page_table::g_stage_trans_addr;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use command::{CommandHeader, CommandTable, COMMAND_HEADER_SIZE};
 
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -127,6 +130,38 @@ impl HbaPort {
         }
     }
 
+    /// Rewrite address in command list and command table to host physical address.
+    fn rewrite_cmd_addr(&self, base_addr: HostPhysicalAddress, port_num: usize, cmd_num: u32) {
+        let cmd_list_reg_addr =
+            base_addr + PORT_CONTROL_REGS_OFFSET + PORT_CONTROL_REGS_SIZE * port_num;
+        let cmd_list_hpa = unsafe {
+            HostPhysicalAddress((cmd_list_reg_addr.0 as *const u32).read_volatile() as usize)
+        };
+        let cmd_header_hpa = cmd_list_hpa + cmd_num as usize * COMMAND_HEADER_SIZE;
+        let cmd_header_ptr = cmd_header_hpa.raw() as *mut CommandHeader;
+        let prdtl = unsafe { (*cmd_header_ptr).prdtl() };
+
+        // translate command table address
+        let cmd_table_gpa = unsafe {
+            GuestPhysicalAddress(
+                ((*cmd_header_ptr).ctba_u as usize) << 32 | (*cmd_header_ptr).ctba as usize,
+            )
+        };
+        let cmd_table_hpa =
+            g_stage_trans_addr(cmd_table_gpa).expect("command_header.ctba is not GPA");
+
+        // write command table host physical address
+        unsafe {
+            (*cmd_header_ptr).ctba_u = ((cmd_table_hpa.raw() >> 32) & 0xffff_ffff) as u32;
+            (*cmd_header_ptr).ctba = (cmd_table_hpa.raw() & 0xffff_ffff) as u32;
+        }
+
+        let cmd_table_ptr = cmd_table_hpa.raw() as *mut CommandTable;
+        unsafe {
+            (*cmd_table_ptr).translate_all_data_base_addresses(prdtl);
+        }
+    }
+
     /// Pass through storing memory
     fn pass_through_storing(dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
@@ -161,8 +196,9 @@ impl HbaPort {
             // command issue
             0x38 => {
                 let cmd_num = value.trailing_zeros();
+                let port_num = (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE;
                 crate::debugln!("[command issue] {}", cmd_num);
-                self.rewrite_cmd_addr(base_addr, offset % PORT_CONTROL_REGS_SIZE, cmd_num);
+                self.rewrite_cmd_addr(base_addr, port_num, cmd_num);
                 Self::pass_through_storing(dst_addr, value);
             }
             // other registers
