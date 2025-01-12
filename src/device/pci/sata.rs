@@ -13,6 +13,10 @@ use core::ops::Range;
 
 /// Number of SATA port.
 const SATA_PORT_NUM: usize = 32;
+/// Offset of port control registers.
+const PORT_CONTROL_REGS_OFFSET: usize = 0x100;
+/// Size of port control registers.
+const PORT_CONTROL_REGS_SIZE: usize = 0x80;
 
 /// HBA(Host Bus Adapter) Port
 #[derive(Debug)]
@@ -46,7 +50,7 @@ impl HbaPort {
         dst_addr: HostPhysicalAddress,
     ) -> u32 {
         let offset = dst_addr.raw() - base_addr.raw();
-        let port_offset = offset % 0x80;
+        let port_offset = offset % PORT_CONTROL_REGS_SIZE;
         match port_offset {
             // 0x00: command list base address, 1K-byte aligned
             0x0 => (self.cmd_list_gpa.raw() & 0xffff_ffff) as u32,
@@ -95,14 +99,14 @@ impl HbaPort {
                 if port_offset == 0x0 || port_offset == 0x4 {
                     crate::debugln!(
                         "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
-                        (offset - 0x100) / 0x80,
+                        (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE,
                         base_gpa.raw(),
                         base_hpa.raw()
                     );
                 } else {
                     crate::debugln!(
                         "[translate] P{}FB: {:#x}(GPA) -> {:#x}(HPA)",
-                        (offset - 0x100) / 0x80,
+                        (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE,
                         base_gpa.raw(),
                         base_hpa.raw()
                     );
@@ -139,11 +143,11 @@ impl HbaPort {
         value: u32,
     ) {
         let offset = dst_addr.raw() - base_addr.raw();
-        let port_offset = offset % 0x80;
+        let port_offset = offset % PORT_CONTROL_REGS_SIZE;
         crate::debugln!(
             "[port{} write] {:#x} <- {:#x}",
-            (offset - 0x100) / 0x80,
-            offset % 0x80,
+            (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE,
+            offset % PORT_CONTROL_REGS_SIZE,
             value
         );
         match port_offset {
@@ -156,8 +160,9 @@ impl HbaPort {
             }
             // command issue
             0x38 => {
-                crate::debugln!("[command issue] {}", value.trailing_zeros());
-                crate::debugln!("[command issue] count one {}", value.count_ones());
+                let cmd_num = value.trailing_zeros();
+                crate::debugln!("[command issue] {}", cmd_num);
+                self.rewrite_cmd_addr(base_addr, offset % PORT_CONTROL_REGS_SIZE, cmd_num);
                 Self::pass_through_storing(dst_addr, value);
             }
             // other registers
@@ -210,12 +215,12 @@ impl Sata {
             0x0..=0xff => Ok(Self::pass_through_loading(dst_addr)),
             // Port control registers
             0x100..=0x10ff => {
-                let port_num = (offset - 0x100) / 0x80;
+                let port_num = (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE;
                 let loaded_data = self.ports[port_num].emulate_loading(base_addr, dst_addr);
                 crate::debugln!(
                     "[port{}  read] {:#x} -> {:#x}",
                     port_num,
-                    offset % 0x80,
+                    offset % PORT_CONTROL_REGS_SIZE,
                     loaded_data
                 );
                 Ok(loaded_data)
@@ -253,7 +258,7 @@ impl Sata {
             0x0..=0xff => Self::pass_through_storing(dst_addr, value),
             // Port control registers
             0x100..=0x10ff => {
-                let port_num = (offset - 0x100) / 0x80;
+                let port_num = (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE;
                 self.ports[port_num].emulate_storing(base_addr, dst_addr, value);
             }
             _ => unreachable!("[HBA Memory Registers] out of range"),
