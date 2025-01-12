@@ -64,7 +64,7 @@ impl Sata {
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
         let base_addr = self.abar.start;
-        let cmd_list_gpa = if port_offset == 0x0 {
+        let cmd_list_gpa = if port_offset % 8 == 0 {
             let upper_addr = unsafe {
                 core::ptr::read_volatile((base_addr.raw() + offset + 0x4) as *const u32) as usize
             };
@@ -77,12 +77,21 @@ impl Sata {
         };
         if (0x9000_0000..0xa000_0000).contains(&cmd_list_gpa.raw()) {
             if let Ok(cmd_list_hpa) = g_stage_trans_addr(cmd_list_gpa) {
-                crate::println!(
-                    "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
-                    (offset - 0x100) / 0x80,
-                    cmd_list_gpa.raw(),
-                    cmd_list_hpa.raw()
-                );
+                if port_offset == 0x0 || port_offset == 0x4 {
+                    crate::println!(
+                        "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
+                        (offset - 0x100) / 0x80,
+                        cmd_list_gpa.raw(),
+                        cmd_list_hpa.raw()
+                    );
+                } else {
+                    crate::println!(
+                        "[translate] P{}FB: {:#x}(GPA) -> {:#x}(HPA)",
+                        (offset - 0x100) / 0x80,
+                        cmd_list_gpa.raw(),
+                        cmd_list_hpa.raw()
+                    );
+                }
 
                 let lower_offset = offset & !0xb111;
                 unsafe {
@@ -129,6 +138,11 @@ impl Sata {
                 // 0x00: command list base address, 1K-byte aligned
                 // 0x04: command list base address upper 32 bits
                 port_offset @ (0x00 | 0x04) => {
+                    self.storing_base_addr(dst_addr, offset, port_offset, value)?
+                }
+                // 0x08: FIS base address, 256-byte aligned
+                // 0x0c: FIS base address upper 32 bits
+                port_offset @ (0x08 | 0x0c) => {
                     self.storing_base_addr(dst_addr, offset, port_offset, value)?
                 }
                 // command issue
