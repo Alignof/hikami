@@ -157,6 +157,7 @@ impl HbaPort {
             0x38 => {
                 crate::println!("[command issue] {}", value.trailing_zeros());
                 crate::println!("[command issue] count one {}", value.count_ones());
+                self.pass_through_storing(dst_addr, value);
             }
             // other registers
             _ => self.pass_through_storing(dst_addr, value),
