@@ -106,7 +106,7 @@ impl HbaPort {
                     );
                 }
 
-                let lower_offset = offset & !0xb111;
+                let lower_offset = offset & !0b111;
                 unsafe {
                     core::ptr::write_volatile(
                         (hba_base_addr.raw() + lower_offset) as *mut u32,
