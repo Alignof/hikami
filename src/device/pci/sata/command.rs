@@ -52,3 +52,32 @@ impl PhysicalRegionDescriptor {
         self.dba = (db_hpa.raw() & 0xffff_ffff) as u32;
     }
 }
+
+/// HBA command table
+///
+/// Ref: [https://wiki.osdev.org/AHCI#AHCI_Registers_and_Memory_Structures](https://wiki.osdev.org/AHCI#AHCI_Registers_and_Memory_Structures): 4) Command List
+#[repr(C)]
+pub struct CommandTable {
+    /// Command FIS
+    _cfis: [u8; 0x40],
+    /// ATAPI Command
+    _acmd: [u8; 0x10],
+    /// Reserved
+    _reserved: [u8; 0x30],
+    /// Physical Region Descriptor Table
+    ///
+    /// Actual size is 0 .. PRDTL (defined in `CommandHeader`)
+    prdt: [PhysicalRegionDescriptor; 1],
+}
+
+impl CommandTable {
+    pub fn translate_all_data_base_addresses(&mut self, prdtl: u32) {
+        let prdt_ptr = self.prdt.as_mut_ptr() as *mut PhysicalRegionDescriptor;
+        for index in 0..prdtl {
+            unsafe {
+                let prd_ptr = prdt_ptr.add(index as usize);
+                (*prd_ptr).translate_data_base_address();
+            }
+        }
+    }
+}
