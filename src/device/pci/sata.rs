@@ -35,9 +35,6 @@ impl HbaPort {
     /// Pass through loading memory
     fn pass_through_loading(&self, dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
-        crate::println!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
-            dst_ptr.read_volatile()
-        });
         unsafe { dst_ptr.read_volatile() }
     }
 
@@ -127,7 +124,6 @@ impl HbaPort {
     /// Pass through storing memory
     fn pass_through_storing(&self, dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
-        crate::println!("[write] {:#x} <- {:#x}", dst_addr.0, value);
         unsafe {
             dst_ptr.write_volatile(value);
         }
@@ -142,6 +138,12 @@ impl HbaPort {
     ) {
         let offset = dst_addr.raw() - base_addr.raw();
         let port_offset = offset % 0x80;
+        crate::println!(
+            "[port{} write] {:#x} <- {:#x}",
+            (offset - 0x100) / 0x80,
+            offset % 0x80,
+            value
+        );
         match port_offset {
             // 0x00: command list base address, 1K-byte aligned
             // 0x04: command list base address upper 32 bits
@@ -210,7 +212,14 @@ impl Sata {
             // Port control registers
             0x100..=0x10ff => {
                 let port_num = (offset - 0x100) / 0x80;
-                Ok(self.ports[port_num].emulate_loading(base_addr, dst_addr))
+                let loaded_data = self.ports[port_num].emulate_loading(base_addr, dst_addr);
+                crate::println!(
+                    "[port{}  read] {:#x} -> {:#x}",
+                    port_num,
+                    offset % 0x80,
+                    loaded_data
+                );
+                Ok(loaded_data)
             }
             _ => unreachable!("[HBA Memory Registers] out of range"),
         }
