@@ -33,12 +33,13 @@ impl HbaPort {
     }
 
     /// Pass through loading memory
-    fn pass_through_loading(&self, dst_addr: HostPhysicalAddress) -> u32 {
+    fn pass_through_loading(dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
         unsafe { dst_ptr.read_volatile() }
     }
 
     /// Emulate loading port registers.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn emulate_loading(
         &self,
         base_addr: HostPhysicalAddress,
@@ -56,11 +57,12 @@ impl HbaPort {
             // 0x0c: FIS base address upper 32 bits
             0xc => (self.fis_gpa.raw() >> 32 & 0xffff_ffff) as u32,
             // other registers
-            _ => self.pass_through_loading(dst_addr),
+            _ => Self::pass_through_loading(dst_addr),
         }
     }
 
     /// Emulate storing base address to `CLB` of `FB`
+    #[allow(clippy::cast_possible_truncation)]
     fn storing_base_addr(
         &mut self,
         hba_base_addr: HostPhysicalAddress,
@@ -91,14 +93,14 @@ impl HbaPort {
         if (0x9000_0000..0xa000_0000).contains(&base_gpa.raw()) {
             if let Ok(base_hpa) = g_stage_trans_addr(base_gpa) {
                 if port_offset == 0x0 || port_offset == 0x4 {
-                    crate::println!(
+                    crate::debugln!(
                         "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
                         (offset - 0x100) / 0x80,
                         base_gpa.raw(),
                         base_hpa.raw()
                     );
                 } else {
-                    crate::println!(
+                    crate::debugln!(
                         "[translate] P{}FB: {:#x}(GPA) -> {:#x}(HPA)",
                         (offset - 0x100) / 0x80,
                         base_gpa.raw(),
@@ -122,7 +124,7 @@ impl HbaPort {
     }
 
     /// Pass through storing memory
-    fn pass_through_storing(&self, dst_addr: HostPhysicalAddress, value: u32) {
+    fn pass_through_storing(dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
         unsafe {
             dst_ptr.write_volatile(value);
@@ -138,7 +140,7 @@ impl HbaPort {
     ) {
         let offset = dst_addr.raw() - base_addr.raw();
         let port_offset = offset % 0x80;
-        crate::println!(
+        crate::debugln!(
             "[port{} write] {:#x} <- {:#x}",
             (offset - 0x100) / 0x80,
             offset % 0x80,
@@ -147,22 +149,19 @@ impl HbaPort {
         match port_offset {
             // 0x00: command list base address, 1K-byte aligned
             // 0x04: command list base address upper 32 bits
-            port_offset @ (0x00 | 0x04) => {
-                self.storing_base_addr(base_addr, offset, port_offset, value)
-            }
             // 0x08: FIS base address, 256-byte aligned
             // 0x0c: FIS base address upper 32 bits
-            port_offset @ (0x08 | 0x0c) => {
-                self.storing_base_addr(base_addr, offset, port_offset, value)
+            port_offset @ (0x00 | 0x04 | 0x08 | 0x0c) => {
+                self.storing_base_addr(base_addr, offset, port_offset, value);
             }
             // command issue
             0x38 => {
-                crate::println!("[command issue] {}", value.trailing_zeros());
-                crate::println!("[command issue] count one {}", value.count_ones());
-                self.pass_through_storing(dst_addr, value);
+                crate::debugln!("[command issue] {}", value.trailing_zeros());
+                crate::debugln!("[command issue] count one {}", value.count_ones());
+                Self::pass_through_storing(dst_addr, value);
             }
             // other registers
-            _ => self.pass_through_storing(dst_addr, value),
+            _ => Self::pass_through_storing(dst_addr, value),
         }
     }
 }
@@ -171,22 +170,22 @@ impl HbaPort {
 #[derive(Debug)]
 pub struct Sata {
     /// Bus - device - function
-    ident: Bdf,
+    _ident: Bdf,
     /// AHCI Base Address Register
     abar: Range<HostPhysicalAddress>,
     /// HBA Ports
     ports: [HbaPort; SATA_PORT_NUM],
     /// PCI Vender ID
-    vender_id: u32,
+    _vender_id: u32,
     /// PCI Device ID
-    device_id: u32,
+    _device_id: u32,
 }
 
 impl Sata {
     /// Pass through loading memory
-    fn pass_through_loading(&self, dst_addr: HostPhysicalAddress) -> u32 {
+    fn pass_through_loading(dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
-        crate::println!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
+        crate::debugln!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
             dst_ptr.read_volatile()
         });
         unsafe { dst_ptr.read_volatile() }
@@ -208,12 +207,12 @@ impl Sata {
             // 0x00 - 0x2b: Generic Host Control
             // 0x2c - 0x9f: Reserved
             // 0xa0 - 0xff: Vendor specific registers
-            0x0..=0xff => Ok(self.pass_through_loading(dst_addr)),
+            0x0..=0xff => Ok(Self::pass_through_loading(dst_addr)),
             // Port control registers
             0x100..=0x10ff => {
                 let port_num = (offset - 0x100) / 0x80;
                 let loaded_data = self.ports[port_num].emulate_loading(base_addr, dst_addr);
-                crate::println!(
+                crate::debugln!(
                     "[port{}  read] {:#x} -> {:#x}",
                     port_num,
                     offset % 0x80,
@@ -226,9 +225,9 @@ impl Sata {
     }
 
     /// Pass through storing memory
-    fn pass_through_storing(&self, dst_addr: HostPhysicalAddress, value: u32) {
+    fn pass_through_storing(dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
-        crate::println!("[write] {:#x} <- {:#x}", dst_addr.0, value);
+        crate::debugln!("[write] {:#x} <- {:#x}", dst_addr.0, value);
         unsafe {
             dst_ptr.write_volatile(value);
         }
@@ -251,7 +250,7 @@ impl Sata {
             // 0x00 - 0x2b: Generic Host Control
             // 0x2c - 0x9f: Reserved
             // 0xa0 - 0xff: Vendor specific registers
-            0x0..=0xff => self.pass_through_storing(dst_addr, value),
+            0x0..=0xff => Self::pass_through_storing(dst_addr, value),
             // Port control registers
             0x100..=0x10ff => {
                 let port_num = (offset - 0x100) / 0x80;
@@ -286,7 +285,7 @@ impl PciDevice for Sata {
         let start_address = if bar_value == 0 {
             pci_addr_space.base_addr
         } else {
-            HostPhysicalAddress((bar_value & 0xfffffff0) as usize)
+            HostPhysicalAddress((bar_value & 0xffff_fff0) as usize)
         };
         let size = get_bar_size(
             config_space_header_addr,
@@ -298,11 +297,11 @@ impl PciDevice for Sata {
         };
 
         Sata {
-            ident: bdf,
+            _ident: bdf,
             abar,
             ports: [const { HbaPort::new() }; SATA_PORT_NUM],
-            vender_id,
-            device_id,
+            _vender_id: vender_id,
+            _device_id: device_id,
         }
     }
 
