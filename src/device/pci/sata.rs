@@ -32,52 +32,92 @@ impl HbaPort {
         }
     }
 
+    /// Pass through loading memory
+    fn pass_through_loading(&self, dst_addr: HostPhysicalAddress) -> u32 {
+        let dst_ptr = dst_addr.raw() as *const u32;
+        crate::println!("[ read] {:#x} -> {:#x}", dst_addr.0, unsafe {
+            dst_ptr.read_volatile()
+        });
+        unsafe { dst_ptr.read_volatile() }
+    }
+
+    /// Emulate loading port registers.
+    pub fn emulate_loading(
+        &self,
+        base_addr: HostPhysicalAddress,
+        dst_addr: HostPhysicalAddress,
+    ) -> u32 {
+        let offset = dst_addr.raw() - base_addr.raw();
+        let port_offset = offset % 0x80;
+        match port_offset {
+            // 0x00: command list base address, 1K-byte aligned
+            0x0 => (self.cmd_list_gpa.raw() & 0xffff_ffff) as u32,
+            // 0x04: command list base address upper 32 bits
+            0x4 => (self.cmd_list_gpa.raw() >> 32 & 0xffff_ffff) as u32,
+            // 0x08: FIS base address, 256-byte aligned
+            0x8 => (self.fis_gpa.raw() & 0xffff_ffff) as u32,
+            // 0x0c: FIS base address upper 32 bits
+            0xc => (self.fis_gpa.raw() >> 32 & 0xffff_ffff) as u32,
+            // other registers
+            _ => self.pass_through_loading(dst_addr),
+        }
+    }
+
     /// Emulate storing base address to `CLB` of `FB`
     fn storing_base_addr(
         &mut self,
-        base_addr: HostPhysicalAddress,
+        hba_base_addr: HostPhysicalAddress,
         offset: usize,
         port_offset: usize,
         value: u32,
     ) {
-        let cmd_list_gpa = if port_offset % 8 == 0 {
+        let base_gpa = if port_offset % 8 == 0 {
             let upper_addr = unsafe {
-                core::ptr::read_volatile((base_addr.raw() + offset + 0x4) as *const u32) as usize
+                core::ptr::read_volatile((hba_base_addr.raw() + offset + 0x4) as *const u32)
+                    as usize
             };
             GuestPhysicalAddress(upper_addr << 32 | value as usize)
         } else {
             let lower_addr = unsafe {
-                core::ptr::read_volatile((base_addr.raw() + offset) as *const u32) as usize
+                core::ptr::read_volatile((hba_base_addr.raw() + offset) as *const u32) as usize
             };
             GuestPhysicalAddress((value as usize) << 32 | lower_addr)
         };
-        if (0x9000_0000..0xa000_0000).contains(&cmd_list_gpa.raw()) {
-            if let Ok(cmd_list_hpa) = g_stage_trans_addr(cmd_list_gpa) {
+
+        // store base guest physical addr
+        if port_offset == 0x0 || port_offset == 0x4 {
+            self.cmd_list_gpa = base_gpa;
+        } else {
+            self.fis_gpa = base_gpa;
+        }
+
+        if (0x9000_0000..0xa000_0000).contains(&base_gpa.raw()) {
+            if let Ok(base_hpa) = g_stage_trans_addr(base_gpa) {
                 if port_offset == 0x0 || port_offset == 0x4 {
                     crate::println!(
                         "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
                         (offset - 0x100) / 0x80,
-                        cmd_list_gpa.raw(),
-                        cmd_list_hpa.raw()
+                        base_gpa.raw(),
+                        base_hpa.raw()
                     );
                 } else {
                     crate::println!(
                         "[translate] P{}FB: {:#x}(GPA) -> {:#x}(HPA)",
                         (offset - 0x100) / 0x80,
-                        cmd_list_gpa.raw(),
-                        cmd_list_hpa.raw()
+                        base_gpa.raw(),
+                        base_hpa.raw()
                     );
                 }
 
                 let lower_offset = offset & !0xb111;
                 unsafe {
                     core::ptr::write_volatile(
-                        (base_addr.raw() + lower_offset) as *mut u32,
-                        (cmd_list_hpa.raw() & 0xffff_ffff) as u32,
+                        (hba_base_addr.raw() + lower_offset) as *mut u32,
+                        (base_hpa.raw() & 0xffff_ffff) as u32,
                     );
                     core::ptr::write_volatile(
-                        (base_addr.raw() + lower_offset + 4) as *mut u32,
-                        (cmd_list_hpa.raw() >> 32 & 0xffff_ffff) as u32,
+                        (hba_base_addr.raw() + lower_offset + 4) as *mut u32,
+                        (base_hpa.raw() >> 32 & 0xffff_ffff) as u32,
                     );
                 }
             }
@@ -158,7 +198,21 @@ impl Sata {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        Ok(self.pass_through_loading(dst_addr))
+        let base_addr = self.abar.start;
+        let offset = dst_addr.raw() - base_addr.raw();
+
+        match offset {
+            // 0x00 - 0x2b: Generic Host Control
+            // 0x2c - 0x9f: Reserved
+            // 0xa0 - 0xff: Vendor specific registers
+            0x0..=0xff => Ok(self.pass_through_loading(dst_addr)),
+            // Port control registers
+            0x100..=0x10ff => {
+                let port_num = (offset - 0x100) / 0x80;
+                Ok(self.ports[port_num].emulate_loading(base_addr, dst_addr))
+            }
+            _ => unreachable!("[HBA Memory Registers] out of range"),
+        }
     }
 
     /// Pass through storing memory
