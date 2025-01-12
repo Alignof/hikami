@@ -89,7 +89,7 @@
 	};
 
 	chosen {
-		bootargs = "append ro root=UUID=68d82fa1-1bb5-435f-a5e3-862176586eec earlycon initramfs.runsize=24M locale.LANG=en_US.UTF-8";
+		bootargs = "root=/dev/sda locale.LANG=en_US.UTF-8";
 		stdout-path = "/soc/serial@10000000";
 		rng-seed = <0x9775b34d 0xe39158f2 0x3e9d10b1 0x73692dfd 0x13c15814 0xa4ad203f 0x8b0d62f7 0x6bf8a79d>;
 	};
