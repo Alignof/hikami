@@ -55,6 +55,7 @@ pub fn load_guest_page_fault() {
 }
 
 /// Trap `Store guest page fault` exception.
+#[allow(clippy::cast_possible_truncation)]
 pub fn store_guest_page_fault() {
     let fault_addr = HostPhysicalAddress(htval::read().bits() << 2);
     let fault_inst_value = htinst::read().bits();

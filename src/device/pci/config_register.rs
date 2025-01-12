@@ -49,20 +49,20 @@ pub enum ConfigSpaceHeaderField {
 
 impl ConfigSpaceHeaderField {
     /// Field size [byte]
-    fn field_size(&self) -> FieldSize {
+    fn field_size(self) -> FieldSize {
         match self {
-            ConfigSpaceHeaderField::VenderId => FieldSize::Byte2,
-            ConfigSpaceHeaderField::DeviceId => FieldSize::Byte2,
-            ConfigSpaceHeaderField::Command => FieldSize::Byte2,
-            ConfigSpaceHeaderField::Status => FieldSize::Byte2,
+            ConfigSpaceHeaderField::VenderId
+            | ConfigSpaceHeaderField::DeviceId
+            | ConfigSpaceHeaderField::Command
+            | ConfigSpaceHeaderField::Status => FieldSize::Byte2,
             ConfigSpaceHeaderField::ClassCode => FieldSize::Byte3,
             ConfigSpaceHeaderField::HeaderType => FieldSize::Byte1,
-            ConfigSpaceHeaderField::BaseAddressRegister0 => FieldSize::Byte4,
-            ConfigSpaceHeaderField::BaseAddressRegister1 => FieldSize::Byte4,
-            ConfigSpaceHeaderField::BaseAddressRegister2 => FieldSize::Byte4,
-            ConfigSpaceHeaderField::BaseAddressRegister3 => FieldSize::Byte4,
-            ConfigSpaceHeaderField::BaseAddressRegister4 => FieldSize::Byte4,
-            ConfigSpaceHeaderField::BaseAddressRegister5 => FieldSize::Byte4,
+            ConfigSpaceHeaderField::BaseAddressRegister0
+            | ConfigSpaceHeaderField::BaseAddressRegister1
+            | ConfigSpaceHeaderField::BaseAddressRegister2
+            | ConfigSpaceHeaderField::BaseAddressRegister3
+            | ConfigSpaceHeaderField::BaseAddressRegister4
+            | ConfigSpaceHeaderField::BaseAddressRegister5 => FieldSize::Byte4,
         }
     }
 }
