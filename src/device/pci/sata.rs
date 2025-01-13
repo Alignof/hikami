@@ -9,7 +9,7 @@ use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::device::DeviceEmulateError;
 use crate::memmap::page_table::g_stage_trans_addr;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use command::{CommandHeader, CommandTable, COMMAND_HEADER_SIZE};
+use command::{CommandHeader, CommandTable, CommandTableGpaStorage, COMMAND_HEADER_SIZE};
 
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -32,6 +32,8 @@ struct HbaPort {
     ///
     /// It is copy of `Port x Command Issue`(0x38) at the time of writing.
     commands_status: u32,
+    /// Addresses of `CommandTable` and its each CTBA.
+    cmd_table_gpa_storage: [CommandTableGpaStorage; COMMAND_HEADER_SIZE],
 }
 
 impl HbaPort {
@@ -41,6 +43,7 @@ impl HbaPort {
             cmd_list_gpa: GuestPhysicalAddress(0), // init by 0.
             fis_gpa: GuestPhysicalAddress(0),      // init by 0.
             commands_status: 0,
+            cmd_table_gpa_storage: [const { CommandTableGpaStorage::new() }; COMMAND_HEADER_SIZE],
         }
     }
 
@@ -136,7 +139,7 @@ impl HbaPort {
     }
 
     /// Rewrite address in command list and command table to host physical address.
-    fn rewrite_cmd_addr(&self, base_addr: HostPhysicalAddress, port_num: usize, cmd_num: u32) {
+    fn rewrite_cmd_addr(&mut self, base_addr: HostPhysicalAddress, port_num: usize, cmd_num: u32) {
         let cmd_list_reg_addr =
             base_addr + PORT_CONTROL_REGS_OFFSET + PORT_CONTROL_REGS_SIZE * port_num;
         let cmd_list_hpa = unsafe {
@@ -155,6 +158,9 @@ impl HbaPort {
         let cmd_table_hpa =
             g_stage_trans_addr(cmd_table_gpa).expect("command_header.ctba is not GPA");
 
+        // store gpa
+        self.cmd_table_gpa_storage[cmd_num as usize].cmd_table_gpa = cmd_table_gpa;
+
         // write command table host physical address
         unsafe {
             (*cmd_header_ptr).ctba_u = ((cmd_table_hpa.raw() >> 32) & 0xffff_ffff) as u32;
@@ -163,7 +169,10 @@ impl HbaPort {
 
         let cmd_table_ptr = cmd_table_hpa.raw() as *mut CommandTable;
         unsafe {
-            (*cmd_table_ptr).translate_all_data_base_addresses(prdtl);
+            (*cmd_table_ptr).translate_all_data_base_addresses(
+                prdtl,
+                &mut self.cmd_table_gpa_storage[cmd_num as usize].ctba_list,
+            );
         }
     }
 

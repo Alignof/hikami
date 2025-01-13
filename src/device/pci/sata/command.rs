@@ -3,8 +3,31 @@
 use crate::memmap::page_table::g_stage_trans_addr;
 use crate::memmap::GuestPhysicalAddress;
 
+use alloc::vec::Vec;
+
 /// Size of command header
 pub const COMMAND_HEADER_SIZE: usize = 0x20;
+
+/// Addresses of `CommandTable` and its each CTBA.
+///
+/// It will be used at address restoring.
+#[derive(Debug)]
+pub struct CommandTableGpaStorage {
+    /// Address of Command Table Structure
+    pub cmd_table_gpa: GuestPhysicalAddress,
+    /// List of CTBA (Command Table Base Address)
+    pub ctba_list: Vec<GuestPhysicalAddress>,
+}
+
+impl CommandTableGpaStorage {
+    /// Generate new `CommandTableGpaStorage`.
+    pub const fn new() -> Self {
+        CommandTableGpaStorage {
+            cmd_table_gpa: GuestPhysicalAddress(0), // init by 0.
+            ctba_list: Vec::new(),
+        }
+    }
+}
 
 /// HBA command header
 ///
@@ -45,9 +68,10 @@ struct PhysicalRegionDescriptor {
 }
 
 impl PhysicalRegionDescriptor {
-    pub fn translate_data_base_address(&mut self) {
+    pub fn translate_data_base_address(&mut self, ctba_list: &mut Vec<GuestPhysicalAddress>) {
         let db_gpa = GuestPhysicalAddress((self.dbau as usize) << 32 | self.dba as usize);
         let db_hpa = g_stage_trans_addr(db_gpa).expect("data base address translation failed");
+        ctba_list.push(db_gpa);
         self.dbau = ((db_hpa.raw() >> 32) & 0xffff_ffff) as u32;
         self.dba = (db_hpa.raw() & 0xffff_ffff) as u32;
     }
@@ -71,12 +95,16 @@ pub struct CommandTable {
 }
 
 impl CommandTable {
-    pub fn translate_all_data_base_addresses(&mut self, prdtl: u32) {
+    pub fn translate_all_data_base_addresses(
+        &mut self,
+        prdtl: u32,
+        ctba_list: &mut Vec<GuestPhysicalAddress>,
+    ) {
         let prdt_ptr = self.prdt.as_mut_ptr() as *mut PhysicalRegionDescriptor;
         for index in 0..prdtl {
             unsafe {
                 let prd_ptr = prdt_ptr.add(index as usize);
-                (*prd_ptr).translate_data_base_address();
+                (*prd_ptr).translate_data_base_address(ctba_list);
             }
         }
     }
