@@ -176,6 +176,44 @@ impl HbaPort {
         }
     }
 
+    /// Restore address in command list and command table to GuestPhysicalAddress physical address.
+    fn restore_cmd_addr(&mut self, base_addr: HostPhysicalAddress, port_num: usize, cmd_num: u32) {
+        let cmd_list_reg_addr =
+            base_addr + PORT_CONTROL_REGS_OFFSET + PORT_CONTROL_REGS_SIZE * port_num;
+        let cmd_list_hpa = unsafe {
+            HostPhysicalAddress((cmd_list_reg_addr.0 as *const u32).read_volatile() as usize)
+        };
+        let cmd_header_hpa = cmd_list_hpa + cmd_num as usize * COMMAND_HEADER_SIZE;
+        let cmd_header_ptr = cmd_header_hpa.raw() as *mut CommandHeader;
+
+        // load hpa
+        let cmd_table_hpa = unsafe {
+            HostPhysicalAddress(
+                ((*cmd_header_ptr).ctba_u as usize) << 32 | (*cmd_header_ptr).ctba as usize,
+            )
+        };
+
+        // restore gpa
+        let cmd_table_gpa = self.cmd_table_gpa_storage[cmd_num as usize].cmd_table_gpa;
+
+        // write command table host physical address
+        unsafe {
+            (*cmd_header_ptr).ctba_u = ((cmd_table_gpa.raw() >> 32) & 0xffff_ffff) as u32;
+            (*cmd_header_ptr).ctba = (cmd_table_gpa.raw() & 0xffff_ffff) as u32;
+        }
+
+        let cmd_table_ptr = cmd_table_hpa.raw() as *mut CommandTable;
+        unsafe {
+            (*cmd_table_ptr).restore_all_data_base_addresses(
+                &self.cmd_table_gpa_storage[cmd_num as usize].ctba_list,
+            );
+        }
+
+        self.cmd_table_gpa_storage[cmd_num as usize]
+            .ctba_list
+            .clear();
+    }
+
     /// Pass through storing memory
     fn pass_through_storing(dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
@@ -210,13 +248,18 @@ impl HbaPort {
             // interrupt status
             // Ref: https://osdev.jp/wiki/AHCI-Memo, Offset 10h: PxIS - Port Interrupt Status
             0x10 => {
-                // get completed command number
-                let current_cmd_status = Self::pass_through_loading(dst_addr + 0x28); // current command isssue value
-                let completed_cmd_num =
-                    (self.commands_status & !current_cmd_status).trailing_zeros();
-                crate::debugln!("[command completed] {}", completed_cmd_num);
+                // command has already issued
+                if self.commands_status != 0 {
+                    // get completed command number
+                    let current_cmd_status = Self::pass_through_loading(dst_addr + 0x28); // current command isssue value
+                    let completed_cmd_num =
+                        (self.commands_status & !current_cmd_status).trailing_zeros();
+                    crate::debugln!("[command completed] {}", completed_cmd_num);
 
-                // restore translated address.
+                    // restore translated address.
+                    let port_num = (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE;
+                    self.restore_cmd_addr(base_addr, port_num, completed_cmd_num);
+                }
 
                 Self::pass_through_storing(dst_addr, value);
             }
