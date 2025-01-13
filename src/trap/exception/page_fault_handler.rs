@@ -10,6 +10,16 @@ use crate::HYPERVISOR_DATA;
 
 use raki::Instruction;
 
+/// Fetch fault instruction
+fn fetch_fault_inst(fault_addr: HostPhysicalAddress) -> usize {
+    let inst_value = unsafe { (fault_addr.raw() as *const u32).read_volatile() };
+    if inst_value & 0b11 == 0b11 {
+        inst_value as usize
+    } else {
+        (inst_value & 0xffff) as usize
+    }
+}
+
 /// Trap `Load guest page fault` exception.
 pub fn load_guest_page_fault() {
     let fault_addr = HostPhysicalAddress(htval::read().bits() << 2);
@@ -17,8 +27,14 @@ pub fn load_guest_page_fault() {
     // htinst bit 1 replaced with a 0.
     // thus it needed to flip bit 1.
     // ref: vol. II p.161
-    let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
-        .expect("decoding load fault instruction failed");
+    let fault_inst = if fault_inst_value == 0 {
+        let fault_inst_value = fetch_fault_inst(fault_addr);
+        assert_ne!(fault_inst_value, 0);
+        Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed")
+    } else {
+        Instruction::try_from(fault_inst_value | 0b10)
+            .expect("decoding load fault instruction failed")
+    };
 
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     if let Ok(value) = hypervisor_data
@@ -62,8 +78,14 @@ pub fn store_guest_page_fault() {
     // htinst bit 1 replaced with a 0.
     // thus it needed to flip bit 1.
     // ref: vol. II p.161
-    let fault_inst = Instruction::try_from(fault_inst_value | 0b10)
-        .expect("decoding load fault instruction failed");
+    let fault_inst = if fault_inst_value == 0 {
+        let fault_inst_value = fetch_fault_inst(fault_addr);
+        assert_ne!(fault_inst_value, 0);
+        Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed")
+    } else {
+        Instruction::try_from(fault_inst_value | 0b10)
+            .expect("decoding load fault instruction failed")
+    };
 
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let mut context = hypervisor_data.get().unwrap().guest().context;
