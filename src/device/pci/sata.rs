@@ -261,7 +261,8 @@ impl Sata {
                 );
                 Ok(loaded_data)
             }
-            _ => unreachable!("[HBA Memory Registers] out of range"),
+            // out of range but it may be used by others.
+            _ => Ok(Self::pass_through_loading(dst_addr)),
         }
     }
 
@@ -297,7 +298,8 @@ impl Sata {
                 let port_num = (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE;
                 self.ports[port_num].emulate_storing(base_addr, dst_addr, value);
             }
-            _ => unreachable!("[HBA Memory Registers] out of range"),
+            // out of range but it may be used by others.
+            _ => Self::pass_through_storing(dst_addr, value),
         }
 
         Ok(())
