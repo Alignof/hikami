@@ -68,12 +68,18 @@ struct PhysicalRegionDescriptor {
 }
 
 impl PhysicalRegionDescriptor {
+    /// Translate all dba to host physical address.
     pub fn translate_data_base_address(&mut self, ctba_list: &mut Vec<GuestPhysicalAddress>) {
         let db_gpa = GuestPhysicalAddress((self.dbau as usize) << 32 | self.dba as usize);
         let db_hpa = g_stage_trans_addr(db_gpa).expect("data base address translation failed");
         ctba_list.push(db_gpa);
         self.dbau = ((db_hpa.raw() >> 32) & 0xffff_ffff) as u32;
         self.dba = (db_hpa.raw() & 0xffff_ffff) as u32;
+    }
+    /// Restore all dba to host physical address.
+    pub fn restore_data_base_address(&mut self, db_gpa: GuestPhysicalAddress) {
+        self.dbau = ((db_gpa.raw() >> 32) & 0xffff_ffff) as u32;
+        self.dba = (db_gpa.raw() & 0xffff_ffff) as u32;
     }
 }
 
