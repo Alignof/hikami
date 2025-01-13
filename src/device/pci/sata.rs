@@ -28,6 +28,10 @@ struct HbaPort {
     cmd_list_gpa: GuestPhysicalAddress,
     /// FIS base address
     fis_gpa: GuestPhysicalAddress,
+    /// Commands status.
+    ///
+    /// It is copy of `Port x Command Issue`(0x38) at the time of writing.
+    commands_status: u32,
 }
 
 impl HbaPort {
@@ -36,6 +40,7 @@ impl HbaPort {
         HbaPort {
             cmd_list_gpa: GuestPhysicalAddress(0), // init by 0.
             fis_gpa: GuestPhysicalAddress(0),      // init by 0.
+            commands_status: 0,
         }
     }
 
@@ -193,12 +198,27 @@ impl HbaPort {
             port_offset @ (0x00 | 0x04 | 0x08 | 0x0c) => {
                 self.storing_base_addr(base_addr, offset, port_offset, value);
             }
+            // interrupt status
+            // Ref: https://osdev.jp/wiki/AHCI-Memo, Offset 10h: PxIS - Port Interrupt Status
+            0x10 => {
+                // get completed command number
+                let current_cmd_status = Self::pass_through_loading(dst_addr + 0x28); // current command isssue value
+                let completed_cmd_num =
+                    (self.commands_status & !current_cmd_status).trailing_zeros();
+                crate::debugln!("[command completed] {}", completed_cmd_num);
+
+                // restore translated address.
+
+                Self::pass_through_storing(dst_addr, value);
+            }
             // command issue
             0x38 => {
                 let cmd_num = value.trailing_zeros();
                 let port_num = (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE;
                 crate::debugln!("[command issue] {}", cmd_num);
                 self.rewrite_cmd_addr(base_addr, port_num, cmd_num);
+                self.commands_status = Self::pass_through_loading(dst_addr) | value;
+
                 Self::pass_through_storing(dst_addr, value);
             }
             // other registers
