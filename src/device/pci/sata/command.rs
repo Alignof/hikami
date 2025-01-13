@@ -101,6 +101,7 @@ pub struct CommandTable {
 }
 
 impl CommandTable {
+    /// Translate all dba to host physical address.
     pub fn translate_all_data_base_addresses(
         &mut self,
         prdtl: u32,
@@ -111,6 +112,17 @@ impl CommandTable {
             unsafe {
                 let prd_ptr = prdt_ptr.add(index as usize);
                 (*prd_ptr).translate_data_base_address(ctba_list);
+            }
+        }
+    }
+
+    /// Restore all dba
+    pub fn restore_all_data_base_addresses(&mut self, ctba_list: &Vec<GuestPhysicalAddress>) {
+        let prdt_ptr = self.prdt.as_mut_ptr() as *mut PhysicalRegionDescriptor;
+        for index in 0..ctba_list.len() {
+            unsafe {
+                let prd_ptr = prdt_ptr.add(index as usize);
+                (*prd_ptr).restore_data_base_address(ctba_list[index]);
             }
         }
     }
