@@ -6,7 +6,10 @@ mod sbi_handler;
 
 use super::hstrap_exit;
 use crate::guest;
-use crate::h_extension::{csrs::vstvec, HvException};
+use crate::h_extension::{
+    csrs::{htval, vstvec},
+    HvException,
+};
 use crate::HYPERVISOR_DATA;
 use sbi_handler::sbi_call;
 
@@ -90,7 +93,11 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
                 context.set_sepc(context.sepc() + 4);
             }
             HvException::InstructionGuestPageFault => {
-                panic!("Instruction guest-page fault");
+                panic!(
+                    "Instruction guest-page fault\nfault gpa: {:#x}\nfault hpa: {:#x}",
+                    stval::read(),
+                    htval::read().bits() << 2,
+                );
             }
             HvException::LoadGuestPageFault => page_fault_handler::load_guest_page_fault(),
             HvException::StoreAmoGuestPageFault => page_fault_handler::store_guest_page_fault(),

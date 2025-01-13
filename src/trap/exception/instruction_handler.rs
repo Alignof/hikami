@@ -15,8 +15,9 @@ use riscv::register::{sepc, stval};
 #[inline]
 pub fn illegal_instruction() {
     let fault_inst_value = stval::read();
-    let fault_inst =
-        Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed");
+    let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
+        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x}")
+    });
 
     // emulate the instruction
     match fault_inst.opc {
@@ -50,8 +51,9 @@ pub fn illegal_instruction() {
 #[inline]
 pub fn virtual_instruction() {
     let fault_inst_value = stval::read();
-    let fault_inst =
-        Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed");
+    let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
+        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x}")
+    });
     let mut context = unsafe { HYPERVISOR_DATA.lock() }
         .get()
         .unwrap()

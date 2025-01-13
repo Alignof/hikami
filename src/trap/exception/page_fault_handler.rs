@@ -70,7 +70,7 @@ pub fn store_guest_page_fault() {
     //let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
     let store_value = context.xreg(match fault_inst.rs2 {
         Some(x) => x,
-        None => panic!("rs2 is not found: {fault_inst:#?}"),
+        None => panic!("rs2 is not found: {fault_inst:#?} (inst_value: {fault_inst_value})"),
     });
 
     if let Ok(()) = hypervisor_data
