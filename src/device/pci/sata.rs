@@ -176,7 +176,7 @@ impl HbaPort {
         }
     }
 
-    /// Restore address in command list and command table to GuestPhysicalAddress physical address.
+    /// Restore address in command list and command table to `GuestPhysicalAddress` physical address.
     fn restore_cmd_addr(&mut self, base_addr: HostPhysicalAddress, port_num: usize, cmd_num: u32) {
         let cmd_list_reg_addr =
             base_addr + PORT_CONTROL_REGS_OFFSET + PORT_CONTROL_REGS_SIZE * port_num;

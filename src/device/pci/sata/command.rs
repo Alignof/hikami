@@ -113,7 +113,7 @@ impl PhysicalRegionDescriptor {
                 self.dbau = ((db_gpa.raw() >> 32) & 0xffff_ffff) as u32;
                 self.dba = (db_gpa.raw() & 0xffff_ffff) as u32;
 
-                let heap_ptr = heap.as_ptr() as *mut u8;
+                let heap_ptr = heap.as_ptr().cast_mut();
                 for offset in (0..heap.len()).step_by(PAGE_SIZE) {
                     let dst_gpa = *db_gpa + offset;
                     let dst_hpa = g_stage_trans_addr(dst_gpa)
@@ -132,7 +132,7 @@ impl PhysicalRegionDescriptor {
                     }
                 }
                 // free allocated region
-                heap.clear()
+                heap.clear();
             }
         }
     }
@@ -162,7 +162,7 @@ impl CommandTable {
         prdtl: u32,
         ctba_list: &mut Vec<CommandTableAddressData>,
     ) {
-        let prdt_ptr = self.prdt.as_mut_ptr() as *mut PhysicalRegionDescriptor;
+        let prdt_ptr = self.prdt.as_mut_ptr().cast::<PhysicalRegionDescriptor>();
         for index in 0..prdtl {
             unsafe {
                 let prd_ptr = prdt_ptr.add(index as usize);
@@ -176,10 +176,10 @@ impl CommandTable {
         &mut self,
         ctba_list: &mut Vec<CommandTableAddressData>,
     ) {
-        let prdt_ptr = self.prdt.as_mut_ptr() as *mut PhysicalRegionDescriptor;
+        let prdt_ptr = self.prdt.as_mut_ptr().cast::<PhysicalRegionDescriptor>();
         for index in 0..ctba_list.len() {
             unsafe {
-                let prd_ptr = prdt_ptr.add(index as usize);
+                let prd_ptr = prdt_ptr.add(index);
                 (*prd_ptr).restore_data_base_address(&mut ctba_list[index]);
             }
         }
