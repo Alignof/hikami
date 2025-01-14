@@ -68,11 +68,11 @@ impl HbaPort {
             // 0x00: command list base address, 1K-byte aligned
             0x0 => (self.cmd_list_gpa.raw() & 0xffff_ffff) as u32,
             // 0x04: command list base address upper 32 bits
-            0x4 => (self.cmd_list_gpa.raw() >> 32 & 0xffff_ffff) as u32,
+            0x4 => ((self.cmd_list_gpa.raw() >> 32) & 0xffff_ffff) as u32,
             // 0x08: FIS base address, 256-byte aligned
             0x8 => (self.fis_gpa.raw() & 0xffff_ffff) as u32,
             // 0x0c: FIS base address upper 32 bits
-            0xc => (self.fis_gpa.raw() >> 32 & 0xffff_ffff) as u32,
+            0xc => ((self.fis_gpa.raw() >> 32) & 0xffff_ffff) as u32,
             // other registers
             _ => Self::pass_through_loading(dst_addr),
         }
@@ -92,7 +92,7 @@ impl HbaPort {
                 core::ptr::read_volatile((hba_base_addr.raw() + offset + 0x4) as *const u32)
                     as usize
             };
-            GuestPhysicalAddress(upper_addr << 32 | value as usize)
+            GuestPhysicalAddress((upper_addr << 32) | value as usize)
         } else {
             let lower_addr = unsafe {
                 core::ptr::read_volatile((hba_base_addr.raw() + offset) as *const u32) as usize
@@ -133,7 +133,7 @@ impl HbaPort {
                     );
                     core::ptr::write_volatile(
                         (hba_base_addr.raw() + lower_offset + 4) as *mut u32,
-                        (base_hpa.raw() >> 32 & 0xffff_ffff) as u32,
+                        ((base_hpa.raw() >> 32) & 0xffff_ffff) as u32,
                     );
                 }
             }
@@ -155,7 +155,7 @@ impl HbaPort {
         // translate command table address
         let cmd_table_gpa = unsafe {
             GuestPhysicalAddress(
-                ((*cmd_header_ptr).ctba_u as usize) << 32 | (*cmd_header_ptr).ctba as usize,
+                (((*cmd_header_ptr).ctba_u as usize) << 32) | (*cmd_header_ptr).ctba as usize,
             )
         };
         let cmd_table_hpa =
@@ -193,7 +193,7 @@ impl HbaPort {
         // load hpa
         let cmd_table_hpa = unsafe {
             HostPhysicalAddress(
-                ((*cmd_header_ptr).ctba_u as usize) << 32 | (*cmd_header_ptr).ctba as usize,
+                (((*cmd_header_ptr).ctba_u as usize) << 32) | (*cmd_header_ptr).ctba as usize,
             )
         };
 

@@ -85,7 +85,7 @@ impl PhysicalRegionDescriptor {
         clippy::similar_names
     )]
     pub fn translate_data_base_address(&mut self, ctba_list: &mut Vec<CommandTableAddressData>) {
-        let db_gpa = GuestPhysicalAddress((self.dbau as usize) << 32 | self.dba as usize);
+        let db_gpa = GuestPhysicalAddress(((self.dbau as usize) << 32) | self.dba as usize);
         let db_hpa = g_stage_trans_addr(db_gpa).expect("data base address translation failed");
 
         let data_base_size = self.dbc as usize + 1;

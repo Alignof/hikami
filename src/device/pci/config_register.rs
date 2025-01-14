@@ -104,7 +104,7 @@ pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderF
     };
 
     let read_value = unsafe { core::ptr::read_volatile(config_reg_32bit_addr as *const u32) };
-    read_value >> (offset_byte * 8) & mask
+    (read_value >> (offset_byte * 8)) & mask
 }
 
 /// Write config data to "PCI Configuration Space".
@@ -121,6 +121,6 @@ pub fn write_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeader
     };
 
     let read_value = unsafe { core::ptr::read_volatile(config_reg_32bit_addr as *const u32) };
-    let write_value = (read_value & !(mask << (offset_byte * 8))) | data << (offset_byte * 8);
+    let write_value = (read_value & !(mask << (offset_byte * 8))) | (data << (offset_byte * 8));
     unsafe { core::ptr::write_volatile(config_reg_32bit_addr as *mut u32, write_value) };
 }
