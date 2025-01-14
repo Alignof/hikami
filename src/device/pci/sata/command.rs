@@ -8,6 +8,15 @@ use alloc::vec::Vec;
 /// Size of command header
 pub const COMMAND_HEADER_SIZE: usize = 0x20;
 
+/// Address of command table to be saved.
+#[derive(Debug)]
+pub enum CommandTableAddressData {
+    /// Address before translation (Memory block size <= 0x1000).
+    TranslatedAddress(GuestPhysicalAddress),
+    /// Address before replacing to allocated memory region  (Memory block size > 0x1000).
+    AllocatedAddress(GuestPhysicalAddress, Vec<u8>),
+}
+
 /// Addresses of `CommandTable` and its each CTBA.
 ///
 /// It will be used at address restoring.
