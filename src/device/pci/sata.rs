@@ -11,6 +11,8 @@ use crate::memmap::page_table::g_stage_trans_addr;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use command::{CommandHeader, CommandTable, CommandTableGpaStorage, COMMAND_HEADER_SIZE};
 
+use alloc::boxed::Box;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::Range;
 
@@ -22,7 +24,7 @@ const PORT_CONTROL_REGS_OFFSET: usize = 0x100;
 const PORT_CONTROL_REGS_SIZE: usize = 0x80;
 
 /// HBA(Host Bus Adapter) Port
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct HbaPort {
     /// Command list base address
     cmd_list_gpa: GuestPhysicalAddress,
@@ -290,7 +292,7 @@ pub struct Sata {
     /// AHCI Base Address Register
     abar: Range<HostPhysicalAddress>,
     /// HBA Ports
-    ports: [HbaPort; SATA_PORT_NUM],
+    ports: Box<[HbaPort]>,
     /// PCI Vender ID
     _vender_id: u32,
     /// PCI Device ID
@@ -419,7 +421,7 @@ impl PciDevice for Sata {
         Sata {
             _ident: bdf,
             abar,
-            ports: [const { HbaPort::new() }; SATA_PORT_NUM],
+            ports: vec![HbaPort::new(); SATA_PORT_NUM].into_boxed_slice(),
             _vender_id: vender_id,
             _device_id: device_id,
         }

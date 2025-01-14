@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 pub const COMMAND_HEADER_SIZE: usize = 0x20;
 
 /// Address of command table to be saved.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CommandTableAddressData {
     /// Address before translation (Memory block size <= 0x1000).
     TranslatedAddress(GuestPhysicalAddress),
@@ -20,7 +20,7 @@ pub enum CommandTableAddressData {
 /// Addresses of `CommandTable` and its each CTBA.
 ///
 /// It will be used at address restoring.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CommandTableGpaStorage {
     /// Address of Command Table Structure
     pub cmd_table_gpa: GuestPhysicalAddress,
