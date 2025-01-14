@@ -205,7 +205,7 @@ impl HbaPort {
         let cmd_table_ptr = cmd_table_hpa.raw() as *mut CommandTable;
         unsafe {
             (*cmd_table_ptr).restore_all_data_base_addresses(
-                &self.cmd_table_gpa_storage[cmd_num as usize].ctba_list,
+                &mut self.cmd_table_gpa_storage[cmd_num as usize].ctba_list,
             );
         }
 

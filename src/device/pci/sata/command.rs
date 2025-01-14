@@ -1,6 +1,6 @@
 //! Utility for HBA (= ATA) command.
 
-use crate::memmap::page_table::g_stage_trans_addr;
+use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::GuestPhysicalAddress;
 
 use alloc::vec::Vec;
@@ -25,7 +25,7 @@ pub struct CommandTableGpaStorage {
     /// Address of Command Table Structure
     pub cmd_table_gpa: GuestPhysicalAddress,
     /// List of CTBA (Command Table Base Address)
-    pub ctba_list: Vec<GuestPhysicalAddress>,
+    pub ctba_list: Vec<CommandTableAddressData>,
 }
 
 impl CommandTableGpaStorage {
@@ -74,22 +74,67 @@ struct PhysicalRegionDescriptor {
     /// Reserved
     _reserved: u32,
     /// Data Byte Count
-    _dbc: u32,
+    dbc: u32,
 }
 
 impl PhysicalRegionDescriptor {
     /// Translate all dba to host physical address.
-    pub fn translate_data_base_address(&mut self, ctba_list: &mut Vec<GuestPhysicalAddress>) {
+    pub fn translate_data_base_address(&mut self, ctba_list: &mut Vec<CommandTableAddressData>) {
         let db_gpa = GuestPhysicalAddress((self.dbau as usize) << 32 | self.dba as usize);
         let db_hpa = g_stage_trans_addr(db_gpa).expect("data base address translation failed");
-        ctba_list.push(db_gpa);
-        self.dbau = ((db_hpa.raw() >> 32) & 0xffff_ffff) as u32;
-        self.dba = (db_hpa.raw() & 0xffff_ffff) as u32;
+
+        let data_base_size = self.dbc as usize + 1;
+        if data_base_size <= PAGE_SIZE {
+            ctba_list.push(CommandTableAddressData::TranslatedAddress(db_gpa));
+            self.dbau = ((db_hpa.raw() >> 32) & 0xffff_ffff) as u32;
+            self.dba = (db_hpa.raw() & 0xffff_ffff) as u32;
+        } else {
+            unsafe {
+                let mut new_heap = Vec::<u8>::with_capacity(data_base_size);
+                new_heap.set_len(data_base_size);
+                let new_heap_addr = new_heap.as_ptr() as usize;
+
+                self.dbau = ((new_heap_addr >> 32) & 0xffff_ffff) as u32;
+                self.dba = (new_heap_addr & 0xffff_ffff) as u32;
+
+                ctba_list.push(CommandTableAddressData::AllocatedAddress(db_gpa, new_heap));
+            }
+        }
     }
+
     /// Restore all dba to host physical address.
-    pub fn restore_data_base_address(&mut self, db_gpa: GuestPhysicalAddress) {
-        self.dbau = ((db_gpa.raw() >> 32) & 0xffff_ffff) as u32;
-        self.dba = (db_gpa.raw() & 0xffff_ffff) as u32;
+    pub fn restore_data_base_address(&mut self, db_addr_data: &mut CommandTableAddressData) {
+        match db_addr_data {
+            CommandTableAddressData::TranslatedAddress(db_gpa) => {
+                self.dbau = ((db_gpa.raw() >> 32) & 0xffff_ffff) as u32;
+                self.dba = (db_gpa.raw() & 0xffff_ffff) as u32;
+            }
+            CommandTableAddressData::AllocatedAddress(db_gpa, heap) => {
+                self.dbau = ((db_gpa.raw() >> 32) & 0xffff_ffff) as u32;
+                self.dba = (db_gpa.raw() & 0xffff_ffff) as u32;
+
+                let heap_ptr = heap.as_ptr() as *mut u8;
+                for offset in (0..heap.len()).step_by(PAGE_SIZE) {
+                    let dst_gpa = *db_gpa + offset;
+                    let dst_hpa = g_stage_trans_addr(dst_gpa)
+                        .expect("failed translation of data base address");
+
+                    unsafe {
+                        core::ptr::copy(
+                            heap_ptr.add(offset),
+                            dst_hpa.raw() as *mut u8,
+                            if offset + PAGE_SIZE < heap.len() {
+                                PAGE_SIZE
+                            } else {
+                                heap.len() - offset
+                            },
+                        );
+                    }
+                }
+                // free allocated region
+                heap.clear()
+            }
+        }
     }
 }
 
@@ -115,7 +160,7 @@ impl CommandTable {
     pub fn translate_all_data_base_addresses(
         &mut self,
         prdtl: u32,
-        ctba_list: &mut Vec<GuestPhysicalAddress>,
+        ctba_list: &mut Vec<CommandTableAddressData>,
     ) {
         let prdt_ptr = self.prdt.as_mut_ptr() as *mut PhysicalRegionDescriptor;
         for index in 0..prdtl {
@@ -127,12 +172,15 @@ impl CommandTable {
     }
 
     /// Restore all dba
-    pub fn restore_all_data_base_addresses(&mut self, ctba_list: &Vec<GuestPhysicalAddress>) {
+    pub fn restore_all_data_base_addresses(
+        &mut self,
+        ctba_list: &mut Vec<CommandTableAddressData>,
+    ) {
         let prdt_ptr = self.prdt.as_mut_ptr() as *mut PhysicalRegionDescriptor;
         for index in 0..ctba_list.len() {
             unsafe {
                 let prd_ptr = prdt_ptr.add(index as usize);
-                (*prd_ptr).restore_data_base_address(ctba_list[index]);
+                (*prd_ptr).restore_data_base_address(&mut ctba_list[index]);
             }
         }
     }
