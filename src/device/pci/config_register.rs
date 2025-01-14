@@ -20,6 +20,7 @@ enum FieldSize {
 /// Ref: [https://osdev.jp/wiki/PCI-Memo](https://osdev.jp/wiki/PCI-Memo)  
 /// Ref: [http://oswiki.osask.jp/?PCI](http://oswiki.osask.jp/?PCI)  
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 pub enum ConfigSpaceHeaderField {
     /// Vender ID
     VenderId = 0x0,

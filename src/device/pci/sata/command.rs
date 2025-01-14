@@ -79,6 +79,11 @@ struct PhysicalRegionDescriptor {
 
 impl PhysicalRegionDescriptor {
     /// Translate all dba to host physical address.
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::uninit_vec,
+        clippy::similar_names
+    )]
     pub fn translate_data_base_address(&mut self, ctba_list: &mut Vec<CommandTableAddressData>) {
         let db_gpa = GuestPhysicalAddress((self.dbau as usize) << 32 | self.dba as usize);
         let db_hpa = g_stage_trans_addr(db_gpa).expect("data base address translation failed");
@@ -103,6 +108,7 @@ impl PhysicalRegionDescriptor {
     }
 
     /// Restore all dba to host physical address.
+    #[allow(clippy::cast_possible_truncation, clippy::similar_names)]
     pub fn restore_data_base_address(&mut self, db_addr_data: &mut CommandTableAddressData) {
         match db_addr_data {
             CommandTableAddressData::TranslatedAddress(db_gpa) => {
@@ -162,25 +168,22 @@ impl CommandTable {
         prdtl: u32,
         ctba_list: &mut Vec<CommandTableAddressData>,
     ) {
-        let prdt_ptr = self.prdt.as_mut_ptr().cast::<PhysicalRegionDescriptor>();
+        let prd_base_ptr = self.prdt.as_mut_ptr().cast::<PhysicalRegionDescriptor>();
         for index in 0..prdtl {
             unsafe {
-                let prd_ptr = prdt_ptr.add(index as usize);
+                let prd_ptr = prd_base_ptr.add(index as usize);
                 (*prd_ptr).translate_data_base_address(ctba_list);
             }
         }
     }
 
     /// Restore all dba
-    pub fn restore_all_data_base_addresses(
-        &mut self,
-        ctba_list: &mut Vec<CommandTableAddressData>,
-    ) {
-        let prdt_ptr = self.prdt.as_mut_ptr().cast::<PhysicalRegionDescriptor>();
-        for index in 0..ctba_list.len() {
+    pub fn restore_all_data_base_addresses(&mut self, ctba_list: &mut [CommandTableAddressData]) {
+        let prd_base_ptr = self.prdt.as_mut_ptr().cast::<PhysicalRegionDescriptor>();
+        for (index, ctba) in ctba_list.iter_mut().enumerate() {
             unsafe {
-                let prd_ptr = prdt_ptr.add(index);
-                (*prd_ptr).restore_data_base_address(&mut ctba_list[index]);
+                let prd_ptr = prd_base_ptr.add(index);
+                (*prd_ptr).restore_data_base_address(ctba);
             }
         }
     }

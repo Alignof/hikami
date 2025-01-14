@@ -139,6 +139,7 @@ impl HbaPort {
     }
 
     /// Rewrite address in command list and command table to host physical address.
+    #[allow(clippy::cast_possible_truncation, clippy::similar_names)]
     fn rewrite_cmd_addr(&mut self, base_addr: HostPhysicalAddress, port_num: usize, cmd_num: u32) {
         let cmd_list_reg_addr =
             base_addr + PORT_CONTROL_REGS_OFFSET + PORT_CONTROL_REGS_SIZE * port_num;
@@ -177,6 +178,7 @@ impl HbaPort {
     }
 
     /// Restore address in command list and command table to `GuestPhysicalAddress` physical address.
+    #[allow(clippy::cast_possible_truncation, clippy::similar_names)]
     fn restore_cmd_addr(&mut self, base_addr: HostPhysicalAddress, port_num: usize, cmd_num: u32) {
         let cmd_list_reg_addr =
             base_addr + PORT_CONTROL_REGS_OFFSET + PORT_CONTROL_REGS_SIZE * port_num;
@@ -317,6 +319,7 @@ impl Sata {
         let base_addr = self.abar.start;
         let offset = dst_addr.raw() - base_addr.raw();
 
+        #[allow(clippy::match_same_arms)]
         match offset {
             // 0x00 - 0x2b: Generic Host Control
             // 0x2c - 0x9f: Reserved
@@ -361,6 +364,7 @@ impl Sata {
         let base_addr = self.abar.start;
         let offset = dst_addr.raw() - base_addr.raw();
 
+        #[allow(clippy::match_same_arms)]
         match offset {
             // 0x00 - 0x2b: Generic Host Control
             // 0x2c - 0x9f: Reserved
