@@ -50,8 +50,9 @@ pub struct CommandHeader {
 }
 
 impl CommandHeader {
+    /// get prdtl value from `CommandHeader.dw0`
     pub fn prdtl(&self) -> u32 {
-        self.dw0 >> 16 & 0xffff
+        (self.dw0 >> 16) & 0xffff
     }
 }
 
