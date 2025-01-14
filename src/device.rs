@@ -2,7 +2,6 @@
 
 pub mod clint;
 mod initrd;
-pub mod iommu;
 mod pci;
 pub mod plic;
 mod rtc;
@@ -27,23 +26,6 @@ pub enum DeviceEmulateError {
     InvalidContextId,
     /// Accessed register is reserved.
     ReservedRegister,
-}
-
-/// Pci device.
-///
-/// A struct that implement this trait **must** has `bus`, `device`, `function` number.
-#[allow(clippy::module_name_repetitions)]
-pub trait PciDevice {
-    /// Create self instance.
-    /// * `device_tree` - struct Fdt
-    /// * `node_path` - node path in fdt
-    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self>
-    where
-        Self: Sized;
-
-    /// Initialize pci device.
-    /// * `pci` - struct `Pci`
-    fn init(&self, pci: &pci::Pci);
 }
 
 /// Memory mapped I/O device.
@@ -90,9 +72,6 @@ pub struct Devices {
 
     /// PCI: Peripheral Component Interconnect
     pub pci: pci::Pci,
-
-    /// IOMMU: I/O memory management unit.
-    pub iommu: Option<iommu::IoMmu>,
 }
 
 impl Devices {
@@ -106,14 +85,6 @@ impl Devices {
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
             pci: pci::Pci::new(&device_tree, "/soc/pci"),
-            iommu: iommu::IoMmu::new(&device_tree, "/soc/pci/iommu"),
-        }
-    }
-
-    /// Initialization of IOMMU.
-    pub fn init_iommu(&mut self) {
-        if let Some(iommu) = &self.iommu {
-            iommu.init(&self.pci);
         }
     }
 

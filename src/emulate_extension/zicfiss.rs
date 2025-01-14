@@ -47,7 +47,7 @@ impl Zicfiss {
     #[allow(clippy::similar_names, clippy::cast_possible_truncation)]
     fn ssp_hp_ptr(&self) -> *mut usize {
         if let Ok(gpa) = vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize)) {
-            let hpa = g_stage_trans_addr(gpa);
+            let hpa = g_stage_trans_addr(gpa).unwrap();
             hpa.0 as *mut usize
         } else {
             unsafe {

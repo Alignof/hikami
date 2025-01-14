@@ -60,7 +60,7 @@ impl Plic {
     }
 
     /// Emulate reading plic context register
-    fn context_read(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
+    fn context_load(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
         if context_id > MAX_CONTEXT_NUM {
             Err(DeviceEmulateError::InvalidContextId)
@@ -70,16 +70,23 @@ impl Plic {
     }
 
     /// Emulate reading plic register.
-    pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError> {
+    pub fn emulate_loading(
+        &self,
+        dst_addr: HostPhysicalAddress,
+    ) -> Result<u32, DeviceEmulateError> {
+        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
+            CONTEXT_BASE..=CONTEXT_END => self.context_load(offset),
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
 
-    /// Emulate writing plic context register.
-    fn context_write(
+    /// Emulate storing plic context register.
+    fn context_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
@@ -113,15 +120,19 @@ impl Plic {
         }
     }
 
-    /// Emulate writing plic register.
-    pub fn emulate_write(
+    /// Emulate storing plic register.
+    pub fn emulate_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
+        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
+            CONTEXT_BASE..=CONTEXT_END => self.context_storing(dst_addr, value),
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }

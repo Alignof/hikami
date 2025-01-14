@@ -17,6 +17,8 @@ missing_crate_level_docs = "warn"
 [features]
 # for real device
 embedded_host_dtb = []
+# debug log
+debug_log = []
 
 [dependencies]
 elf = { version = "0.7.2", default-features = false }
