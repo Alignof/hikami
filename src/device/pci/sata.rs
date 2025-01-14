@@ -212,6 +212,7 @@ impl HbaPort {
         self.cmd_table_gpa_storage[cmd_num as usize]
             .ctba_list
             .clear();
+        self.cmd_table_gpa_storage[cmd_num as usize].cmd_table_gpa = GuestPhysicalAddress(0);
     }
 
     /// Pass through storing memory
