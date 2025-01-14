@@ -5,7 +5,8 @@
 
 use super::{hs_forward_exception, update_sepc_by_htinst_value};
 use crate::h_extension::csrs::{htinst, htval};
-use crate::memmap::HostPhysicalAddress;
+use crate::memmap::page_table::g_stage_trans_addr;
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 use crate::HYPERVISOR_DATA;
 
 use raki::Instruction;
@@ -22,12 +23,14 @@ fn fetch_fault_inst(fault_addr: HostPhysicalAddress) -> usize {
 
 /// Trap `Load guest page fault` exception.
 pub fn load_guest_page_fault() {
-    let fault_addr = HostPhysicalAddress(htval::read().bits() << 2);
+    let fault_addr = GuestPhysicalAddress(htval::read().bits() << 2);
+
     let fault_inst_value = htinst::read().bits();
     // htinst bit 1 replaced with a 0.
     // thus it needed to flip bit 1.
     // ref: vol. II p.161
     let fault_inst = if fault_inst_value == 0 {
+        let fault_addr = g_stage_trans_addr(fault_addr).expect("not a identity map");
         let fault_inst_value = fetch_fault_inst(fault_addr);
         assert_ne!(fault_inst_value, 0);
         Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed")
@@ -42,7 +45,7 @@ pub fn load_guest_page_fault() {
         .unwrap()
         .devices()
         .plic
-        .emulate_loading(fault_addr)
+        .emulate_loading(HostPhysicalAddress(fault_addr.raw()))
     {
         let mut context = hypervisor_data.get().unwrap().guest().context;
         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
@@ -58,7 +61,7 @@ pub fn load_guest_page_fault() {
         .pci_devices
         .sata
     {
-        if let Ok(value) = sata.emulate_loading(fault_addr) {
+        if let Ok(value) = sata.emulate_loading(HostPhysicalAddress(fault_addr.raw())) {
             let mut context = hypervisor_data.get().unwrap().guest().context;
             context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
             update_sepc_by_htinst_value(fault_inst_value, &mut context);
@@ -73,12 +76,14 @@ pub fn load_guest_page_fault() {
 /// Trap `Store guest page fault` exception.
 #[allow(clippy::cast_possible_truncation)]
 pub fn store_guest_page_fault() {
-    let fault_addr = HostPhysicalAddress(htval::read().bits() << 2);
+    let fault_addr = GuestPhysicalAddress(htval::read().bits() << 2);
+
     let fault_inst_value = htinst::read().bits();
     // htinst bit 1 replaced with a 0.
     // thus it needed to flip bit 1.
     // ref: vol. II p.161
     let fault_inst = if fault_inst_value == 0 {
+        let fault_addr = g_stage_trans_addr(fault_addr).expect("not a identity map");
         let fault_inst_value = fetch_fault_inst(fault_addr);
         assert_ne!(fault_inst_value, 0);
         Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed")
@@ -100,7 +105,7 @@ pub fn store_guest_page_fault() {
         .unwrap()
         .devices()
         .plic
-        .emulate_storing(fault_addr, store_value as u32)
+        .emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
     {
         update_sepc_by_htinst_value(fault_inst_value, &mut context);
         return;
@@ -114,7 +119,9 @@ pub fn store_guest_page_fault() {
         .pci_devices
         .sata
     {
-        if let Ok(()) = sata.emulate_storing(fault_addr, store_value as u32) {
+        if let Ok(()) =
+            sata.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
+        {
             update_sepc_by_htinst_value(fault_inst_value, &mut context);
             return;
         }
