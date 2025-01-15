@@ -23,7 +23,10 @@ jobs:
         uses: dsherret/rust-toolchain-file@v1
 
       - name: create dummy file
-        run: touch vmlinux
+        run: |
+          touch vmlinux
+          touch guest.dtb
+          echo '#!/bin/sh' > dtc && chmod +x dtc && mv dtc /usr/local/bin/dtc
 
       - uses: sksat/action-clippy@v1.0.0
         if: github.event_name == 'push'

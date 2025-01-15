@@ -40,14 +40,6 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 /// Singleton for this hypervisor.
 static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
 
-/// Singleton for SBI handler.
-//static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
-
-/// Device tree blob that is passed to hypervisor
-#[cfg(feature = "embedded_host_dtb")]
-#[link_section = ".host_dtb"]
-static HOST_DTB: [u8; include_bytes!("../host.dtb").len()] = *include_bytes!("../host.dtb");
-
 /// Guest kernel image
 #[link_section = ".guest_kernel"]
 static GUEST_KERNEL: [u8; include_bytes!("../vmlinux").len()] = *include_bytes!("../vmlinux");
