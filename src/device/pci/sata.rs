@@ -153,7 +153,7 @@ impl HbaPort {
         let cmd_header_hpa = cmd_list_hpa + cmd_num as usize * COMMAND_HEADER_SIZE;
         let cmd_header_ptr = cmd_header_hpa.raw() as *mut CommandHeader;
         let prdtl = unsafe { (*cmd_header_ptr).prdtl() };
-        let transfer_dir = if unsafe { (*cmd_header_ptr).w() } == 0 {
+        let transfer_dir = if unsafe { (*cmd_header_ptr).w_bit() } == 0 {
             TransferDirection::DeviceToHost
         } else {
             TransferDirection::HostToDevice
@@ -197,7 +197,7 @@ impl HbaPort {
         };
         let cmd_header_hpa = cmd_list_hpa + cmd_num as usize * COMMAND_HEADER_SIZE;
         let cmd_header_ptr = cmd_header_hpa.raw() as *mut CommandHeader;
-        let transfer_dir = if unsafe { (*cmd_header_ptr).w() } == 0 {
+        let transfer_dir = if unsafe { (*cmd_header_ptr).w_bit() } == 0 {
             TransferDirection::DeviceToHost
         } else {
             TransferDirection::HostToDevice

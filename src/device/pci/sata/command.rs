@@ -72,7 +72,8 @@ impl CommandHeader {
     pub fn prdtl(&self) -> u32 {
         (self.dw0 >> 16) & 0xffff
     }
-    pub fn w(&self) -> u32 {
+    /// get `w` bit value from `CommandHeader.dw0`
+    pub fn w_bit(&self) -> u32 {
         (self.dw0 >> 6) & 0x1
     }
 }
