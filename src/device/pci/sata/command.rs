@@ -130,7 +130,7 @@ impl PhysicalRegionDescriptor {
 
                         core::ptr::copy(
                             dst_hpa.raw() as *const u8,
-                            heap_ptr.add(offset) as *mut u8,
+                            heap_ptr.add(offset),
                             if offset + PAGE_SIZE < new_heap.len() {
                                 PAGE_SIZE
                             } else {
