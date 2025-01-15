@@ -9,7 +9,9 @@ use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::device::DeviceEmulateError;
 use crate::memmap::page_table::g_stage_trans_addr;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use command::{CommandHeader, CommandTable, CommandTableGpaStorage, COMMAND_HEADER_SIZE};
+use command::{
+    CommandHeader, CommandTable, CommandTableGpaStorage, TransferDirection, COMMAND_HEADER_SIZE,
+};
 
 use alloc::boxed::Box;
 use alloc::vec;
@@ -151,6 +153,11 @@ impl HbaPort {
         let cmd_header_hpa = cmd_list_hpa + cmd_num as usize * COMMAND_HEADER_SIZE;
         let cmd_header_ptr = cmd_header_hpa.raw() as *mut CommandHeader;
         let prdtl = unsafe { (*cmd_header_ptr).prdtl() };
+        let transfer_dir = if unsafe { (*cmd_header_ptr).w() } == 0 {
+            TransferDirection::DeviceToHost
+        } else {
+            TransferDirection::HostToDevice
+        };
 
         // translate command table address
         let cmd_table_gpa = unsafe {
@@ -175,6 +182,7 @@ impl HbaPort {
             (*cmd_table_ptr).translate_all_data_base_addresses(
                 prdtl,
                 &mut self.cmd_table_gpa_storage[cmd_num as usize].ctba_list,
+                &transfer_dir,
             );
         }
     }
@@ -189,6 +197,11 @@ impl HbaPort {
         };
         let cmd_header_hpa = cmd_list_hpa + cmd_num as usize * COMMAND_HEADER_SIZE;
         let cmd_header_ptr = cmd_header_hpa.raw() as *mut CommandHeader;
+        let transfer_dir = if unsafe { (*cmd_header_ptr).w() } == 0 {
+            TransferDirection::DeviceToHost
+        } else {
+            TransferDirection::HostToDevice
+        };
 
         // load hpa
         let cmd_table_hpa = unsafe {
@@ -210,6 +223,7 @@ impl HbaPort {
         unsafe {
             (*cmd_table_ptr).restore_all_data_base_addresses(
                 &mut self.cmd_table_gpa_storage[cmd_num as usize].ctba_list,
+                &transfer_dir,
             );
         }
 
