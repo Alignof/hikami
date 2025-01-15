@@ -8,6 +8,14 @@ use alloc::vec::Vec;
 /// Size of command header
 pub const COMMAND_HEADER_SIZE: usize = 0x20;
 
+/// Transfer direction
+pub enum TransferDirection {
+    /// Device to Host (Read).
+    DeviceToHost,
+    /// Host to Device (Write).
+    HostToDevice,
+}
+
 /// Address of command table to be saved.
 #[derive(Debug, Clone)]
 pub enum CommandTableAddressData {
