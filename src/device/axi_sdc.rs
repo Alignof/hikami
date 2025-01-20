@@ -7,6 +7,7 @@ mod register;
 use super::{EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
+use register::{SdcRegisters, REG_FIELD_SIZE};
 
 #[allow(clippy::doc_markdown)]
 /// MMC: Multi Media Card
@@ -44,6 +45,7 @@ impl EmulateDevice for Mmc {
     ) -> u32 {
         let offset = dst_addr.raw() - base_addr.raw();
         match offset {
+            0..REG_FIELD_SIZE => todo!(),
             // other registers
             _ => Self::pass_through_loading(dst_addr),
         }
@@ -58,6 +60,7 @@ impl EmulateDevice for Mmc {
     ) {
         let offset = dst_addr.raw() - base_addr.raw();
         match offset {
+            0..REG_FIELD_SIZE => todo!(),
             // other registers
             _ => Self::pass_through_storing(dst_addr, value),
         }
