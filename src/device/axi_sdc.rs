@@ -2,7 +2,7 @@
 //!
 //! Ref: [https://github.com/eugene-tarassov/vivado-risc-v/blob/master/patches/fpga-axi-sdc.c](https://github.com/eugene-tarassov/vivado-risc-v/blob/master/patches/fpga-axi-sdc.c)
 
-use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use super::{EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use fdt::Fdt;
 
@@ -17,6 +17,7 @@ pub struct Mmc {
 }
 
 impl Mmc {
+    /// Get MMC data from device tree.
     pub fn try_new(device_tree: &Fdt, node_path: &str) -> Option<Self> {
         let mmc = device_tree.find_node(node_path)?;
         if mmc.name == "riscv,axi-sd-card-1.0" {
@@ -28,6 +29,36 @@ impl Mmc {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
         })
+    }
+}
+
+impl EmulateDevice for Mmc {
+    /// Emulate loading port registers.
+    #[allow(clippy::cast_possible_truncation)]
+    fn emulate_loading(
+        &self,
+        base_addr: HostPhysicalAddress,
+        dst_addr: HostPhysicalAddress,
+    ) -> u32 {
+        let offset = dst_addr.raw() - base_addr.raw();
+        match offset {
+            // other registers
+            _ => Self::pass_through_loading(dst_addr),
+        }
+    }
+
+    /// Emulate storing port registers.
+    fn emulate_storing(
+        &mut self,
+        base_addr: HostPhysicalAddress,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) {
+        let offset = dst_addr.raw() - base_addr.raw();
+        match offset {
+            // other registers
+            _ => Self::pass_through_storing(dst_addr, value),
+        }
     }
 }
 
