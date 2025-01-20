@@ -1,5 +1,6 @@
 //! Devices data
 
+mod axi_sdc;
 pub mod clint;
 mod initrd;
 mod pci;
@@ -72,6 +73,8 @@ pub struct Devices {
 
     /// PCI: Peripheral Component Interconnect
     pub pci: pci::Pci,
+
+    pub mmc: Option<axi_sdc::Mmc>,
 }
 
 impl Devices {
@@ -85,6 +88,7 @@ impl Devices {
             clint: clint::Clint::new(&device_tree, "/soc/clint"),
             rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
             pci: pci::Pci::new(&device_tree, "/soc/pci"),
+            mmc: axi_sdc::Mmc::try_new(&device_tree, "/io-bus/mmc0"),
         }
     }
 
