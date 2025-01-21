@@ -42,24 +42,26 @@ impl Mmc {
             dma_alt_buffer: Vec::new(),
         })
     }
+}
 
+impl EmulateDevice for Mmc {
     /// Emulate loading port registers.
     #[allow(clippy::cast_possible_truncation)]
     fn emulate_loading(
         &self,
-        base_addr: HostPhysicalAddress,
+        _base_addr: HostPhysicalAddress,
         dst_addr: HostPhysicalAddress,
     ) -> u32 {
-        let offset = dst_addr.raw() - base_addr.raw();
-        match offset {
-            0..REG_FIELD_SIZE => todo!(),
-            // other registers
-            _ => Self::pass_through_loading(dst_addr),
-        }
+        Self::pass_through_loading(dst_addr)
     }
 
     /// Emulate storing port registers.
-    fn emulate_storing(&mut self, dst_addr: HostPhysicalAddress, value: u64) {
+    fn emulate_storing(
+        &mut self,
+        _base_addr: HostPhysicalAddress,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             // Command

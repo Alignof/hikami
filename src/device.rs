@@ -36,6 +36,11 @@ trait EmulateDevice {
         unsafe { dst_ptr.read_volatile() }
     }
 
+    /// Emulate loading port registers.
+    #[allow(clippy::cast_possible_truncation)]
+    fn emulate_loading(&self, base_addr: HostPhysicalAddress, dst_addr: HostPhysicalAddress)
+        -> u32;
+
     /// Pass through storing memory
     fn pass_through_storing(dst_addr: HostPhysicalAddress, value: u32) {
         let dst_ptr = dst_addr.raw() as *mut u32;
@@ -43,6 +48,14 @@ trait EmulateDevice {
             dst_ptr.write_volatile(value);
         }
     }
+
+    /// Emulate storing port registers.
+    fn emulate_storing(
+        &mut self,
+        base_addr: HostPhysicalAddress,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    );
 }
 
 /// Memory mapped I/O device.
