@@ -42,7 +42,7 @@ impl Initrd {
 }
 
 impl MmioDevice for Initrd {
-    fn new(_device_tree: &Fdt, _node_path: &str) -> Self {
+    fn new(_device_tree: &Fdt, _compatibles: &[&str]) -> Self {
         panic!("use Initrd::try_new instead");
     }
 

@@ -55,8 +55,8 @@ impl VirtIo {
 }
 
 impl MmioDevice for VirtIo {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        let node = device_tree.find_all_nodes(node_path).next().unwrap();
+    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
+        let node = device_tree.find_compatible(compatibles).unwrap();
         let region = node.reg().unwrap().next().unwrap();
         let irq = node.property("interrupts").unwrap().value[0];
 

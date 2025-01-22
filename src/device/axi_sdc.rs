@@ -28,12 +28,12 @@ pub struct Mmc {
 
 impl Mmc {
     /// Get MMC data from device tree.
-    pub fn try_new(device_tree: &Fdt, node_path: &str) -> Option<Self> {
-        let mmc = device_tree.find_node(node_path)?;
-        if mmc.name == "riscv,axi-sd-card-1.0" {
-            return None;
-        }
-        let region = mmc.reg().unwrap().next()?;
+    pub fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
+        let region = device_tree
+            .find_compatible(compatibles)?
+            .reg()
+            .unwrap()
+            .next()?;
 
         Some(Mmc {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
@@ -153,7 +153,7 @@ impl EmulateDevice for Mmc {
 }
 
 impl MmioDevice for Mmc {
-    fn new(_device_tree: &Fdt, _node_path: &str) -> Self {
+    fn new(_device_tree: &Fdt, _compatibles: &[&str]) -> Self {
         panic!("use axi_sdc::try_new instead");
     }
 

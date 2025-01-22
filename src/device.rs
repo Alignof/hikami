@@ -65,8 +65,8 @@ trait EmulateDevice {
 pub trait MmioDevice {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
-    /// * `node_path` - node path in fdt
-    fn new(device_tree: &Fdt, node_path: &str) -> Self;
+    /// * `compatibles` - compatible name list
+    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self;
     /// Return size of memory region.
     fn size(&self) -> usize;
     /// Return address of physical memory
@@ -110,14 +110,14 @@ impl Devices {
     /// Constructor for `Devices`.
     pub fn new(device_tree: Fdt) -> Self {
         Devices {
-            uart: uart::Uart::new(&device_tree, "/soc/serial"),
+            uart: uart::Uart::new(&device_tree, &["ns16550a", "riscv,axi-uart-1.0"]),
             virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
             initrd: initrd::Initrd::try_new(&device_tree, "/chosen"),
-            plic: plic::Plic::new(&device_tree, "/soc/plic"),
-            clint: clint::Clint::new(&device_tree, "/soc/clint"),
-            rtc: rtc::Rtc::new(&device_tree, "/soc/rtc"),
-            pci: pci::Pci::new(&device_tree, "/soc/pci"),
-            mmc: axi_sdc::Mmc::try_new(&device_tree, "/io-bus/mmc0"),
+            plic: plic::Plic::new(&device_tree, &["riscv,plic0"]),
+            clint: clint::Clint::new(&device_tree, &["sifive,clint0", "riscv,clint0"]),
+            rtc: rtc::Rtc::new(&device_tree, &["google,goldfish-rtc"]),
+            pci: pci::Pci::new(&device_tree, &["pci-host-ecam-generic"]),
+            mmc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
         }
     }
 

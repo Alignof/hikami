@@ -15,9 +15,9 @@ pub struct Rtc {
 }
 
 impl MmioDevice for Rtc {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
+    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
         let region = device_tree
-            .find_node(node_path)
+            .find_compatible(compatibles)
             .unwrap()
             .reg()
             .unwrap()
