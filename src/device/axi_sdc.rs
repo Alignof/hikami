@@ -4,7 +4,7 @@
 
 mod register;
 
-use super::{EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use super::{DeviceEmulateError, EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use register::{SdcRegisters, REG_FIELD_SIZE};
@@ -29,21 +29,16 @@ pub struct Mmc {
 impl EmulateDevice for Mmc {
     /// Emulate loading port registers.
     #[allow(clippy::cast_possible_truncation)]
-    fn emulate_loading(
-        &self,
-        _base_addr: HostPhysicalAddress,
-        dst_addr: HostPhysicalAddress,
-    ) -> u32 {
-        Self::pass_through_loading(dst_addr)
+    fn emulate_loading(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError> {
+        Ok(Self::pass_through_loading(dst_addr))
     }
 
     /// Emulate storing port registers.
     fn emulate_storing(
         &mut self,
-        _base_addr: HostPhysicalAddress,
         dst_addr: HostPhysicalAddress,
         value: u32,
-    ) {
+    ) -> Result<(), DeviceEmulateError> {
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
             // Command
@@ -134,6 +129,8 @@ impl EmulateDevice for Mmc {
             _ => (),
         }
         Self::pass_through_storing(dst_addr, value);
+
+        Ok(())
     }
 }
 

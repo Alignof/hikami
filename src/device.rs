@@ -29,7 +29,7 @@ pub enum DeviceEmulateError {
     ReservedRegister,
 }
 
-trait EmulateDevice {
+pub trait EmulateDevice {
     /// Pass through loading memory
     fn pass_through_loading(dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
@@ -38,8 +38,7 @@ trait EmulateDevice {
 
     /// Emulate loading port registers.
     #[allow(clippy::cast_possible_truncation)]
-    fn emulate_loading(&self, base_addr: HostPhysicalAddress, dst_addr: HostPhysicalAddress)
-        -> u32;
+    fn emulate_loading(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError>;
 
     /// Pass through storing memory
     fn pass_through_storing(dst_addr: HostPhysicalAddress, value: u32) {
@@ -52,10 +51,9 @@ trait EmulateDevice {
     /// Emulate storing port registers.
     fn emulate_storing(
         &mut self,
-        base_addr: HostPhysicalAddress,
         dst_addr: HostPhysicalAddress,
         value: u32,
-    );
+    ) -> Result<(), DeviceEmulateError>;
 }
 
 /// Memory mapped I/O device.
