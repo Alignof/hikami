@@ -35,10 +35,9 @@ impl Uart {
 }
 
 impl MmioDevice for Uart {
-    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let region = device_tree
-            .find_compatible(compatibles)
-            .unwrap()
+            .find_compatible(compatibles)?
             .reg()
             .unwrap()
             .next()
@@ -48,10 +47,10 @@ impl MmioDevice for Uart {
             .lock()
             .get_or_init(|| HostPhysicalAddress(region.starting_address as usize));
 
-        Uart {
+        Some(Uart {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-        }
+        })
     }
 
     fn size(&self) -> usize {

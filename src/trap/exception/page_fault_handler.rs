@@ -53,19 +53,14 @@ pub fn load_guest_page_fault() {
         return;
     }
 
-    if let Some(sata) = &mut hypervisor_data
-        .get_mut()
-        .unwrap()
-        .devices()
-        .pci
-        .pci_devices
-        .sata
-    {
-        if let Ok(value) = sata.emulate_loading(HostPhysicalAddress(fault_addr.raw())) {
-            let mut context = hypervisor_data.get().unwrap().guest().context;
-            context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
-            update_sepc_by_htinst_value(fault_inst_value, &mut context);
-            return;
+    if let Some(pci) = &mut hypervisor_data.get_mut().unwrap().devices().pci {
+        if let Some(sata) = &pci.pci_devices.sata {
+            if let Ok(value) = sata.emulate_loading(HostPhysicalAddress(fault_addr.raw())) {
+                let mut context = hypervisor_data.get().unwrap().guest().context;
+                context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
+                update_sepc_by_htinst_value(fault_inst_value, &mut context);
+                return;
+            }
         }
     }
 
@@ -111,19 +106,14 @@ pub fn store_guest_page_fault() {
         return;
     }
 
-    if let Some(sata) = &mut hypervisor_data
-        .get_mut()
-        .unwrap()
-        .devices()
-        .pci
-        .pci_devices
-        .sata
-    {
-        if let Ok(()) =
-            sata.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
-        {
-            update_sepc_by_htinst_value(fault_inst_value, &mut context);
-            return;
+    if let Some(pci) = &mut hypervisor_data.get_mut().unwrap().devices().pci {
+        if let Some(sata) = &mut pci.pci_devices.sata {
+            if let Ok(()) =
+                sata.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
+            {
+                update_sepc_by_htinst_value(fault_inst_value, &mut context);
+                return;
+            }
         }
     }
 

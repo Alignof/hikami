@@ -66,7 +66,9 @@ pub trait MmioDevice {
     /// Create self instance.
     /// * `device_tree` - struct Fdt
     /// * `compatibles` - compatible name list
-    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self;
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
+    where
+        Self: Sized;
     /// Return size of memory region.
     fn size(&self) -> usize;
     /// Return address of physical memory
@@ -98,10 +100,10 @@ pub struct Devices {
     pub clint: clint::Clint,
 
     /// RTC: Real Time Clock.
-    pub rtc: rtc::Rtc,
+    pub rtc: Option<rtc::Rtc>,
 
     /// PCI: Peripheral Component Interconnect
-    pub pci: pci::Pci,
+    pub pci: Option<pci::Pci>,
 
     pub mmc: Option<axi_sdc::Mmc>,
 }
@@ -110,13 +112,16 @@ impl Devices {
     /// Constructor for `Devices`.
     pub fn new(device_tree: Fdt) -> Self {
         Devices {
-            uart: uart::Uart::new(&device_tree, &["ns16550a", "riscv,axi-uart-1.0"]),
+            uart: uart::Uart::try_new(&device_tree, &["ns16550a", "riscv,axi-uart-1.0"])
+                .expect("uart is not found in fdt"),
             virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
-            initrd: initrd::Initrd::try_new(&device_tree, "/chosen"),
-            plic: plic::Plic::new(&device_tree, &["riscv,plic0"]),
-            clint: clint::Clint::new(&device_tree, &["sifive,clint0", "riscv,clint0"]),
-            rtc: rtc::Rtc::new(&device_tree, &["google,goldfish-rtc"]),
-            pci: pci::Pci::new(&device_tree, &["pci-host-ecam-generic"]),
+            initrd: initrd::Initrd::try_new_from_node_path(&device_tree, "/chosen"),
+            plic: plic::Plic::try_new(&device_tree, &["riscv,plic0"])
+                .expect("plic is not found in fdt"),
+            clint: clint::Clint::try_new(&device_tree, &["sifive,clint0", "riscv,clint0"])
+                .expect("clint is not found in fdt"),
+            rtc: rtc::Rtc::try_new(&device_tree, &["google,goldfish-rtc"]),
+            pci: pci::Pci::try_new(&device_tree, &["pci-host-ecam-generic"]),
             mmc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
         }
     }
@@ -140,15 +145,18 @@ impl Devices {
             self.uart.memmap(),
             self.plic.memmap(),
             self.clint.memmap(),
-            self.pci.memmap(),
-            self.rtc.memmap(),
         ]);
 
-        if let Some(initrd) = &self.initrd {
-            device_mapping.extend_from_slice(&[initrd.memmap()]);
+        if let Some(pci) = &self.pci {
+            device_mapping.push(pci.memmap());
+            device_mapping.extend_from_slice(pci.pci_memory_maps());
         }
-
-        device_mapping.extend_from_slice(self.pci.pci_memory_maps());
+        if let Some(rtc) = &self.rtc {
+            device_mapping.push(rtc.memmap());
+        }
+        if let Some(initrd) = &self.initrd {
+            device_mapping.push(initrd.memmap());
+        }
 
         device_mapping
     }

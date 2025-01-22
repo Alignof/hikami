@@ -26,24 +26,6 @@ pub struct Mmc {
     dma_alt_buffer: Vec<u8>,
 }
 
-impl Mmc {
-    /// Get MMC data from device tree.
-    pub fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .next()?;
-
-        Some(Mmc {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
-            dma_addr: GuestPhysicalAddress(0),
-            dma_alt_buffer: Vec::new(),
-        })
-    }
-}
-
 impl EmulateDevice for Mmc {
     /// Emulate loading port registers.
     #[allow(clippy::cast_possible_truncation)]
@@ -153,8 +135,19 @@ impl EmulateDevice for Mmc {
 }
 
 impl MmioDevice for Mmc {
-    fn new(_device_tree: &Fdt, _compatibles: &[&str]) -> Self {
-        panic!("use axi_sdc::try_new instead");
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
+        let region = device_tree
+            .find_compatible(compatibles)?
+            .reg()
+            .unwrap()
+            .next()?;
+
+        Some(Mmc {
+            base_addr: HostPhysicalAddress(region.starting_address as usize),
+            size: region.size.unwrap(),
+            dma_addr: GuestPhysicalAddress(0),
+            dma_alt_buffer: Vec::new(),
+        })
     }
 
     fn size(&self) -> usize {

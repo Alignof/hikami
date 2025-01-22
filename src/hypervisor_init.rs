@@ -163,7 +163,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .unwrap()
         .devices()
         .pci
-        .init_pci_devices();
+        .as_ref()
+        .map(|pci| pci.init_pci_devices());
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);

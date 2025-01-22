@@ -15,19 +15,18 @@ pub struct Rtc {
 }
 
 impl MmioDevice for Rtc {
-    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let region = device_tree
-            .find_compatible(compatibles)
-            .unwrap()
+            .find_compatible(compatibles)?
             .reg()
             .unwrap()
             .next()
             .unwrap();
 
-        Rtc {
+        Some(Rtc {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-        }
+        })
     }
 
     fn size(&self) -> usize {

@@ -140,20 +140,19 @@ impl Plic {
 
 impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
-    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let region = device_tree
-            .find_compatible(compatibles)
-            .unwrap()
+            .find_compatible(compatibles)?
             .reg()
             .unwrap()
             .next()
             .unwrap();
 
-        Plic {
+        Some(Plic {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             claim_complete: [0u32; MAX_CONTEXT_NUM],
-        }
+        })
     }
 
     fn size(&self) -> usize {

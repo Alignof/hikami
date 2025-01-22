@@ -16,8 +16,7 @@ pub struct Initrd {
 }
 
 impl Initrd {
-    /// Get initrd data from device tree.
-    pub fn try_new(device_tree: &Fdt, node_path: &str) -> Option<Self> {
+    pub fn try_new_from_node_path(device_tree: &Fdt, node_path: &str) -> Option<Self> {
         let start_prop = "linux,initrd-start";
         let end_prop = "linux,initrd-end";
         let node = device_tree.find_node(node_path).unwrap();
@@ -42,8 +41,8 @@ impl Initrd {
 }
 
 impl MmioDevice for Initrd {
-    fn new(_device_tree: &Fdt, _compatibles: &[&str]) -> Self {
-        panic!("use Initrd::try_new instead");
+    fn try_new(_device_tree: &Fdt, _compatibles: &[&str]) -> Option<Self> {
+        unreachable!("use Initrd::try_new_from_node_path instead")
     }
 
     fn size(&self) -> usize {

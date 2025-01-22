@@ -250,10 +250,9 @@ impl Pci {
 }
 
 impl MmioDevice for Pci {
-    fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let region = device_tree
-            .find_compatible(compatibles)
-            .unwrap()
+            .find_compatible(compatibles)?
             .reg()
             .unwrap()
             .next()
@@ -265,13 +264,13 @@ impl MmioDevice for Pci {
         let pci_devices =
             PciDevices::new(device_tree, base_address, &pci_addr_space, &mut memory_maps);
 
-        Pci {
+        Some(Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             _pci_addr_space: pci_addr_space,
             memory_maps,
             pci_devices,
-        }
+        })
     }
 
     fn size(&self) -> usize {
