@@ -91,46 +91,49 @@ impl EmulateDevice for Mmc {
                         self.dma_alt_buffer = new_heap;
                     }
                 }
-                Self::pass_through_storing(dst_addr, value)
             }
             // Command interrupt enable
             //
             // End transfer if write zero to it
             52 => {
-                let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
-                // restore address
-                unsafe {
-                    (*registers_ptr).dma_addres = self.dma_addr.raw() as u64;
-                }
-
-                if self.dma_alt_buffer.len() > 0 {
+                // end transfer
+                if value == 0 {
+                    let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
+                    // restore address
                     unsafe {
-                        if (*registers_ptr).command >> 5 & 0x1 == 1 {
-                            // write back data to guest memory if command is `read`
-                            let heap_ptr = self.dma_alt_buffer.as_ptr().cast_mut();
-                            for offset in (0..self.dma_alt_buffer.len()).step_by(PAGE_SIZE) {
-                                let dst_gpa = self.dma_addr + offset;
-                                let dst_hpa = g_stage_trans_addr(dst_gpa)
-                                    .expect("failed translation of data base address");
+                        (*registers_ptr).dma_addres = self.dma_addr.raw() as u64;
+                    }
 
-                                core::ptr::copy(
-                                    heap_ptr.add(offset),
-                                    dst_hpa.raw() as *mut u8,
-                                    if offset + PAGE_SIZE < self.dma_alt_buffer.len() {
-                                        PAGE_SIZE
-                                    } else {
-                                        self.dma_alt_buffer.len() - offset
-                                    },
-                                );
+                    if self.dma_alt_buffer.len() > 0 {
+                        unsafe {
+                            if (*registers_ptr).command >> 5 & 0x1 == 1 {
+                                // write back data to guest memory if command is `read`
+                                let heap_ptr = self.dma_alt_buffer.as_ptr().cast_mut();
+                                for offset in (0..self.dma_alt_buffer.len()).step_by(PAGE_SIZE) {
+                                    let dst_gpa = self.dma_addr + offset;
+                                    let dst_hpa = g_stage_trans_addr(dst_gpa)
+                                        .expect("failed translation of data base address");
+
+                                    core::ptr::copy(
+                                        heap_ptr.add(offset),
+                                        dst_hpa.raw() as *mut u8,
+                                        if offset + PAGE_SIZE < self.dma_alt_buffer.len() {
+                                            PAGE_SIZE
+                                        } else {
+                                            self.dma_alt_buffer.len() - offset
+                                        },
+                                    );
+                                }
                             }
                         }
+                        self.dma_alt_buffer.clear();
                     }
-                    self.dma_alt_buffer.clear();
                 }
             }
             // other registers
-            _ => Self::pass_through_storing(dst_addr, value),
+            _ => (),
         }
+        Self::pass_through_storing(dst_addr, value);
     }
 }
 
