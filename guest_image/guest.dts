@@ -316,6 +316,7 @@
 		serial0 = "/io-bus/uart@60010000";
 	};
 	chosen {
+ 		bootargs = "root=/dev/sda2 earlycon locale.LANG=en_US.UTF-8";
 		stdout-path = "serial0";
 	};
 	io-bus {
