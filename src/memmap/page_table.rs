@@ -57,6 +57,10 @@ impl PageTableLevel {
     }
 }
 
+/// Heap memory region for page table.
+#[repr(C, align(4096))]
+struct PageTableMemory([PageTableEntry; constants::PAGE_TABLE_LEN]);
+
 /// Each flags for page tables.
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
@@ -115,8 +119,8 @@ impl PageTableEntry {
 #[derive(Copy, Clone)]
 struct PageTableAddress(usize);
 
-impl From<*mut [PageTableEntry; constants::PAGE_TABLE_LEN]> for PageTableAddress {
-    fn from(f: *mut [PageTableEntry; constants::PAGE_TABLE_LEN]) -> Self {
+impl From<*mut PageTableMemory> for PageTableAddress {
+    fn from(f: *mut PageTableMemory) -> Self {
         PageTableAddress(f as *const u64 as usize)
     }
 }
