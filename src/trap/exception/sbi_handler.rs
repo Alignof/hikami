@@ -1,6 +1,9 @@
 //! Handle VS-mode Ecall exception  
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
+use crate::h_extension::csrs::{hvip, VsInterruptKind};
+
+use riscv::register::sie;
 use sbi_rt::SbiRet;
 use sbi_rt::{ConfigFlags, StartFlags, StopFlags};
 
@@ -51,6 +54,24 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
     SbiRet {
         error: 0, // no error returns
         value: result_value,
+    }
+}
+
+/// SBI ecall handler for TIME Extension (EID: #0x54494d45)
+#[allow(clippy::module_name_repetitions, clippy::cast_possible_truncation)]
+pub fn sbi_time_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
+    use sbi_spec::time::SET_TIMER;
+    match func_id {
+        SET_TIMER => {
+            let sbi_ret = sbi_rt::set_timer(args[0]);
+            unsafe {
+                hvip::clear(VsInterruptKind::Timer);
+                sie::set_stimer();
+            }
+
+            sbi_ret
+        }
+        _ => panic!("unsupported fid: {}", func_id),
     }
 }
 

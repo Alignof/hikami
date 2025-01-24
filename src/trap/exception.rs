@@ -18,7 +18,9 @@ use riscv::register::{
     scause::{self, Exception},
     stval,
 };
-use sbi_handler::{sbi_base_handler, sbi_fwft_handler, sbi_pmu_handler, sbi_rfnc_handler};
+use sbi_handler::{
+    sbi_base_handler, sbi_fwft_handler, sbi_pmu_handler, sbi_rfnc_handler, sbi_time_handler,
+};
 
 /// Delegate exception to supervisor mode from VS-mode.
 #[no_mangle]
@@ -60,6 +62,7 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
         sbi_spec::base::EID_BASE => sbi_base_handler(func_id),
         sbi_spec::pmu::EID_PMU => sbi_pmu_handler(func_id, arguments),
         sbi_spec::rfnc::EID_RFNC => sbi_rfnc_handler(func_id, arguments),
+        sbi_spec::time::EID_TIME => sbi_time_handler(func_id, arguments),
         EID_FWFT => sbi_fwft_handler(func_id, arguments),
         _ => sbi_call(ext_id, func_id, arguments),
     };
