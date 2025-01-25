@@ -47,8 +47,9 @@ impl EmulateDevice for Mmc {
             4 => {
                 let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
                 unsafe {
-                    let dma_buffer_size =
-                        ((*registers_ptr).block_size * (*registers_ptr).block_count) as usize;
+                    let dma_block_size = ((*registers_ptr).block_size + 1) as usize;
+                    let dma_block_count = ((*registers_ptr).block_count + 1) as usize;
+                    let dma_buffer_size = dma_block_size * dma_block_count;
                     let dma_gpa = GuestPhysicalAddress((*registers_ptr).dma_addres as usize);
                     self.dma_addr = dma_gpa;
 
@@ -87,7 +88,7 @@ impl EmulateDevice for Mmc {
                     }
                 }
             }
-            // Command interrupt enable
+            // Command interrupt status
             //
             // End transfer if write zero to it
             52 => {
