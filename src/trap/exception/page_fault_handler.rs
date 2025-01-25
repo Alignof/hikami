@@ -15,15 +15,11 @@ use riscv::register::sepc;
 
 /// Fetch fault instruction
 fn fetch_fault_inst(fault_addr: HostPhysicalAddress) -> usize {
-    if fault_addr.raw() % 4 == 0 {
-        let inst_value = unsafe { (fault_addr.raw() as *const u32).read_volatile() };
-        if inst_value & 0b11 == 0b11 {
-            inst_value as usize
-        } else {
-            (inst_value & 0xffff) as usize
-        }
+    let inst_value = unsafe { (fault_addr.raw() as *const u32).read_unaligned() };
+    if inst_value & 0b11 == 0b11 {
+        inst_value as usize
     } else {
-        unsafe { (fault_addr.raw() as *const u16).read_volatile() as usize }
+        (inst_value & 0xffff) as usize
     }
 }
 
@@ -161,6 +157,12 @@ pub fn store_guest_page_fault() {
         if let Ok(()) =
             mmc.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
         {
+            //use crate::device::MmioDevice;
+            //if fault_addr.raw() - mmc.paddr().raw() == 96 {
+            //    crate::debugln!("context: {:#x?}", context.get_context());
+            //    crate::debugln!("fault inst addr: {:#x?}", fault_inst_value);
+            //    crate::debugln!("fault inst: {:#x?}", fault_inst);
+            //}
             update_sepc_by_inst_type(is_compressed, &mut context);
             return;
         }
