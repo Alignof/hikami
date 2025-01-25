@@ -46,7 +46,11 @@ impl Context {
 
     /// Return regular register value.
     pub fn xreg(self, index: usize) -> u64 {
-        self.get_context().xreg[index]
+        if index == 0 {
+            0
+        } else {
+            self.get_context().xreg[index]
+        }
     }
 
     /// Set regular register value.

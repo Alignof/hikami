@@ -130,7 +130,6 @@ pub fn store_guest_page_fault() {
 
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let mut context = hypervisor_data.get().unwrap().guest().context;
-    //let store_value = context.xreg(fault_inst.rs2.expect("rs2 is not found"));
     let store_value = context.xreg(match fault_inst.rs2 {
         Some(x) => x,
         None => panic!("rs2 is not found: {fault_inst:#?} (inst_value: {fault_inst_value})"),
