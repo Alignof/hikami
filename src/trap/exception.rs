@@ -71,9 +71,9 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     context.set_xreg(11, sbiret.value as u64);
 }
 
-/// Update sepc by htinst value.
-fn update_sepc_by_htinst_value(htinst_inst_value: usize, context: &mut guest::context::Context) {
-    if (htinst_inst_value & 0b10) >> 1 == 0 {
+/// Update sepc by inst size (2 byte or 4 byte)
+fn update_sepc_by_inst_type(is_compressed: bool, context: &mut guest::context::Context) {
+    if is_compressed {
         // compressed instruction
         context.set_sepc(context.sepc() + 2);
     } else {
