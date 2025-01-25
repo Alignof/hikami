@@ -24,6 +24,8 @@ pub struct Mmc {
     dma_addr: GuestPhysicalAddress,
     /// DMA alternative buffer
     dma_alt_buffer: Vec<u8>,
+    /// Is the mmc command being executed now.
+    is_transferring: bool,
 }
 
 impl EmulateDevice for Mmc {
@@ -86,6 +88,7 @@ impl EmulateDevice for Mmc {
                         }
                         self.dma_alt_buffer = new_heap;
                     }
+                    self.is_transferring = true;
                 }
             }
             // Command interrupt status
@@ -93,7 +96,7 @@ impl EmulateDevice for Mmc {
             // End transfer if write zero to it
             52 => {
                 // end transfer
-                if value == 0 {
+                if value == 0 && self.is_transferring {
                     let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
                     // restore address
                     unsafe {
@@ -124,6 +127,8 @@ impl EmulateDevice for Mmc {
                         }
                         self.dma_alt_buffer.clear();
                     }
+
+                    self.is_transferring = false;
                 }
             }
             // other registers
@@ -148,6 +153,7 @@ impl MmioDevice for Mmc {
             size: region.size.unwrap(),
             dma_addr: GuestPhysicalAddress(0),
             dma_alt_buffer: Vec::new(),
+            is_transferring: false,
         })
     }
 
