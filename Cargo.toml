@@ -13,6 +13,9 @@ missing_docs = "warn"
 [lints.rustdoc]
 missing_crate_level_docs = "warn"
 
+[profile.release]
+panic = 'abort'
+codegen-units = 1
 
 [features]
 # debug log
