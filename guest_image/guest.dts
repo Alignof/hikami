@@ -316,7 +316,7 @@
 		serial0 = "/io-bus/uart@60010000";
 	};
 	chosen {
- 		bootargs = "root=/dev/sda2 earlycon locale.LANG=en_US.UTF-8";
+ 		bootargs = "root=/dev/mmcblk0p2 earlycon locale.LANG=en_US.UTF-8";
 		stdout-path = "serial0";
 	};
 	io-bus {
@@ -345,13 +345,13 @@
 			cap-mmc-hw-reset;
 			no-sdio;
 		};
-		eth0@60020000 {
-			compatible = "riscv,axi-ethernet-1.0";
-			reg = <0x60020000 0x00010000>;
-			phy-mode = "rgmii";
-			local-mac-address = [00 0a 35 00 00 01];
-			interrupt-parent = <0x00000003>;
-			interrupts = <0x00000003>;
-		};
+		//eth0@60020000 {
+		//	compatible = "riscv,axi-ethernet-1.0";
+		//	reg = <0x60020000 0x00010000>;
+		//	phy-mode = "rgmii";
+		//	local-mac-address = [00 0a 35 00 00 01];
+		//	interrupt-parent = <0x00000003>;
+		//	interrupts = <0x00000003>;
+		//};
 	};
 };
