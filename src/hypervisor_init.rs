@@ -79,11 +79,12 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     henvcfg::set_cbcfe();
 
     // disable `ENVCFG` state
-    hstateen0::all_state_set();
-    hstateen0::clear_envcfg();
+    //hstateen0::all_state_set();
+    //hstateen0::clear_envcfg();
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
+
     // enable supervisor counter
     unsafe {
         asm!("csrw scounteren, {bits}", bits = in(reg) 0xffff_ffff_u32);
@@ -223,6 +224,7 @@ fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // init guest stack pointer is don't care
     sscratch::write(0);
 
+    crate::println!("Guest start (hart: {})", hart_id);
     unsafe {
         // enter VS-mode
         asm!(
