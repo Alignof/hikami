@@ -1,8 +1,5 @@
 //! AXI SD Card Registers
 
-/// Size of `SdcRegisters`;
-pub const REG_FIELD_SIZE: usize = core::mem::size_of::<SdcRegisters>();
-
 /// Register definition of AXI SD Card
 ///
 /// Ref: [https://github.com/eugene-tarassov/vivado-risc-v/blob/d72a439f786b455cc321e2e615d7954a75f9ebde/patches/fpga-axi-sdc.c#L67](https://github.com/eugene-tarassov/vivado-risc-v/blob/d72a439f786b455cc321e2e615d7954a75f9ebde/patches/fpga-axi-sdc.c#L67)

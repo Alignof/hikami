@@ -7,7 +7,7 @@ mod register;
 use super::{DeviceEmulateError, EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use register::{SdcRegisters, REG_FIELD_SIZE};
+use register::SdcRegisters;
 
 use alloc::vec::Vec;
 use fdt::Fdt;
@@ -50,8 +50,6 @@ impl EmulateDevice for Mmc {
             0 => {
                 let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
                 let command = unsafe { ((*registers_ptr).command) as usize };
-                let dma_block_count = unsafe { ((*registers_ptr).block_count + 1) as usize };
-                let dma_block_size = unsafe { ((*registers_ptr).block_size + 1) as usize };
                 let dma_gpa = GuestPhysicalAddress(unsafe { (*registers_ptr).dma_addres } as usize);
 
                 // if dma block count is zero, use response register instead of buffer.
@@ -61,7 +59,6 @@ impl EmulateDevice for Mmc {
                         let dma_block_count = ((*registers_ptr).block_count + 1) as usize;
                         let dma_block_size = ((*registers_ptr).block_size + 1) as usize;
                         let dma_buffer_size = dma_block_size * dma_block_count;
-                        let dma_gpa = GuestPhysicalAddress((*registers_ptr).dma_addres as usize);
                         self.dma_addr = dma_gpa;
 
                         if dma_buffer_size <= PAGE_SIZE {
