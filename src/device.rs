@@ -9,8 +9,8 @@ mod rtc;
 pub mod uart;
 mod virtio;
 
-use crate::memmap::page_table::PteFlag;
-use crate::memmap::{page_table, HostPhysicalAddress, MemoryMap};
+use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr, PteFlag};
+use crate::memmap::{page_table, GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use alloc::vec::Vec;
 use fdt::Fdt;
 
@@ -60,6 +60,96 @@ pub trait EmulateDevice {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError>;
+}
+
+/// DMA buffer for device emulation
+#[derive(Debug, Clone)]
+struct DmaHostBuffer {
+    /// DMA buffer.
+    buf: Vec<u8>,
+    /// actually used size
+    used_len: usize,
+}
+impl DmaHostBuffer {
+    /// Create itself.
+    pub fn new(size: usize) -> Self {
+        let mut new_heap = Vec::<u8>::with_capacity(size);
+        unsafe {
+            new_heap.set_len(size);
+        }
+
+        DmaHostBuffer {
+            buf: new_heap,
+            used_len: 0,
+        }
+    }
+
+    /// Is it used?
+    fn is_used(&self) -> bool {
+        self.used_len > 0
+    }
+
+    /// Return buffer address
+    fn addr(&self) -> usize {
+        self.buf.as_ptr() as usize
+    }
+
+    /// Copy guest buffer data to host buffer.
+    ///
+    /// It is used in emulating write command.
+    fn guest_to_host(&mut self, guest_buf_addr: GuestPhysicalAddress, len: usize) {
+        // extend buffer
+        if self.buf.len() < len {
+            self.buf.reserve(len - self.buf.len());
+        }
+
+        let buf_ptr = self.buf.as_ptr().cast_mut();
+        for offset in (0..len).step_by(PAGE_SIZE) {
+            let dst_gpa = guest_buf_addr + offset;
+            let dst_hpa =
+                g_stage_trans_addr(dst_gpa).expect("failed translation of data base address");
+
+            unsafe {
+                core::ptr::copy(
+                    dst_hpa.raw() as *const u8,
+                    buf_ptr.add(offset),
+                    if offset + PAGE_SIZE < len {
+                        PAGE_SIZE
+                    } else {
+                        len - offset
+                    },
+                );
+            }
+        }
+
+        self.used_len = len;
+    }
+
+    /// Copy guest buffer data to host buffer.
+    ///
+    /// It is used in emulating read command.
+    fn host_to_guest(&mut self, guest_buf_addr: GuestPhysicalAddress) {
+        let buf_ptr = self.buf.as_ptr().cast_mut();
+        for offset in (0..self.used_len).step_by(PAGE_SIZE) {
+            let dst_gpa = guest_buf_addr + offset;
+            let dst_hpa =
+                g_stage_trans_addr(dst_gpa).expect("failed translation of data base address");
+
+            unsafe {
+                core::ptr::copy(
+                    buf_ptr.add(offset),
+                    dst_hpa.raw() as *mut u8,
+                    if offset + PAGE_SIZE < self.used_len {
+                        PAGE_SIZE
+                    } else {
+                        self.used_len - offset
+                    },
+                );
+            }
+        }
+
+        self.used_len = 0;
+    }
 }
 
 /// Memory mapped I/O device.
