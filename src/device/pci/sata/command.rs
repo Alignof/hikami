@@ -1,5 +1,6 @@
 //! Utility for HBA (= ATA) command.
 
+use crate::device::DmaHostBuffer;
 use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::GuestPhysicalAddress;
 
@@ -23,7 +24,7 @@ pub enum CommandTableAddressData {
     /// Address before translation (Memory block size <= 0x1000).
     TranslatedAddress(GuestPhysicalAddress),
     /// Address before replacing to allocated memory region  (Memory block size > 0x1000).
-    AllocatedAddress(GuestPhysicalAddress, Vec<u8>),
+    AllocatedAddress(GuestPhysicalAddress, DmaHostBuffer),
 }
 
 /// Addresses of `CommandTable` and its each CTBA.
@@ -112,35 +113,15 @@ impl PhysicalRegionDescriptor {
             self.dba = (db_hpa.raw() & 0xffff_ffff) as u32;
         } else {
             crate::debugln!("[dbc] data base size: {:#x}", data_base_size);
-            unsafe {
-                let mut new_heap = Vec::<u8>::with_capacity(data_base_size);
-                new_heap.set_len(data_base_size);
-                let new_heap_addr = new_heap.as_ptr() as usize;
+            let mut host_buf = DmaHostBuffer::new(data_base_size);
+            self.dbau = ((host_buf.addr() >> 32) & 0xffff_ffff) as u32;
+            self.dba = (host_buf.addr() & 0xffff_ffff) as u32;
 
-                self.dbau = ((new_heap_addr >> 32) & 0xffff_ffff) as u32;
-                self.dba = (new_heap_addr & 0xffff_ffff) as u32;
-
-                // write data to allocated memory if command is `write`
-                if *dir == TransferDirection::HostToDevice {
-                    let heap_ptr = new_heap.as_ptr().cast_mut();
-                    for offset in (0..new_heap.len()).step_by(PAGE_SIZE) {
-                        let dst_gpa = db_gpa + offset;
-                        let dst_hpa = g_stage_trans_addr(dst_gpa)
-                            .expect("failed translation of data base address");
-
-                        core::ptr::copy(
-                            dst_hpa.raw() as *const u8,
-                            heap_ptr.add(offset),
-                            if offset + PAGE_SIZE < new_heap.len() {
-                                PAGE_SIZE
-                            } else {
-                                new_heap.len() - offset
-                            },
-                        );
-                    }
-                }
-                ctba_list.push(CommandTableAddressData::AllocatedAddress(db_gpa, new_heap));
+            // write data to allocated memory if command is `write`
+            if *dir == TransferDirection::HostToDevice {
+                host_buf.guest_to_host(db_gpa, data_base_size);
             }
+            ctba_list.push(CommandTableAddressData::AllocatedAddress(db_gpa, host_buf));
         }
     }
 
@@ -156,33 +137,14 @@ impl PhysicalRegionDescriptor {
                 self.dbau = ((db_gpa.raw() >> 32) & 0xffff_ffff) as u32;
                 self.dba = (db_gpa.raw() & 0xffff_ffff) as u32;
             }
-            CommandTableAddressData::AllocatedAddress(db_gpa, heap) => {
+            CommandTableAddressData::AllocatedAddress(db_gpa, host_buf) => {
                 self.dbau = ((db_gpa.raw() >> 32) & 0xffff_ffff) as u32;
                 self.dba = (db_gpa.raw() & 0xffff_ffff) as u32;
 
                 // write back data to guest memory if command is `read`
                 if *dir == TransferDirection::DeviceToHost {
-                    let heap_ptr = heap.as_ptr().cast_mut();
-                    for offset in (0..heap.len()).step_by(PAGE_SIZE) {
-                        let dst_gpa = *db_gpa + offset;
-                        let dst_hpa = g_stage_trans_addr(dst_gpa)
-                            .expect("failed translation of data base address");
-
-                        unsafe {
-                            core::ptr::copy(
-                                heap_ptr.add(offset),
-                                dst_hpa.raw() as *mut u8,
-                                if offset + PAGE_SIZE < heap.len() {
-                                    PAGE_SIZE
-                                } else {
-                                    heap.len() - offset
-                                },
-                            );
-                        }
-                    }
+                    host_buf.host_to_guest(*db_gpa);
                 }
-                // free allocated region
-                heap.clear();
             }
         }
     }
