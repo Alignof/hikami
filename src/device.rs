@@ -108,6 +108,11 @@ impl DmaHostBuffer {
         self.used_len = new_len;
     }
 
+    /// Clear buffer len
+    fn clear_used_len(&mut self) {
+        self.used_len = 0;
+    }
+
     /// Return buffer address
     fn addr(&self) -> usize {
         self.buf.as_ptr() as usize
@@ -159,8 +164,6 @@ impl DmaHostBuffer {
                 );
             }
         }
-
-        self.used_len = 0;
     }
 }
 
