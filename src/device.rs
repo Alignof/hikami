@@ -90,19 +90,14 @@ impl DmaHostBuffer {
     }
 
     /// Set the size of buffer to use
+    ///
+    /// If new buffer size is greater than current size, extend the its size.
     fn set_used_len(&mut self, new_len: usize) {
         // extend buffer
         if self.buf.len() < new_len {
-            // self.buf
-            //     .try_reserve(new_len - self.buf.len())
-            //     .expect("extending DMA host buffer failed");
-            self.buf.clear();
-            self.buf = Vec::<u8>::with_capacity(new_len);
-            unsafe {
-                self.buf.set_len(new_len);
-            }
-        } else {
-            self.buf[new_len..].fill(0);
+            self.buf
+                .try_reserve(new_len - self.buf.len())
+                .expect("extending DMA host buffer failed");
         }
 
         self.used_len = new_len;
