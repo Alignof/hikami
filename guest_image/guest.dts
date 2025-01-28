@@ -316,7 +316,7 @@
 		serial0 = "/io-bus/uart@60010000";
 	};
 	chosen {
- 		bootargs = "root=/dev/mmcblk0p2 earlycon locale.LANG=en_US.UTF-8";
+ 		bootargs = "ro root=/dev/mmcblk0p2 earlycon initramfs.runsize=24M locale.LANG=en_US.UTF-8";
 		stdout-path = "serial0";
 	};
 	io-bus {
