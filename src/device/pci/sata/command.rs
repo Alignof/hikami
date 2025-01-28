@@ -114,12 +114,13 @@ impl PhysicalRegionDescriptor {
         } else {
             crate::debugln!("[dbc] data base size: {:#x}", data_base_size);
             let mut host_buf = DmaHostBuffer::new(data_base_size);
+            host_buf.set_used_len(data_base_size);
             self.dbau = ((host_buf.addr() >> 32) & 0xffff_ffff) as u32;
             self.dba = (host_buf.addr() & 0xffff_ffff) as u32;
 
             // write data to allocated memory if command is `write`
             if *dir == TransferDirection::HostToDevice {
-                host_buf.guest_to_host(db_gpa, data_base_size);
+                host_buf.guest_to_host(db_gpa);
             }
             ctba_list.push(CommandTableAddressData::AllocatedAddress(db_gpa, host_buf));
         }

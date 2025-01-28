@@ -89,6 +89,25 @@ impl DmaHostBuffer {
         self.used_len > 0
     }
 
+    /// Set the size of buffer to use
+    fn set_used_len(&mut self, new_len: usize) {
+        // extend buffer
+        if self.buf.len() < new_len {
+            // self.buf
+            //     .try_reserve(new_len - self.buf.len())
+            //     .expect("extending DMA host buffer failed");
+            self.buf.clear();
+            self.buf = Vec::<u8>::with_capacity(new_len);
+            unsafe {
+                self.buf.set_len(new_len);
+            }
+        } else {
+            self.buf[new_len..].fill(0);
+        }
+
+        self.used_len = new_len;
+    }
+
     /// Return buffer address
     fn addr(&self) -> usize {
         self.buf.as_ptr() as usize
@@ -97,14 +116,9 @@ impl DmaHostBuffer {
     /// Copy guest buffer data to host buffer.
     ///
     /// It is used in emulating write command.
-    fn guest_to_host(&mut self, guest_buf_addr: GuestPhysicalAddress, len: usize) {
-        // extend buffer
-        if self.buf.len() < len {
-            self.buf.reserve(len - self.buf.len());
-        }
-
+    fn guest_to_host(&mut self, guest_buf_addr: GuestPhysicalAddress) {
         let buf_ptr = self.buf.as_ptr().cast_mut();
-        for offset in (0..len).step_by(PAGE_SIZE) {
+        for offset in (0..self.used_len).step_by(PAGE_SIZE) {
             let dst_gpa = guest_buf_addr + offset;
             let dst_hpa =
                 g_stage_trans_addr(dst_gpa).expect("failed translation of data base address");
@@ -113,16 +127,14 @@ impl DmaHostBuffer {
                 core::ptr::copy(
                     dst_hpa.raw() as *const u8,
                     buf_ptr.add(offset),
-                    if offset + PAGE_SIZE < len {
+                    if offset + PAGE_SIZE < self.used_len {
                         PAGE_SIZE
                     } else {
-                        len - offset
+                        self.used_len - offset
                     },
                 );
             }
         }
-
-        self.used_len = len;
     }
 
     /// Copy guest buffer data to host buffer.
