@@ -48,6 +48,10 @@ static GUEST_KERNEL: [u8; include_bytes!("../vmlinux").len()] = *include_bytes!(
 #[link_section = ".guest_dtb"]
 static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
 
+/// Guest intird
+#[link_section = ".guest_initrd"]
+static GUEST_INITRD: [u8; include_bytes!("../initrd").len()] = *include_bytes!("../initrd");
+
 extern "C" {
     /// stack top (defined in `memory.x`)
     static _stack_start: u8;

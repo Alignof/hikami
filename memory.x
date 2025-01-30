@@ -47,11 +47,6 @@ SECTIONS
         _end_heap = .;
     } > REGION_HEAP
 
-    .host_dtb : ALIGN(4K) {
-        *(.host_dtb);
-        . = ALIGN(4K);
-    } > REGION_DATA
-
     .guest_kernel : ALIGN(4K) {
         *(.guest_kernel);
         . = ALIGN(4K);
@@ -59,6 +54,11 @@ SECTIONS
 
     .guest_dtb : ALIGN(4K) {
         *(.guest_dtb);
+        . = ALIGN(4K);
+    } > REGION_DATA
+
+    .guest_initrd : ALIGN(4K) {
+        *(.guest_initrd);
         . = ALIGN(4K);
     } > REGION_DATA
 
