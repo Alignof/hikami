@@ -9,7 +9,7 @@ use crate::memmap::{
     page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
 };
-use crate::PageBlock;
+use crate::{PageBlock, GUEST_INITRD};
 use context::{Context, ContextData};
 
 use core::ops::Range;
@@ -247,11 +247,34 @@ impl Guest {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+
+        let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+        let initrd_start = region.end - aligned_initrd_size;
+        if GUEST_INITRD.len() > 0 {
+            crate::println!(
+                "initrd (GPA): {:#x}..{:#x}",
+                initrd_start.raw(),
+                initrd_start.raw() + GUEST_INITRD.len()
+            );
+        }
+
         for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
 
             // allocate memory from heap
             let aligned_page_size_block_addr = PageBlock::alloc();
+
+            // copy initrd to new heap block
+            if (initrd_start..region.end).contains(&guest_physical_addr) {
+                unsafe {
+                    let offset = guest_physical_addr.raw() - initrd_start.raw();
+                    core::ptr::copy(
+                        GUEST_INITRD.as_ptr().byte_add(offset),
+                        aligned_page_size_block_addr.raw() as *mut u8,
+                        PAGE_SIZE,
+                    );
+                }
+            }
 
             // create memory mapping
             page_table::sv39x4::generate_page_table(
