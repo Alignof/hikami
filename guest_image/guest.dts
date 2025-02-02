@@ -317,6 +317,8 @@
 	};
 	chosen {
  		bootargs = "ro root=/dev/mmcblk0p2 earlycon initramfs.runsize=24M locale.LANG=en_US.UTF-8";
+ 		linux,initrd-end = <0x9ffffe22>;
+ 		linux,initrd-start = <0x9fae2000>;
 		stdout-path = "serial0";
 	};
 	io-bus {
