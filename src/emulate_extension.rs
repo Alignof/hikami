@@ -1,5 +1,6 @@
 //! Extension emulation
 
+pub mod zbb;
 pub mod zicfiss;
 
 use crate::h_extension::csrs::vstvec;
@@ -51,8 +52,10 @@ impl EmulatedCsr {
 /// Initialize singletons for extension emulation.
 /// TODO: Remove it when `OnceCell` is replaced to `LazyCell`.
 pub fn initialize() {
+    use zbb::{Zbb, ZBB_DATA};
     use zicfiss::{Zicfiss, ZICFISS_DATA};
     unsafe { ZICFISS_DATA.lock() }.get_or_init(Zicfiss::new);
+    unsafe { ZBB_DATA.lock() }.get_or_init(Zbb::new);
 }
 
 /// Throw an VS-level exception.

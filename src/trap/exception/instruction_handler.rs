@@ -3,6 +3,7 @@
 //! - Illegal Instruction
 //! - Virtual Instruction
 
+use crate::emulate_extension::zbb::ZBB_DATA;
 use crate::emulate_extension::zicfiss::ZICFISS_DATA;
 use crate::emulate_extension::EmulateExtension;
 use crate::HYPERVISOR_DATA;
@@ -22,6 +23,10 @@ pub fn illegal_instruction() {
     // emulate the instruction
     match fault_inst.opc {
         OpcodeKind::Zicfiss(_) => unsafe { ZICFISS_DATA.lock() }
+            .get_mut()
+            .unwrap()
+            .instruction(&fault_inst),
+        OpcodeKind::Zbb(_) => unsafe { ZBB_DATA.lock() }
             .get_mut()
             .unwrap()
             .instruction(&fault_inst),
