@@ -124,13 +124,13 @@ impl DmaHostBuffer {
     fn guest_to_host(&mut self, guest_buf_addr: GuestPhysicalAddress) {
         let buf_ptr = self.buf.as_ptr().cast_mut();
         for offset in (0..self.used_len).step_by(PAGE_SIZE) {
-            let dst_gpa = guest_buf_addr + offset;
-            let dst_hpa =
-                g_stage_trans_addr(dst_gpa).expect("failed translation of data base address");
+            let src_gpa = guest_buf_addr + offset;
+            let src_hpa =
+                g_stage_trans_addr(src_gpa).expect("failed translation of data base address");
 
             unsafe {
                 core::ptr::copy(
-                    dst_hpa.raw() as *const u8,
+                    src_hpa.raw() as *const u8,
                     buf_ptr.add(offset),
                     if offset + PAGE_SIZE < self.used_len {
                         PAGE_SIZE
