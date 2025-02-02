@@ -4,8 +4,8 @@ use crate::emulate_extension;
 use crate::guest::context::ContextData;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus,
-    hvip, vsatp, VsInterruptKind,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus, hvip,
+    vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{

@@ -16,6 +16,7 @@ pub struct Initrd {
 }
 
 impl Initrd {
+    /// Try to get Initrd data and return the `Initrd`.
     pub fn try_new_from_node_path(device_tree: &Fdt, node_path: &str) -> Option<Self> {
         let start_prop = "linux,initrd-start";
         let end_prop = "linux,initrd-end";

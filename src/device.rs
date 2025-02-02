@@ -35,6 +35,9 @@ pub enum DeviceEmulateError {
     ReservedRegister,
 }
 
+/// Device Emulation functions.
+///
+/// It recives trapped address (and value) and emulate load/store.
 pub trait EmulateDevice {
     /// Pass through loading memory
     fn pass_through_loading(dst_addr: HostPhysicalAddress) -> u32 {
@@ -117,6 +120,7 @@ impl DmaHostBuffer {
     /// Copy guest buffer data to host buffer.
     ///
     /// It is used in emulating write command.
+    #[allow(clippy::similar_names)]
     fn guest_to_host(&mut self, guest_buf_addr: GuestPhysicalAddress) {
         let buf_ptr = self.buf.as_ptr().cast_mut();
         for offset in (0..self.used_len).step_by(PAGE_SIZE) {
@@ -141,6 +145,7 @@ impl DmaHostBuffer {
     /// Copy guest buffer data to host buffer.
     ///
     /// It is used in emulating read command.
+    #[allow(clippy::similar_names)]
     fn host_to_guest(&mut self, guest_buf_addr: GuestPhysicalAddress) {
         let buf_ptr = self.buf.as_ptr().cast_mut();
         for offset in (0..self.used_len).step_by(PAGE_SIZE) {
