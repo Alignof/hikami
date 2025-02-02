@@ -35,6 +35,7 @@ impl EmulateDevice for Mmc {
     }
 
     /// Emulate storing port registers.
+    #[allow(clippy::cast_possible_truncation, clippy::similar_names)]
     fn emulate_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,

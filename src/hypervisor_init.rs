@@ -4,8 +4,8 @@ use crate::emulate_extension;
 use crate::guest::context::ContextData;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
-    hvip, vsatp, VsInterruptKind,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus, hvip,
+    vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
@@ -13,7 +13,7 @@ use crate::memmap::{
 };
 use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;
-use crate::{HypervisorData, GUEST_DTB, GUEST_KERNEL, HYPERVISOR_DATA};
+use crate::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
 use crate::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
@@ -25,6 +25,12 @@ use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     crate::println!("welcome to hikami");
+    crate::println!(
+        "hart_id: {}, dtb address: {:#x}, initrd address: {:#x}",
+        hart_id,
+        dtb_addr,
+        GUEST_INITRD.as_ptr() as usize
+    );
 
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
@@ -165,7 +171,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .devices()
         .pci
         .as_ref()
-        .map(|pci| pci.init_pci_devices());
+        .map(super::device::pci::Pci::init_pci_devices);
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
