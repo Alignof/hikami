@@ -24,6 +24,7 @@ fn fetch_fault_inst(fault_addr: HostPhysicalAddress) -> usize {
 }
 
 /// Trap `Load guest page fault` exception.
+#[allow(clippy::similar_names)]
 pub fn load_guest_page_fault() {
     let fault_addr = GuestPhysicalAddress(htval::read().bits() << 2);
 
@@ -92,7 +93,7 @@ pub fn load_guest_page_fault() {
 }
 
 /// Trap `Store guest page fault` exception.
-#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_truncation, clippy::similar_names)]
 pub fn store_guest_page_fault() {
     let fault_addr = GuestPhysicalAddress(htval::read().bits() << 2);
 
