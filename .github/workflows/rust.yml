@@ -25,6 +25,7 @@ jobs:
       - name: create dummy file
         run: |
           touch vmlinux
+          touch initrd
           touch guest.dtb
           echo '#!/bin/sh' > dtc && chmod +x dtc && mv dtc /usr/local/bin/dtc
 
