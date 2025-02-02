@@ -99,7 +99,7 @@ impl HbaPort {
             let lower_addr = unsafe {
                 core::ptr::read_volatile((hba_base_addr.raw() + offset) as *const u32) as usize
             };
-            GuestPhysicalAddress((value as usize) << 32 | lower_addr)
+            GuestPhysicalAddress(((value as usize) << 32) | lower_addr)
         };
 
         // store base guest physical addr

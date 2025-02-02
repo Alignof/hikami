@@ -250,7 +250,7 @@ impl Guest {
 
         let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
         let initrd_start = region.end - aligned_initrd_size;
-        if GUEST_INITRD.len() > 0 {
+        if !GUEST_INITRD.is_empty() {
             crate::println!(
                 "initrd (GPA): {:#x}..{:#x}",
                 initrd_start.raw(),

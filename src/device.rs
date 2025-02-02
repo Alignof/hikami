@@ -3,7 +3,7 @@
 mod axi_sdc;
 pub mod clint;
 mod initrd;
-mod pci;
+pub mod pci;
 pub mod plic;
 mod rtc;
 pub mod uart;
@@ -72,6 +72,7 @@ struct DmaHostBuffer {
 }
 impl DmaHostBuffer {
     /// Create itself.
+    #[allow(clippy::uninit_vec)]
     pub fn new(size: usize) -> Self {
         let mut new_heap = Vec::<u8>::with_capacity(size);
         unsafe {

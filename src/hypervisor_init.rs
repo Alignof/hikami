@@ -4,7 +4,7 @@ use crate::emulate_extension;
 use crate::guest::context::ContextData;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus,
     hvip, vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
@@ -171,7 +171,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .devices()
         .pci
         .as_ref()
-        .map(|pci| pci.init_pci_devices());
+        .map(super::device::pci::Pci::init_pci_devices);
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
