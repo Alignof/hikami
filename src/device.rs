@@ -102,6 +102,8 @@ impl DmaHostBuffer {
             self.buf
                 .try_reserve(new_len - self.buf.len())
                 .expect("extending DMA host buffer failed");
+        } else {
+            self.buf[new_len..].fill(0);
         }
 
         self.used_len = new_len;
