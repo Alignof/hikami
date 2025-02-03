@@ -62,10 +62,19 @@ impl Plic {
     /// Emulate reading plic context register
     fn context_load(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
-        if context_id > MAX_CONTEXT_NUM {
-            Err(DeviceEmulateError::InvalidContextId)
-        } else {
-            Ok(self.claim_complete[context_id])
+        let offset_per_context = offset % CONTEXT_REGS_SIZE;
+        match offset_per_context {
+            // threshold
+            0 => unreachable!("[may be unreachable] plic threshold read"),
+            // claim/complete
+            4 => {
+                if context_id > MAX_CONTEXT_NUM {
+                    Err(DeviceEmulateError::InvalidContextId)
+                } else {
+                    Ok(self.claim_complete[context_id])
+                }
+            }
+            _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
 
@@ -108,10 +117,12 @@ impl Plic {
             4 => {
                 let dst_ptr = dst_addr.raw() as *mut u32;
                 unsafe {
-                    dst_ptr.write_volatile(value);
+                    if self.claim_complete[context_id] == value {
+                        hvip::clear(VsInterruptKind::External);
+                        self.claim_complete[context_id] = 0;
+                        dst_ptr.write_volatile(value);
+                    }
                 }
-                self.claim_complete[context_id] = 0;
-                hvip::clear(VsInterruptKind::External);
 
                 Ok(())
             }
