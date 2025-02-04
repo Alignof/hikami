@@ -5,7 +5,9 @@ use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::h_extension::csrs::{hvip, VsInterruptKind};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+
 use fdt::Fdt;
+use riscv::register::sie;
 
 /// Max number of PLIC context.
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
@@ -118,9 +120,11 @@ impl Plic {
                 let dst_ptr = dst_addr.raw() as *mut u32;
                 unsafe {
                     if self.claim_complete[context_id] == value {
-                        hvip::clear(VsInterruptKind::External);
                         self.claim_complete[context_id] = 0;
                         dst_ptr.write_volatile(value);
+
+                        hvip::clear(VsInterruptKind::External);
+                        sie::set_sext();
                     }
                 }
 
