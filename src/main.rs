@@ -42,15 +42,18 @@ static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCel
 
 /// Guest kernel image
 #[link_section = ".guest_kernel"]
-static GUEST_KERNEL: [u8; include_bytes!("../vmlinux").len()] = *include_bytes!("../vmlinux");
+static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
+    *include_bytes!("../guest_image/vmlinux");
 
 /// Device tree blob that is passed to guest
 #[link_section = ".guest_dtb"]
-static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
+static GUEST_DTB: [u8; include_bytes!("../guest_image/guest.dtb").len()] =
+    *include_bytes!("../guest_image/guest.dtb");
 
 /// Guest intird
 #[link_section = ".guest_initrd"]
-static GUEST_INITRD: [u8; include_bytes!("../initrd").len()] = *include_bytes!("../initrd");
+static GUEST_INITRD: [u8; include_bytes!("../guest_image/initrd").len()] =
+    *include_bytes!("../guest_image/initrd");
 
 extern "C" {
     /// stack top (defined in `memory.x`)
