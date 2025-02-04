@@ -11,7 +11,7 @@ fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     let dts_file = "guest_image/guest.dts";
-    let dtb_file = "guest.dtb";
+    let dtb_file = "guest_image/guest.dtb";
 
     let status = Command::new("dtc")
         .args(["-I", "dts", "-O", "dtb", "-o", dtb_file, dts_file])

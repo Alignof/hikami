@@ -40,7 +40,7 @@ impl Guest {
     pub fn new(
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
-        guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
+        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
     ) -> Self {
         // calculate guest memory region
         let guest_memory_begin: GuestPhysicalAddress =
@@ -73,7 +73,7 @@ impl Guest {
     fn map_guest_dtb(
         hart_id: usize,
         page_table_addr: HostPhysicalAddress,
-        guest_dtb: &'static [u8; include_bytes!("../guest.dtb").len()],
+        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
