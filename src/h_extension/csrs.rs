@@ -284,6 +284,7 @@ pub mod hgeie {
     /// Hypervisor counter enable.
     pub struct Hgeie(usize);
 
+    /// Get the `GEILEN`.
     pub fn get_geilen() -> usize {
         let original_value = read();
         write(0xffff_ffff);
