@@ -24,9 +24,9 @@ jobs:
 
       - name: create dummy file
         run: |
-          touch vmlinux
-          touch initrd
-          touch guest.dtb
+          touch guest_image/vmlinux
+          touch guest_image/initrd
+          touch guest_image/guest.dtb
           echo '#!/bin/sh' > dtc && chmod +x dtc && mv dtc /usr/local/bin/dtc
 
       - uses: sksat/action-clippy@v1.0.0
