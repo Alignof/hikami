@@ -5,7 +5,6 @@ use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use core::cell::OnceCell;
 use fdt::Fdt;
-use rustsbi::{Physical, SbiRet};
 use spin::Mutex;
 
 mod register {
@@ -68,61 +67,5 @@ impl MmioDevice for Uart {
             self.paddr()..self.paddr() + self.size(),
             &PTE_FLAGS_FOR_DEVICE,
         )
-    }
-}
-
-/// Ref: [https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/trait.Console.html](https://docs.rs/rustsbi/0.4.0-alpha.1/rustsbi/trait.Console.html)
-///
-/// It doesn't seems to be used by linux.
-/// TODO: Checking target address?
-impl rustsbi::Console for Uart {
-    /// Write bytes to the debug console from input memory.
-    fn write(&self, bytes: Physical<&[u8]>) -> SbiRet {
-        let uart_ptr = self.base_addr.raw() as *mut u32;
-        let uart_lsr_ptr = self.lsr_addr().raw() as *mut u32;
-        let byte_data = unsafe {
-            core::slice::from_raw_parts(bytes.phys_addr_lo() as *const u8, bytes.num_bytes())
-        };
-        for c in byte_data {
-            unsafe {
-                while ((uart_lsr_ptr.read_volatile() >> 5) & 0x1) == 1 {}
-                uart_ptr.write_volatile(u32::from(*c));
-            }
-        }
-        SbiRet::success(0)
-    }
-
-    /// Read bytes from the debug console into an output memory.
-    #[allow(clippy::cast_possible_truncation)]
-    fn read(&self, bytes: Physical<&mut [u8]>) -> SbiRet {
-        let uart_ptr = self.base_addr.raw() as *mut u32;
-        let uart_lsr_ptr = self.lsr_addr().raw() as *mut u32;
-        let buffer = unsafe {
-            core::slice::from_raw_parts_mut(bytes.phys_addr_lo() as *mut u8, bytes.num_bytes())
-        };
-
-        let mut count = 0usize;
-        unsafe {
-            for c in buffer {
-                if uart_lsr_ptr.read_volatile() & 0x1 == 1 {
-                    *c = uart_ptr.read_volatile() as u8;
-                    count += 1;
-                } else {
-                    break;
-                }
-            }
-        }
-        SbiRet::success(count)
-    }
-
-    /// Write a single byte to the debug console.
-    fn write_byte(&self, byte: u8) -> SbiRet {
-        let uart_ptr = self.base_addr.raw() as *mut u32;
-        let uart_lsr_ptr = self.lsr_addr().raw() as *mut u32;
-        unsafe {
-            while ((uart_lsr_ptr.read_volatile() >> 5) & 0x1) == 1 {}
-            uart_ptr.write_volatile(u32::from(byte));
-        }
-        SbiRet::success(0)
     }
 }
