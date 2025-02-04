@@ -67,12 +67,46 @@ $ chmod +x rcS
 
 $ umount rootfs
 $ mv rootfs.img /path/to/this/repository
+
 ```
 
 ### Run
 ```sh
 # The actual command to be executed is written in .cargo/config.toml.
 $ cargo r
+```
+
+## Run on FPGA
+### Prepare the FPGA
+```sh
+# set environment
+$ git clone https://github.com/Alignof/vivado-risc-v -b feature/hikami
+$ cd vivado-risc-v
+$ make update-submodules
+
+# Build FPGA bitstream
+# Connect a micro-B cable to `PROG`
+$ source /opt/Xilinx/Vivado/2024.2/settings64.sh
+$ make CONFIG=rocket64b1 BOARD=nexys-video bitstream
+
+# Prepare the SD card
+$ ./mk-sd-card
+
+# Program the FPGA flash memory
+$ Xilinx/Vivado/2023.2/bin/hw_server
+$ env HW_SERVER_URL=tcp:localhost:3121 xsdb -quiet board/jtag-freq.tcl
+$ make CONFIG=rocket64b2 BOARD=nexys-video flash
+```
+
+See also for an environment information: [https://github.com/Alignof/vivado-risc-v/blob/master/README.md](https://github.com/Alignof/vivado-risc-v/blob/master/README.md)
+
+### Run
+```sh
+# Connect a micro-B cable to `UART`
+$ sudo picocom -b 115200 /dev/ttyUSB2 # <- select the corresponding serial port 
+
+# login: debian
+# password: debian
 ```
 
 ## Documents
