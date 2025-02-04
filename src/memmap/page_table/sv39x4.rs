@@ -5,7 +5,7 @@
 
 use super::{
     constants::{PAGE_SIZE, PAGE_TABLE_LEN},
-    PageTableAddress, PageTableEntry, PageTableLevel, PteFlag, TransAddrError,
+    PageTableAddress, PageTableEntry, PageTableLevel, PageTableMemory, PteFlag, TransAddrError,
 };
 use crate::h_extension::csrs::hgatp;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
@@ -135,7 +135,8 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
                         usize::try_from(current_page_table[vpn].entire_ppn()).unwrap() * PAGE_SIZE,
                     )
                 } else {
-                    let next_page_table = Box::new([PageTableEntry::default(); PAGE_TABLE_LEN]);
+                    let next_page_table =
+                        Box::new(PageTableMemory([PageTableEntry::default(); PAGE_TABLE_LEN]));
                     let next_page_table_addr: PageTableAddress =
                         Box::into_raw(next_page_table).into();
 

@@ -169,7 +169,7 @@ pub struct PciAddressSpace {
 
 impl PciAddressSpace {
     /// Constructor of `PciAddressSpace`.
-    pub fn new(device_tree: &Fdt, node_path: &str) -> Self {
+    pub fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
         /// Bytes size of u32.
         const BYTES_U32: usize = 4;
         /// Number of bytes in each range chunks.
@@ -177,7 +177,7 @@ impl PciAddressSpace {
         const RANGE_NUM: usize = 7;
 
         let ranges = device_tree
-            .find_node(node_path)
+            .find_compatible(compatibles)
             .unwrap()
             .property("ranges")
             .unwrap()
@@ -250,10 +250,9 @@ impl Pci {
 }
 
 impl MmioDevice for Pci {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let region = device_tree
-            .find_node(node_path)
-            .unwrap()
+            .find_compatible(compatibles)?
             .reg()
             .unwrap()
             .next()
@@ -261,17 +260,17 @@ impl MmioDevice for Pci {
 
         let mut memory_maps = Vec::new();
         let base_address = region.starting_address as usize;
-        let pci_addr_space = PciAddressSpace::new(device_tree, node_path);
+        let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices =
             PciDevices::new(device_tree, base_address, &pci_addr_space, &mut memory_maps);
 
-        Pci {
+        Some(Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             _pci_addr_space: pci_addr_space,
             memory_maps,
             pci_devices,
-        }
+        })
     }
 
     fn size(&self) -> usize {

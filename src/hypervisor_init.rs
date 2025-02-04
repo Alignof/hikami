@@ -4,8 +4,8 @@ use crate::emulate_extension;
 use crate::guest::context::ContextData;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
-    hvip, vsatp, VsInterruptKind,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus, hvip,
+    vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
@@ -13,7 +13,7 @@ use crate::memmap::{
 };
 use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;
-use crate::{HypervisorData, GUEST_DTB, GUEST_KERNEL, HYPERVISOR_DATA};
+use crate::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
 use crate::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
@@ -25,6 +25,12 @@ use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     crate::println!("welcome to hikami");
+    crate::println!(
+        "hart_id: {}, dtb address: {:#x}, initrd address: {:#x}",
+        hart_id,
+        dtb_addr,
+        GUEST_INITRD.as_ptr() as usize
+    );
 
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
@@ -79,11 +85,12 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     henvcfg::set_cbcfe();
 
     // disable `ENVCFG` state
-    hstateen0::all_state_set();
-    hstateen0::clear_envcfg();
+    //hstateen0::all_state_set();
+    //hstateen0::clear_envcfg();
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
+
     // enable supervisor counter
     unsafe {
         asm!("csrw scounteren, {bits}", bits = in(reg) 0xffff_ffff_u32);
@@ -163,7 +170,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .unwrap()
         .devices()
         .pci
-        .init_pci_devices();
+        .as_ref()
+        .map(super::device::pci::Pci::init_pci_devices);
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
@@ -222,6 +230,7 @@ fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // init guest stack pointer is don't care
     sscratch::write(0);
 
+    crate::println!("Guest start (hart: {})", hart_id);
     unsafe {
         // enter VS-mode
         asm!(

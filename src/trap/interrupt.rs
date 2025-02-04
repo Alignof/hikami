@@ -34,6 +34,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
                 .update_claim_complete(&context_id);
 
             hvip::set(VsInterruptKind::External);
+            sie::clear_sext();
         }
         Interrupt::Unknown => panic!("unknown interrupt type"),
     }

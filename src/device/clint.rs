@@ -35,19 +35,18 @@ pub struct Clint {
 }
 
 impl MmioDevice for Clint {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let region = device_tree
-            .find_node(node_path)
-            .unwrap()
+            .find_compatible(compatibles)?
             .reg()
             .unwrap()
             .next()
             .unwrap();
 
-        Clint {
+        Some(Clint {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-        }
+        })
     }
 
     fn size(&self) -> usize {
