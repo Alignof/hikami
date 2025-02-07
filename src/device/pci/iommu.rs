@@ -188,4 +188,8 @@ impl PciDevice for IoMmu {
         Self::init_page_table(ddt_addr);
         registers.ddtp.set(IoMmuMode::Lv1, ddt_addr);
     }
+
+    fn memmap(&self) -> MemoryMap {
+        unreachable!();
+    }
 }

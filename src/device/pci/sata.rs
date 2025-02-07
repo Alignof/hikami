@@ -444,4 +444,12 @@ impl PciDevice for Sata {
     fn init(&self, _: HostPhysicalAddress) {
         unreachable!();
     }
+
+    fn memmap(&self) -> MemoryMap {
+        MemoryMap::new(
+            GuestPhysicalAddress(self.abar.start.raw())..GuestPhysicalAddress(self.abar.end.raw()),
+            self.abar.clone(),
+            &super::PTE_FLAGS_FOR_DEVICE,
+        )
+    }
 }

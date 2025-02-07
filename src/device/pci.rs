@@ -63,6 +63,9 @@ pub trait PciDevice {
     /// Initialize pci device.
     /// * `pci`: struct `Pci`
     fn init(&self, pci_config_space_base_addr: HostPhysicalAddress);
+
+    /// Return memory map between physical to physical (identity map) for crate page table.
+    fn memmap(&self) -> MemoryMap;
 }
 
 #[derive(Debug)]
