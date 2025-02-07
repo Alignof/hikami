@@ -238,9 +238,16 @@ impl Guest {
 
         if !GUEST_INITRD.is_empty() {
             let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
-            let initrd_start = guest_memory::DRAM_BASE
-                + guest_memory::DRAM_SIZE_PER_GUEST * (self.hart_id + 1)
-                - aligned_initrd_size;
+            let guest_base =
+                guest_memory::DRAM_BASE + guest_memory::DRAM_SIZE_PER_GUEST * (self.hart_id + 1);
+            let initrd_start = guest_base + guest_memory::DRAM_SIZE_PER_GUEST - aligned_initrd_size;
+
+            crate::println!(
+                "initrd (GPA): {:#x}..{:#x}",
+                initrd_start.raw(),
+                initrd_start.raw() + GUEST_INITRD.len()
+            );
+
             unsafe {
                 core::ptr::copy(
                     GUEST_INITRD.as_ptr(),
