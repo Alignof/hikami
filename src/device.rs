@@ -271,6 +271,19 @@ impl Devices {
             device_mapping.push(initrd.memmap());
         }
 
+        // disable drive emulation
+        if cfg!(feature = "identity_map") {
+            if let Some(mmc) = &self.mmc {
+                device_mapping.push(mmc.memmap());
+            }
+            if let Some(pci) = &self.pci {
+                if let Some(sata) = &pci.pci_devices.sata {
+                    use pci::PciDevice;
+                    device_mapping.push(sata.memmap());
+                }
+            }
+        }
+
         device_mapping
     }
 }
