@@ -175,7 +175,9 @@ impl Guest {
         {
             if prog_header.p_type == PT_LOAD {
                 let segment_gpa = GuestPhysicalAddress(
-                    guest_memory::DRAM_BASE.raw() + prog_header.p_offset as usize,
+                    guest_memory::DRAM_BASE.raw()
+                        + guest_memory::DRAM_SIZE_PER_GUEST * (self.hart_id + 1)
+                        + prog_header.p_paddr as usize,
                 );
                 elf_end = core::cmp::max(
                     elf_end,
@@ -205,8 +207,9 @@ impl Guest {
 
         if !GUEST_INITRD.is_empty() {
             let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
-            let initrd_start =
-                guest_memory::DRAM_BASE + guest_memory::DRAM_SIZE_PER_GUEST - aligned_initrd_size;
+            let initrd_start = guest_memory::DRAM_BASE
+                + guest_memory::DRAM_SIZE_PER_GUEST * (self.hart_id + 1)
+                - aligned_initrd_size;
             unsafe {
                 core::ptr::copy(
                     GUEST_INITRD.as_ptr(),
@@ -324,6 +327,29 @@ impl Guest {
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
+    #[cfg(feature = "identity_map")]
+    pub fn allocate_memory_region(&self, region: Range<GuestPhysicalAddress>) {
+        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+
+        let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+
+        for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
+            let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
+            let host_physical_addr = HostPhysicalAddress(guest_physical_addr.raw());
+            // create memory mapping
+            page_table::sv39x4::generate_page_table(
+                self.page_table_addr,
+                &[MemoryMap::new(
+                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                    host_physical_addr..host_physical_addr + PAGE_SIZE,
+                    all_pte_flags_are_set,
+                )],
+            );
+        }
+    }
+
+    /// Allocate guest memory space from heap and create corresponding page table.
+    #[cfg(not(feature = "identity_map"))]
     pub fn allocate_memory_region(&self, region: Range<GuestPhysicalAddress>) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
