@@ -55,11 +55,7 @@ impl Guest {
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
         // load guest dtb to memory
-        let dtb_addr = if cfg!(feature = "identity_map") {
-            GuestPhysicalAddress(guest_dtb.as_ptr() as usize)
-        } else {
-            Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb)
-        };
+        let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
         Guest {
             hart_id,
@@ -74,6 +70,41 @@ impl Guest {
     /// Load guest device tree and create corresponding page table
     ///
     /// Guest device tree will be placed start of guest memory region.
+    #[cfg(feature = "identity_map")]
+    fn map_guest_dtb(
+        _hart_id: usize,
+        page_table_addr: HostPhysicalAddress,
+        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
+    ) -> GuestPhysicalAddress {
+        use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
+
+        assert!(guest_dtb.len() < guest_memory::GUEST_DTB_REGION_SIZE);
+
+        let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+
+        for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
+            let guest_physical_addr = GuestPhysicalAddress(guest_dtb.as_ptr() as usize + offset);
+            let host_physical_addr = HostPhysicalAddress(guest_physical_addr.raw());
+
+            // create memory mapping
+            page_table::sv39x4::generate_page_table(
+                page_table_addr,
+                &[MemoryMap::new(
+                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                    host_physical_addr..host_physical_addr + PAGE_SIZE,
+                    // allow writing data to dtb to modify device tree on guest OS.
+                    &[Dirty, Accessed, Write, Read, User, Valid],
+                )],
+            );
+        }
+
+        GuestPhysicalAddress(guest_dtb.as_ptr() as usize)
+    }
+
+    /// Load guest device tree and create corresponding page table
+    ///
+    /// Guest device tree will be placed start of guest memory region.
+    #[cfg(not(feature = "identity_map"))]
     fn map_guest_dtb(
         hart_id: usize,
         page_table_addr: HostPhysicalAddress,
