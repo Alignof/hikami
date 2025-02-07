@@ -271,7 +271,7 @@ impl Devices {
             device_mapping.push(initrd.memmap());
         }
 
-        // disable drive emulation
+        // disable drive emulation if `identity_map` feature is enabled
         if cfg!(feature = "identity_map") {
             if let Some(mmc) = &self.mmc {
                 device_mapping.push(mmc.memmap());

@@ -9,7 +9,8 @@ use crate::h_extension::csrs::{
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
-    page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress, HostPhysicalAddress,
+    constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
+    HostPhysicalAddress,
 };
 use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;
@@ -149,7 +150,13 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let (guest_entry_point, elf_end_addr) =
         new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
 
-    if !cfg!(feature = "identity_map") {
+    if cfg!(feature = "identity_map") {
+        let guest_memory_start =
+            guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
+        new_guest.allocate_memory_region(
+            guest_memory_start..guest_memory_start + guest_memory::DRAM_SIZE_PER_GUEST,
+        );
+    } else {
         // allocate page tables to all remain guest memory region
         let guest_memory_end = new_guest.memory_region().end;
         new_guest.allocate_memory_region(elf_end_addr..guest_memory_end);
