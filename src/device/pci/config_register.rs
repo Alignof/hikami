@@ -81,10 +81,10 @@ pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) ->
         | ConfigSpaceHeaderField::BaseAddressRegister5 => unsafe {
             let original_value = core::ptr::read_volatile(config_reg_addr as *const u32);
             core::ptr::write_volatile(config_reg_addr as *mut u32, 0xffff_ffff);
-            let size = core::ptr::read_volatile(config_reg_addr as *const u32);
+            let size_bit_mask = core::ptr::read_volatile(config_reg_addr as *const u32);
             core::ptr::write_volatile(config_reg_addr as *mut u32, original_value);
 
-            size
+            1 << size_bit_mask.trailing_zeros()
         },
         _ => unreachable!("please specify BAR"),
     }
