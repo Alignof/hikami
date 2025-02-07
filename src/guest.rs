@@ -55,7 +55,11 @@ impl Guest {
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
         // load guest dtb to memory
-        let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
+        let dtb_addr = if cfg!(feature = "identity_map") {
+            GuestPhysicalAddress(guest_dtb.as_ptr() as usize)
+        } else {
+            Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb)
+        };
 
         Guest {
             hart_id,
@@ -139,6 +143,82 @@ impl Guest {
         self.memory_region.start
     }
 
+    /// Load an elf to guest memory page.
+    ///
+    /// It only load `PT_LOAD` type segments.
+    /// Entry address is base address of the dram.
+    ///
+    /// # Return
+    /// - Entry point address in Guest memory space.
+    /// - End address of the ELF. (for filling remind memory space)
+    ///
+    /// # Arguments
+    /// * `guest_elf` - Elf loading guest space.
+    /// * `elf_addr` - Elf address.
+    #[cfg(feature = "identity_map")]
+    pub fn load_guest_elf(
+        &self,
+        guest_elf: &ElfBytes<AnyEndian>,
+        elf_addr: *const u8,
+    ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
+        /// Segment type `PT_LOAD`
+        ///
+        /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
+        const PT_LOAD: u32 = 1;
+
+        let mut elf_end: GuestPhysicalAddress = GuestPhysicalAddress::default();
+
+        for prog_header in guest_elf
+            .segments()
+            .expect("failed to get segments from elf")
+            .iter()
+        {
+            if prog_header.p_type == PT_LOAD {
+                let segment_gpa = GuestPhysicalAddress(
+                    guest_memory::DRAM_BASE.raw() + prog_header.p_offset as usize,
+                );
+                elf_end = core::cmp::max(
+                    elf_end,
+                    segment_gpa + prog_header.p_memsz as usize + PAGE_SIZE,
+                );
+                unsafe {
+                    core::ptr::copy(
+                        elf_addr.wrapping_add(prog_header.p_offset as usize) as *const u8,
+                        segment_gpa.raw() as *mut u8,
+                        prog_header.p_memsz as usize,
+                    );
+                }
+
+                if prog_header.p_memsz > prog_header.p_filesz {
+                    unsafe {
+                        core::ptr::write_bytes(
+                            elf_addr.wrapping_add(
+                                prog_header.p_offset as usize + prog_header.p_filesz as usize,
+                            ) as *mut u8,
+                            0,
+                            (prog_header.p_memsz - prog_header.p_filesz) as usize,
+                        );
+                    }
+                }
+            }
+        }
+
+        if !GUEST_INITRD.is_empty() {
+            let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+            let initrd_start =
+                guest_memory::DRAM_BASE + guest_memory::DRAM_SIZE_PER_GUEST - aligned_initrd_size;
+            unsafe {
+                core::ptr::copy(
+                    GUEST_INITRD.as_ptr(),
+                    initrd_start.raw() as *mut u8,
+                    GUEST_INITRD.len(),
+                );
+            }
+        }
+
+        (self.dram_base(), elf_end)
+    }
+
     /// Load an elf to new allocated guest memory page.
     ///
     /// It only load `PT_LOAD` type segments.
@@ -151,6 +231,7 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
+    #[cfg(not(feature = "identity_map"))]
     pub fn load_guest_elf(
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
