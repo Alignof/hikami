@@ -3,13 +3,14 @@
 //! - Illegal Instruction
 //! - Virtual Instruction
 
+use super::hs_forward_exception;
 use crate::emulate_extension::zicfiss::ZICFISS_DATA;
 use crate::emulate_extension::EmulateExtension;
 use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use raki::{Instruction, OpcodeKind};
-use riscv::register::{sepc, stval};
+use riscv::register::stval;
 
 /// Trap `Illegal instruction` exception.
 #[inline]
@@ -35,12 +36,7 @@ pub fn illegal_instruction() {
                 unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
             }
         },
-        _ => unimplemented!(
-            "unsupported illegal instruction({:#x}): {:#?}, at {:#x}",
-            fault_inst_value,
-            fault_inst,
-            sepc::read()
-        ),
+        _ => hs_forward_exception(),
     }
 
     let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
