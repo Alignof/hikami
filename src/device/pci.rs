@@ -150,7 +150,7 @@ impl PciDevices {
         }
 
         PciDevices {
-            iommu: iommu::IoMmu::new_from_dtb(device_tree, "soc/pci/iommu"),
+            iommu: iommu::IoMmu::new_from_dtb(device_tree, &["riscv,pci-iommu"]),
             sata,
         }
     }

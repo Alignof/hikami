@@ -28,9 +28,9 @@ impl IoMmu {
     /// Create self instance from device tree.
     /// * `device_tree`: struct Fdt
     /// * `node_path`: node path in fdt
-    pub fn new_from_dtb(device_tree: &Fdt, node_path: &str) -> Option<Self> {
+    pub fn new_from_dtb(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let pci_reg = device_tree
-            .find_node(node_path)?
+            .find_compatible(compatibles)?
             .raw_reg()
             .unwrap()
             .next()
