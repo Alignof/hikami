@@ -3,7 +3,9 @@
 
 mod register_map;
 
-use super::config_register::{get_bar_size, write_config_register, ConfigSpaceHeaderField};
+use super::config_register::{
+    get_bar_size, read_config_register, write_config_register, ConfigSpaceHeaderField,
+};
 use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::h_extension::csrs::hgatp;
 use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress, MemoryMap};
@@ -52,9 +54,19 @@ impl IoMmu {
             | u32::from(pci_reg.address[3]);
         let ident = Bdf::new(pci_first_reg);
 
-        let iommu_reg_addr = pci_addr_space.base_addr;
         let config_space_header_addr =
             pci_config_space_base_addr.0 | ident.calc_config_space_header_offset();
+        let memory_space_kind = (read_config_register(
+            config_space_header_addr,
+            ConfigSpaceHeaderField::BaseAddressRegister0,
+        ) >> 1)
+            & 0b11;
+        let iommu_reg_addr = match memory_space_kind {
+            0b00 => pci_addr_space.base_addr_32bit_memory_space(),
+            0b10 => pci_addr_space.base_addr_64bit_memory_space(),
+            0b01 | 0b11 => panic!("[pci BAR] reserved field"),
+            _ => unreachable!(),
+        };
 
         let bar_size = get_bar_size(
             config_space_header_addr,
