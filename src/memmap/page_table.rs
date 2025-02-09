@@ -104,6 +104,16 @@ impl PageTableEntry {
         pte_r == 1 || pte_x == 1 || (pte_r == 0 && pte_w == 1 && pte_x == 0)
     }
 
+    /// Is pte invalid?
+    fn is_invalid(self) -> bool {
+        let pte_v = self.0 & 0x1;
+        let pte_r = (self.0 >> 1) & 0x1;
+        let pte_w = (self.0 >> 2) & 0x1;
+
+        // For Zicfilp (TODO: remove it)
+        pte_v == 0 || (pte_r == 0 && pte_w == 1)
+    }
+
     /// Is it has already been created
     fn already_created(self) -> bool {
         self.0 & PteFlag::Valid as u64 == 1
