@@ -158,12 +158,6 @@ pub fn store_guest_page_fault() {
         if let Ok(()) =
             mmc.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
         {
-            //use crate::device::MmioDevice;
-            //if fault_addr.raw() - mmc.paddr().raw() == 96 {
-            //    crate::debugln!("context: {:#x?}", context.get_context());
-            //    crate::debugln!("fault inst addr: {:#x?}", fault_inst_value);
-            //    crate::debugln!("fault inst: {:#x?}", fault_inst);
-            //}
             update_sepc_by_inst_type(is_compressed, &mut context);
             return;
         }
