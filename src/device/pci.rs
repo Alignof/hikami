@@ -167,7 +167,9 @@ impl PciDevices {
 /// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
 #[derive(Debug)]
 pub struct PciAddressSpace {
+    /// Address range of a 32-bit memory space
     bit32_memory_space: Range<HostPhysicalAddress>,
+    /// Address range of a 64-bit memory space
     bit64_memory_space: Range<HostPhysicalAddress>,
 }
 
@@ -198,8 +200,8 @@ impl PciAddressSpace {
                 | u32::from(range[index + 3])
         };
 
-        let mut bit32_memory_space: Range<HostPhysicalAddress> = Default::default();
-        let mut bit64_memory_space: Range<HostPhysicalAddress> = Default::default();
+        let mut bit32_memory_space: Range<HostPhysicalAddress> = Range::default();
+        let mut bit64_memory_space: Range<HostPhysicalAddress> = Range::default();
         for range in ranges.chunks(RANGE_NUM * BYTES_U32) {
             let bus_address = get_u32(range, 0);
 

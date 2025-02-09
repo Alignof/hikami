@@ -20,7 +20,7 @@ use fdt::Fdt;
 #[derive(Debug)]
 pub struct IoMmu {
     /// Bus - device - function
-    ident: Bdf,
+    _ident: Bdf,
     /// IOMMU memory mapped register
     reg_space: Range<HostPhysicalAddress>,
     /// PCI Vender ID
@@ -33,6 +33,7 @@ impl IoMmu {
     /// Create self instance from device tree.
     /// * `device_tree`: struct Fdt
     /// * `node_path`: node path in fdt
+    #[allow(clippy::cast_possible_truncation)]
     pub fn new_from_dtb(
         device_tree: &Fdt,
         compatibles: &[&str],
@@ -91,7 +92,7 @@ impl IoMmu {
 
         // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
         Some(IoMmu {
-            ident,
+            _ident: ident,
             reg_space: Range {
                 start: iommu_reg_addr,
                 end: iommu_reg_addr + bar_size as usize,
