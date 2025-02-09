@@ -231,7 +231,7 @@ pub struct Pci {
     /// Memory map size.
     size: usize,
     /// PCI address space manager
-    _pci_addr_space: PciAddressSpace,
+    pci_addr_space: PciAddressSpace,
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
     /// PCI devices
@@ -272,7 +272,7 @@ impl MmioDevice for Pci {
         Some(Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-            _pci_addr_space: pci_addr_space,
+            pci_addr_space,
             memory_maps,
             pci_devices,
         })
