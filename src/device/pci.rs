@@ -11,6 +11,7 @@ use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use config_register::{read_config_register, ConfigSpaceHeaderField};
 
 use alloc::vec::Vec;
+use core::ops::Range;
 use fdt::Fdt;
 
 /// Bus - Device - Function
@@ -166,10 +167,8 @@ impl PciDevices {
 /// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
 #[derive(Debug)]
 pub struct PciAddressSpace {
-    /// Base address of address space.
-    base_addr: HostPhysicalAddress,
-    /// Memory space size.
-    _size: usize,
+    bit32_memory_space: Range<HostPhysicalAddress>,
+    bit64_memory_space: Range<HostPhysicalAddress>,
 }
 
 impl PciAddressSpace {
@@ -199,24 +198,34 @@ impl PciAddressSpace {
                 | u32::from(range[index + 3])
         };
 
-        let mut base_addr = HostPhysicalAddress(0);
-        let mut size = 0;
+        let mut bit32_memory_space: Range<HostPhysicalAddress> = Default::default();
+        let mut bit64_memory_space: Range<HostPhysicalAddress> = Default::default();
         for range in ranges.chunks(RANGE_NUM * BYTES_U32) {
             let bus_address = get_u32(range, 0);
 
             // ignore I/O space map
             // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
+            let base_addr = HostPhysicalAddress(
+                ((get_u32(range, 3) as usize) << 32) | get_u32(range, 4) as usize,
+            );
+            let size = ((get_u32(range, 5) as usize) << 32) | get_u32(range, 6) as usize;
             if (bus_address >> 24) & 0b11 == 0b10 {
-                base_addr = HostPhysicalAddress(
-                    ((get_u32(range, 3) as usize) << 32) | get_u32(range, 4) as usize,
-                );
-                size = ((get_u32(range, 5) as usize) << 32) | get_u32(range, 6) as usize;
+                bit32_memory_space = Range {
+                    start: HostPhysicalAddress(base_addr.raw()),
+                    end: HostPhysicalAddress(base_addr.raw() + size),
+                }
+            }
+            if (bus_address >> 24) & 0b11 == 0b11 {
+                bit64_memory_space = Range {
+                    start: HostPhysicalAddress(base_addr.raw()),
+                    end: HostPhysicalAddress(base_addr.raw() + size),
+                }
             }
         }
 
         PciAddressSpace {
-            base_addr,
-            _size: size,
+            bit32_memory_space,
+            bit64_memory_space,
         }
     }
 }
