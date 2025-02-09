@@ -10,14 +10,14 @@ use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use raki::{Instruction, OpcodeKind};
-use riscv::register::stval;
+use riscv::register::{sepc, stval};
 
 /// Trap `Illegal instruction` exception.
 #[inline]
 pub fn illegal_instruction() {
     let fault_inst_value = stval::read();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x}")
+        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}", sepc::read());
     });
 
     // emulate the instruction
@@ -48,7 +48,7 @@ pub fn illegal_instruction() {
 pub fn virtual_instruction() {
     let fault_inst_value = stval::read();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x}")
+        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}", sepc::read());
     });
     let mut context = unsafe { HYPERVISOR_DATA.lock() }
         .get()
