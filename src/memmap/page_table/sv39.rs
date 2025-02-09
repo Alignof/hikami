@@ -63,6 +63,13 @@ pub fn trans_addr(
         let page_table =
             unsafe { from_raw_parts_mut(page_table_addr.to_host_physical_ptr(), PAGE_TABLE_LEN) };
         let pte = page_table[gva.vpn(level as usize)];
+        if pte.is_invalid() {
+            return Err((
+                TransAddrError::InvalidEntry,
+                "Address translation failed: invalid pte",
+            ));
+        }
+
         if pte.is_leaf() {
             match level {
                 PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),

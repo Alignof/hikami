@@ -175,6 +175,13 @@ pub fn trans_addr(
             },
         };
         let pte = page_table[gpa.vpn(level as usize)];
+        if pte.is_invalid() {
+            return Err((
+                TransAddrError::InvalidEntry,
+                "Address translation failed: invalid pte",
+            ));
+        }
+
         if pte.is_leaf() {
             match level {
                 PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
