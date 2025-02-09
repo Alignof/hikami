@@ -79,7 +79,7 @@ impl PciDevices {
     #[allow(clippy::cast_possible_truncation)]
     pub fn new(
         device_tree: &Fdt,
-        pci_config_space_base_addr: usize,
+        pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
         memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
@@ -100,7 +100,7 @@ impl PciDevices {
                         function: function.into(),
                     };
                     let config_space_header_addr =
-                        pci_config_space_base_addr | bdf.calc_config_space_header_offset();
+                        pci_config_space_base_addr.raw() | bdf.calc_config_space_header_offset();
 
                     let vendor_id = read_config_register(
                         config_space_header_addr,
@@ -135,7 +135,7 @@ impl PciDevices {
                             bdf,
                             vendor_id.into(),
                             device_id.into(),
-                            HostPhysicalAddress(pci_config_space_base_addr),
+                            pci_config_space_base_addr,
                             pci_addr_space,
                             memory_maps,
                         ));
@@ -150,7 +150,12 @@ impl PciDevices {
         }
 
         PciDevices {
-            iommu: iommu::IoMmu::new_from_dtb(device_tree, &["riscv,pci-iommu"]),
+            iommu: iommu::IoMmu::new_from_dtb(
+                device_tree,
+                &["riscv,pci-iommu"],
+                pci_config_space_base_addr,
+                pci_addr_space,
+            ),
             sata,
         }
     }
@@ -259,7 +264,7 @@ impl MmioDevice for Pci {
             .unwrap();
 
         let mut memory_maps = Vec::new();
-        let base_address = region.starting_address as usize;
+        let base_address = HostPhysicalAddress(region.starting_address as usize);
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices =
             PciDevices::new(device_tree, base_address, &pci_addr_space, &mut memory_maps);
