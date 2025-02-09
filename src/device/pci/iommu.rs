@@ -94,12 +94,12 @@ impl PciDevice for IoMmu {
             pci_config_space_base_addr.0 | self.ident.calc_config_space_header_offset();
         write_config_register(
             config_space_header_addr,
-            ConfigSpaceHeaderField::BaseAddressRegister1,
+            ConfigSpaceHeaderField::BaseAddressRegister0,
             iommu_reg_addr,
         );
         write_config_register(
             config_space_header_addr,
-            ConfigSpaceHeaderField::BaseAddressRegister2,
+            ConfigSpaceHeaderField::BaseAddressRegister1,
             0x0000_0000,
         );
         write_config_register(
