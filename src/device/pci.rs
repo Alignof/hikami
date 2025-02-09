@@ -11,6 +11,7 @@ use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use config_register::{read_config_register, ConfigSpaceHeaderField};
 
 use alloc::vec::Vec;
+use core::ops::Range;
 use fdt::Fdt;
 
 /// Bus - Device - Function
@@ -79,7 +80,7 @@ impl PciDevices {
     #[allow(clippy::cast_possible_truncation)]
     pub fn new(
         device_tree: &Fdt,
-        pci_config_space_base_addr: usize,
+        pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
         memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
@@ -100,7 +101,7 @@ impl PciDevices {
                         function: function.into(),
                     };
                     let config_space_header_addr =
-                        pci_config_space_base_addr | bdf.calc_config_space_header_offset();
+                        pci_config_space_base_addr.raw() | bdf.calc_config_space_header_offset();
 
                     let vendor_id = read_config_register(
                         config_space_header_addr,
@@ -135,7 +136,7 @@ impl PciDevices {
                             bdf,
                             vendor_id.into(),
                             device_id.into(),
-                            HostPhysicalAddress(pci_config_space_base_addr),
+                            pci_config_space_base_addr,
                             pci_addr_space,
                             memory_maps,
                         ));
@@ -150,7 +151,12 @@ impl PciDevices {
         }
 
         PciDevices {
-            iommu: iommu::IoMmu::new_from_dtb(device_tree, "soc/pci/iommu"),
+            iommu: iommu::IoMmu::new_from_dtb(
+                device_tree,
+                &["riscv,pci-iommu"],
+                pci_config_space_base_addr,
+                pci_addr_space,
+            ),
             sata,
         }
     }
@@ -161,10 +167,10 @@ impl PciDevices {
 /// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
 #[derive(Debug)]
 pub struct PciAddressSpace {
-    /// Base address of address space.
-    base_addr: HostPhysicalAddress,
-    /// Memory space size.
-    _size: usize,
+    /// Address range of a 32-bit memory space
+    bit32_memory_space: Range<HostPhysicalAddress>,
+    /// Address range of a 64-bit memory space
+    bit64_memory_space: Range<HostPhysicalAddress>,
 }
 
 impl PciAddressSpace {
@@ -194,25 +200,45 @@ impl PciAddressSpace {
                 | u32::from(range[index + 3])
         };
 
-        let mut base_addr = HostPhysicalAddress(0);
-        let mut size = 0;
+        let mut bit32_memory_space: Range<HostPhysicalAddress> = Range::default();
+        let mut bit64_memory_space: Range<HostPhysicalAddress> = Range::default();
         for range in ranges.chunks(RANGE_NUM * BYTES_U32) {
             let bus_address = get_u32(range, 0);
 
             // ignore I/O space map
             // https://elinux.org/Device_Tree_Usage#PCI_Address_Translation
+            let base_addr = HostPhysicalAddress(
+                ((get_u32(range, 3) as usize) << 32) | get_u32(range, 4) as usize,
+            );
+            let size = ((get_u32(range, 5) as usize) << 32) | get_u32(range, 6) as usize;
             if (bus_address >> 24) & 0b11 == 0b10 {
-                base_addr = HostPhysicalAddress(
-                    ((get_u32(range, 3) as usize) << 32) | get_u32(range, 4) as usize,
-                );
-                size = ((get_u32(range, 5) as usize) << 32) | get_u32(range, 6) as usize;
+                bit32_memory_space = Range {
+                    start: HostPhysicalAddress(base_addr.raw()),
+                    end: HostPhysicalAddress(base_addr.raw() + size),
+                }
+            }
+            if (bus_address >> 24) & 0b11 == 0b11 {
+                bit64_memory_space = Range {
+                    start: HostPhysicalAddress(base_addr.raw()),
+                    end: HostPhysicalAddress(base_addr.raw() + size),
+                }
             }
         }
 
         PciAddressSpace {
-            base_addr,
-            _size: size,
+            bit32_memory_space,
+            bit64_memory_space,
         }
+    }
+
+    /// Return base address of 32-bit memory space.
+    pub fn base_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit32_memory_space.start
+    }
+
+    /// Return base address of 64-bit memory space.
+    pub fn base_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit64_memory_space.start
     }
 }
 
@@ -259,10 +285,26 @@ impl MmioDevice for Pci {
             .unwrap();
 
         let mut memory_maps = Vec::new();
-        let base_address = region.starting_address as usize;
+        let base_address = HostPhysicalAddress(region.starting_address as usize);
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices =
             PciDevices::new(device_tree, base_address, &pci_addr_space, &mut memory_maps);
+
+        // 32 bit memory map
+        memory_maps.push(MemoryMap::new(
+            GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
+                ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
+            pci_addr_space.bit32_memory_space.clone(),
+            &PTE_FLAGS_FOR_DEVICE,
+        ));
+
+        // 64 bit memory map
+        memory_maps.push(MemoryMap::new(
+            GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
+                ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
+            pci_addr_space.bit64_memory_space.clone(),
+            &PTE_FLAGS_FOR_DEVICE,
+        ));
 
         Some(Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
