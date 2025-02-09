@@ -250,7 +250,7 @@ pub struct Pci {
     /// Memory map size.
     size: usize,
     /// PCI address space manager
-    pci_addr_space: PciAddressSpace,
+    _pci_addr_space: PciAddressSpace,
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
     /// PCI devices
@@ -288,10 +288,26 @@ impl MmioDevice for Pci {
         let pci_devices =
             PciDevices::new(device_tree, base_address, &pci_addr_space, &mut memory_maps);
 
+        // 32 bit memory map
+        memory_maps.push(MemoryMap::new(
+            GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
+                ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
+            pci_addr_space.bit32_memory_space.clone(),
+            &PTE_FLAGS_FOR_DEVICE,
+        ));
+
+        // 64 bit memory map
+        memory_maps.push(MemoryMap::new(
+            GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
+                ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
+            pci_addr_space.bit64_memory_space.clone(),
+            &PTE_FLAGS_FOR_DEVICE,
+        ));
+
         Some(Pci {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
-            pci_addr_space,
+            _pci_addr_space: pci_addr_space,
             memory_maps,
             pci_devices,
         })
