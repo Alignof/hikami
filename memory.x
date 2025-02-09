@@ -2,9 +2,9 @@ MEMORY
 {
   FLASH (rx) : ORIGIN = 0x83000000, LENGTH = 2M
   BOOT_RAM (rw) : ORIGIN = 0x83200000, LENGTH = 6M
-  RAM_HEAP (rwx) : ORIGIN = 0x84000000, LENGTH = 384M
-  RAM (rwx) : ORIGIN = 0x9c000000, LENGTH = 32M
-  L2_LIM (rw) : ORIGIN = 0x9e000000, LENGTH = 8M
+  RAM_HEAP (rwx) : ORIGIN = 0x84000000, LENGTH = 128M
+  RAM (rwx) : ORIGIN = 0x8c000000, LENGTH = 32M
+  L2_LIM (rw) : ORIGIN = 0x8e000000, LENGTH = 8M
 }
 
 /*
@@ -23,7 +23,7 @@ REGION_ALIAS("REGION_HEAP", RAM_HEAP);
 REGION_ALIAS("REGION_STACK", L2_LIM);
 
 _stack_start = ORIGIN(L2_LIM) + LENGTH(L2_LIM);
-_hv_heap_size = 0x18000000;
+_hv_heap_size = 0x8000000;
 _b_stack_size = 0x200000;
 
 /* defined section in hikami */
