@@ -2,9 +2,19 @@
 [![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)  
 A lightweight Type-1 hypervisor for RISC-V H-extension, featuring **RISC-V extension emulation**.
 
-This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor. 
+This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor.   
 Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)  
 Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
+
+## Related projects
+- [ozora](https://github.com/Alignof/ozora): Generator for hypervisor(hikami) module and decoder (raki). 
+- [raki](https://github.com/Alignof/raki): RISC-V instruction decoder.
+- [wild-screen-alloc](https://github.com/Alignof/wild-screen-alloc): Slab allocator for bare-metal Rust.
+
+## Documents
+```sh
+$ cargo doc --open
+```
 
 ## Prepare
 ```sh
@@ -39,7 +49,7 @@ The target FPGAs are as the following. (boards supported by vivado-riscv reposit
 - Digilent Arty A7 100T
 ```
 
-### Prepare the FPGA
+### Building the FPGA environment
 ```sh
 # set environment
 $ git clone https://github.com/Alignof/vivado-risc-v -b feature/hikami
@@ -71,15 +81,8 @@ $ sudo picocom -b 115200 /dev/ttyUSB2 # <- select the corresponding serial port
 # password: debian
 ```
 
-## Documents
-```sh
-$ cargo doc --open
-```
-
-## Related projects
-- [ozora](https://github.com/Alignof/ozora): Generat0r for hypervisor(hikami) module and decoder (raki). 
-- [raki](https://github.com/Alignof/raki): RISC-V instruction decoder.
-- [wild-screen-alloc](https://github.com/Alignof/wild-screen-alloc): Slab allocator for bare-metal Rust.
+## Run on Milk-V Megrez
+Coming soon...
 
 ## References
 - [The RISC-V Instruction Set Manual: Volume I Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/unpriv-isa-asciidoc.pdf)
