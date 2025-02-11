@@ -75,6 +75,11 @@ $ sudo picocom -b 115200 /dev/ttyUSB2 # <- select the corresponding serial port
 $ cargo doc --open
 ```
 
+## Related projects
+- [ozora](https://github.com/Alignof/ozora): Generat0r for hypervisor(hikami) module and decoder (raki). 
+- [raki](https://github.com/Alignof/raki): RISC-V instruction decoder.
+- [wild-screen-alloc](https://github.com/Alignof/wild-screen-alloc): Slab allocator for bare-metal Rust.
+
 ## References
 - [The RISC-V Instruction Set Manual: Volume I Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/unpriv-isa-asciidoc.pdf)
 - [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf)
