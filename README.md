@@ -1,9 +1,10 @@
 # hikami
 [![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)  
-Light weight type-1 hypervisor for RISC-V H-extension.
+A lightweight Type-1 hypervisor for RISC-V H-extension, featuring **RISC-V extension emulation**.
 
-This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor. (currently in progress)  
-Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)
+This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor. 
+Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)  
+Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
 
 ## Prepare
 ```sh
