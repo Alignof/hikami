@@ -16,7 +16,8 @@ Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
 $ cargo doc --open
 ```
 
-## Prepare
+## Getting Started
+### Setup
 ```sh
 $ git clone https://github.com/buildroot/buildroot.git
 $ cd buildroot/
@@ -32,13 +33,13 @@ $ ln -s path/to/initrd path/to/hikami/guest_image/initrd
 $ vim guest_image/guest.dts
 ```
 
-## Run on QEMU
+### Run on QEMU
 ```sh
 # The actual command to be executed is written in .cargo/config.toml.
 $ cargo r
 ```
 
-## Run on FPGA
+### Run on FPGA
 The target FPGAs are as the following. (boards supported by vivado-riscv repository)
 ```
 - AMD VC707 
@@ -49,7 +50,7 @@ The target FPGAs are as the following. (boards supported by vivado-riscv reposit
 - Digilent Arty A7 100T
 ```
 
-### Building the FPGA environment
+#### Building the FPGA environment
 ```sh
 # set environment
 $ git clone https://github.com/Alignof/vivado-risc-v -b feature/hikami
@@ -72,7 +73,7 @@ $ make CONFIG=rocket64b2 BOARD=nexys-video flash
 
 See also for an environment information: [https://github.com/Alignof/vivado-risc-v/blob/master/README.md](https://github.com/Alignof/vivado-risc-v/blob/master/README.md)
 
-### Run
+#### Boot
 ```sh
 # Connect a micro-B cable to `UART`
 $ sudo picocom -b 115200 /dev/ttyUSB2 # <- select the corresponding serial port 
@@ -81,7 +82,7 @@ $ sudo picocom -b 115200 /dev/ttyUSB2 # <- select the corresponding serial port
 # password: debian
 ```
 
-## Run on Milk-V Megrez
+### Run on Milk-V Megrez
 Coming soon...
 
 ## References
