@@ -1,6 +1,10 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
+// TODO: remove nightly when `naked_functions` become stable.
+#![feature(naked_functions)]
+// TODO: FIX AND REMOVE IT!!!
+#![allow(static_mut_refs)]
 
 extern crate alloc;
 mod device;
@@ -8,28 +12,25 @@ mod emulate_extension;
 mod guest;
 mod h_extension;
 mod hypervisor_init;
-mod machine_init;
+mod log;
 mod memmap;
-mod sbi;
 mod trap;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::arch::asm;
+use core::arch::naked_asm;
 use core::cell::OnceCell;
 use core::panic::PanicInfo;
 
 use fdt::Fdt;
 use linked_list_allocator::LockedHeap;
-use riscv_rt::entry;
 use spin::Mutex;
 
 use crate::device::Devices;
 use crate::guest::Guest;
-use crate::machine_init::mstart;
+use crate::hypervisor_init::hstart;
 use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
 use crate::memmap::HostPhysicalAddress;
-use crate::sbi::Sbi;
 
 #[global_allocator]
 /// Global allocator.
@@ -39,17 +40,20 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 /// Singleton for this hypervisor.
 static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
 
-/// Singleton for SBI handler.
-static SBI: Mutex<OnceCell<Sbi>> = Mutex::new(OnceCell::new());
-
-/// Device tree blob that is passed to hypervisor
-#[cfg(feature = "embedded_host_dtb")]
-#[link_section = ".host_dtb"]
-static HOST_DTB: [u8; include_bytes!("../host.dtb").len()] = *include_bytes!("../host.dtb");
+/// Guest kernel image
+#[link_section = ".guest_kernel"]
+static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
+    *include_bytes!("../guest_image/vmlinux");
 
 /// Device tree blob that is passed to guest
 #[link_section = ".guest_dtb"]
-static GUEST_DTB: [u8; include_bytes!("../guest.dtb").len()] = *include_bytes!("../guest.dtb");
+static GUEST_DTB: [u8; include_bytes!("../guest_image/guest.dtb").len()] =
+    *include_bytes!("../guest_image/guest.dtb");
+
+/// Guest intird
+#[link_section = ".guest_initrd"]
+static GUEST_INITRD: [u8; include_bytes!("../guest_image/initrd").len()] =
+    *include_bytes!("../guest_image/initrd");
 
 extern "C" {
     /// stack top (defined in `memory.x`)
@@ -58,8 +62,12 @@ extern "C" {
     static mut _start_heap: u8;
     /// heap size (defined in `memory.x`)
     static _hv_heap_size: u8;
-    /// machine stack top (defined in `memory.x`)
-    static _top_m_stack: u8;
+    /// boot stack top (defined in `memory.x`)
+    static _top_b_stack: u8;
+    /// start of bss and sbss section.
+    static _start_bss: u8;
+    /// end of bss and sbss section.
+    static _end_bss: u8;
 }
 
 /// Panic handler
@@ -147,42 +155,36 @@ impl HypervisorData {
     }
 }
 
-/// Entry function. `__risc_v_rt__main` is alias of `__init` function in machine_init.rs.
-/// * set stack pointer
-/// * init mtvec and stvec
-/// * jump to mstart
-#[entry]
-fn _start(hart_id: usize, dtb_addr: usize) -> ! {
-    unsafe {
-        // Initialize global allocator
-        ALLOCATOR.lock().init(
-            core::ptr::addr_of_mut!(_start_heap),
-            core::ptr::addr_of!(_hv_heap_size) as usize,
-        );
-    }
-
+/// Entry function of the hypervisor.
+///
+/// - set stack pointer
+/// - init stvec
+/// - jump to hstart
+///
+/// TODO: Remove the `.attribute arch, "rv64gc"` directive when the LLVM problem is fixed.
+#[link_section = ".text.entry"]
+#[no_mangle]
+#[naked]
+extern "C" fn _start() -> ! {
     unsafe {
         // set stack pointer
-        asm!(
-            "
-            mv a0, {hart_id}
-            mv a1, {dtb_addr}
-            mv t1, {stack_size_per_hart}
-            mul t0, a0, t1
-            mv sp, {stack_base}
-            add sp, sp, t0
-            csrw mtvec, {DRAM_BASE}
-            csrw stvec, {DRAM_BASE}
-            j {mstart}
-            ",
-            hart_id = in(reg) hart_id,
-            dtb_addr = in(reg) dtb_addr,
-            stack_size_per_hart = in(reg) STACK_SIZE_PER_HART,
-            stack_base = in(reg) core::ptr::addr_of!(_top_m_stack) as usize,
-            DRAM_BASE = in(reg) DRAM_BASE,
-            mstart = sym mstart,
-        );
-    }
+        naked_asm!(
+            r#"
+            .attribute arch, "rv64gc"
+            li t0, {stack_size_per_hart}
+            mul t1, a0, t0
+            la sp, {stack_top}
+            sub sp, sp, t1
 
-    unreachable!();
+            li t2, {DRAM_BASE}
+            csrw stvec, t2
+
+            call {hstart}
+            "#,
+            stack_top = sym _top_b_stack,
+            stack_size_per_hart = const STACK_SIZE_PER_HART,
+            DRAM_BASE = const DRAM_BASE,
+            hstart = sym hstart,
+        )
+    }
 }

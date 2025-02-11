@@ -55,16 +55,16 @@ impl VirtIo {
 }
 
 impl MmioDevice for VirtIo {
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
-        let node = device_tree.find_all_nodes(node_path).next().unwrap();
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
+        let node = device_tree.find_compatible(compatibles)?;
         let region = node.reg().unwrap().next().unwrap();
         let irq = node.property("interrupts").unwrap().value[0];
 
-        VirtIo {
+        Some(VirtIo {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             irq,
-        }
+        })
     }
 
     fn size(&self) -> usize {

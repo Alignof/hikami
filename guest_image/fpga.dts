@@ -1,0 +1,146 @@
+/dts-v1/;
+/ {
+	#address-cells = <0x00000002>;
+	#size-cells = <0x00000002>;
+	compatible = "freechips,rocketchip-vivado-dev";
+	model = "freechips,rocketchip-vivado";
+	cpus {
+		#address-cells = <0x00000001>;
+		#size-cells = <0x00000000>;
+		timebase-frequency = <0x0007a120>;
+		cpu@0 {
+			clock-frequency = <0x02faf080>;
+			compatible = "sifive,rocket0", "riscv";
+			d-cache-block-size = <0x00000040>;
+			d-cache-sets = <0x00000040>;
+			d-cache-size = <0x00004000>;
+			d-tlb-sets = <0x00000001>;
+			d-tlb-size = <0x00000020>;
+			device_type = "cpu";
+			hardware-exec-breakpoint-count = <0x00000008>;
+			i-cache-block-size = <0x00000040>;
+			i-cache-sets = <0x00000040>;
+			i-cache-size = <0x00004000>;
+			i-tlb-sets = <0x00000001>;
+			i-tlb-size = <0x00000020>;
+			mmu-type = "riscv,sv39,sv39x4";
+			next-level-cache = <0x00000001>;
+			reg = <0x00000000>;
+			riscv,isa = "rv64imafdchzicsr_zifencei_zihpm_xrocket";
+			riscv,pmpgranularity = <0x00001000>;
+			riscv,pmpregions = <0x00000008>;
+			status = "okay";
+			timebase-frequency = <0x0007a120>;
+			tlb-split;
+			interrupt-controller {
+				#interrupt-cells = <0x00000001>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				phandle = <0x00000002>;
+			};
+		};
+	};
+	memory@90000000 {
+		device_type = "memory";
+		reg = <0x00000000 0x90000000 0x00000000 0x10000000>;
+		phandle = <0x00000001>;
+	};
+	soc {
+		#address-cells = <0x00000002>;
+		#size-cells = <0x00000002>;
+		compatible = "freechips,rocketchip-vivado-soc", "simple-bus";
+		ranges;
+		clint@2000000 {
+			compatible = "riscv,clint0";
+			interrupts-extended = <0x00000002 0x00000003 0x00000002 0x00000007>;
+			reg = <0x00000000 0x02000000 0x00000000 0x00010000>;
+			reg-names = "control";
+		};
+		debug-controller@0 {
+			compatible = "sifive,debug-013", "riscv,debug-013";
+			debug-attach = "dmi";
+			reg = <0x00000000 0x00000000 0x00000000 0x00001000>;
+			reg-names = "control";
+		};
+		error-device@3000 {
+			compatible = "sifive,error0";
+			reg = <0x00000000 0x00003000 0x00000000 0x00001000>;
+		};
+		external-interrupts {
+			interrupt-parent = <0x00000003>;
+			interrupts = <0x00000001 0x00000002 0x00000003 0x00000004 0x00000005 0x00000006 0x00000007 0x00000008>;
+		};
+		interrupt-controller@c000000 {
+			#interrupt-cells = <0x00000001>;
+			compatible = "riscv,plic0";
+			interrupt-controller;
+			interrupts-extended = <0x00000002 0x0000000b 0x00000002 0x00000009>;
+			reg = <0x00000000 0x0c000000 0x00000000 0x04000000>;
+			reg-names = "control";
+			riscv,max-priority = <0x00000007>;
+			riscv,ndev = <0x00000008>;
+			phandle = <0x00000003>;
+		};
+		mmio-port-axi4@60000000 {
+			#address-cells = <0x00000001>;
+			#size-cells = <0x00000001>;
+			compatible = "simple-bus";
+			ranges = <0x60000000 0x00000000 0x60000000 0x20000000>;
+		};
+		rom@10000 {
+			compatible = "sifive,rom0";
+			reg = <0x00000000 0x00010000 0x00000000 0x00010000>;
+			reg-names = "mem";
+		};
+		subsystem_pbus_clock {
+			#clock-cells = <0x00000000>;
+			clock-frequency = <0x02faf080>;
+			clock-output-names = "subsystem_pbus_clock";
+			compatible = "fixed-clock";
+		};
+	};
+	aliases {
+		serial0 = "/io-bus/uart@60010000";
+	};
+	chosen {
+ 		bootargs = "ro root=/dev/mmcblk0p2 earlycon initramfs.runsize=24M locale.LANG=en_US.UTF-8";
+ 		linux,initrd-end = <0x9ffffe22>;
+ 		linux,initrd-start = <0x9fae2000>;
+		stdout-path = "serial0";
+	};
+	io-bus {
+		#address-cells = <0x00000001>;
+		#size-cells = <0x00000001>;
+		compatible = "rocketchip-vivado-io", "simple-bus";
+		ranges;
+		uart@60010000 {
+			compatible = "riscv,axi-uart-1.0";
+			reg = <0x60010000 0x00010000>;
+			interrupt-parent = <0x00000003>;
+			interrupts = <0x00000001>;
+			port-number = <0x00000000>;
+		};
+		mmc0@60000000 {
+			compatible = "riscv,axi-sd-card-1.0";
+			clock = <0x05f5e100>;
+			reg = <0x60000000 0x00010000>;
+			bus-width = <0x00000004>;
+			fifo-depth = <0x00000100>;
+			interrupt-parent = <0x00000003>;
+			interrupts = <0x00000002>;
+			max-frequency = <0x00bebc20>;
+			cap-sd-highspeed;
+			cap-mmc-highspeed;
+			cap-mmc-hw-reset;
+			no-sdio;
+		};
+		//eth0@60020000 {
+		//	compatible = "riscv,axi-ethernet-1.0";
+		//	reg = <0x60020000 0x00010000>;
+		//	phy-mode = "rgmii";
+		//	local-mac-address = [00 0a 35 00 00 01];
+		//	interrupt-parent = <0x00000003>;
+		//	interrupts = <0x00000003>;
+		//};
+	};
+};

@@ -89,11 +89,9 @@
 	};
 
 	chosen {
-		bootargs = "root=/dev/vda rw console=ttyS0";
-		linux,initrd-end = <0x00 0x9812b230>;
-		linux,initrd-start = <0x00 0x88000000>;
+		bootargs = "root=/dev/sda locale.LANG=en_US.UTF-8";
 		stdout-path = "/soc/serial@10000000";
-		rng-seed = <0x2b05a034 0xe739bfb7 0x512d2025 0xf0ec97e8 0x69399e86 0x1f2de5a9 0xcacea4aa 0xafb54655>;
+		rng-seed = <0x9775b34d 0xe39158f2 0x3e9d10b1 0x73692dfd 0x13c15814 0xa4ad203f 0x8b0d62f7 0x6bf8a79d>;
 	};
 
 	soc {

@@ -5,7 +5,9 @@ use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::h_extension::csrs::{hvip, VsInterruptKind};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+
 use fdt::Fdt;
+use riscv::register::sie;
 
 /// Max number of PLIC context.
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
@@ -60,26 +62,42 @@ impl Plic {
     }
 
     /// Emulate reading plic context register
-    fn context_read(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
+    fn context_load(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
-        if context_id > MAX_CONTEXT_NUM {
-            Err(DeviceEmulateError::InvalidContextId)
-        } else {
-            Ok(self.claim_complete[context_id])
-        }
-    }
-
-    /// Emulate reading plic register.
-    pub fn emulate_read(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
-        match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_read(offset),
+        let offset_per_context = offset % CONTEXT_REGS_SIZE;
+        match offset_per_context {
+            // threshold
+            0 => unreachable!("[may be unreachable] plic threshold read"),
+            // claim/complete
+            4 => {
+                if context_id > MAX_CONTEXT_NUM {
+                    Err(DeviceEmulateError::InvalidContextId)
+                } else {
+                    Ok(self.claim_complete[context_id])
+                }
+            }
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
 
-    /// Emulate writing plic context register.
-    fn context_write(
+    /// Emulate reading plic register.
+    pub fn emulate_loading(
+        &self,
+        dst_addr: HostPhysicalAddress,
+    ) -> Result<u32, DeviceEmulateError> {
+        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
+        let offset = dst_addr.raw() - self.base_addr.raw();
+        match offset {
+            CONTEXT_BASE..=CONTEXT_END => self.context_load(offset),
+            _ => Err(DeviceEmulateError::InvalidAddress),
+        }
+    }
+
+    /// Emulate storing plic context register.
+    fn context_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
@@ -101,10 +119,14 @@ impl Plic {
             4 => {
                 let dst_ptr = dst_addr.raw() as *mut u32;
                 unsafe {
-                    dst_ptr.write_volatile(value);
+                    if self.claim_complete[context_id] == value {
+                        self.claim_complete[context_id] = 0;
+                        dst_ptr.write_volatile(value);
+
+                        hvip::clear(VsInterruptKind::External);
+                        sie::set_sext();
+                    }
                 }
-                self.claim_complete[context_id] = 0;
-                hvip::clear(VsInterruptKind::External);
 
                 Ok(())
             }
@@ -113,15 +135,19 @@ impl Plic {
         }
     }
 
-    /// Emulate writing plic register.
-    pub fn emulate_write(
+    /// Emulate storing plic register.
+    pub fn emulate_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
+        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
         let offset = dst_addr.raw() - self.base_addr.raw();
         match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_write(dst_addr, value),
+            CONTEXT_BASE..=CONTEXT_END => self.context_storing(dst_addr, value),
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
@@ -129,20 +155,19 @@ impl Plic {
 
 impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
-    fn new(device_tree: &Fdt, node_path: &str) -> Self {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let region = device_tree
-            .find_node(node_path)
-            .unwrap()
+            .find_compatible(compatibles)?
             .reg()
             .unwrap()
             .next()
             .unwrap();
 
-        Plic {
+        Some(Plic {
             base_addr: HostPhysicalAddress(region.starting_address as usize),
             size: region.size.unwrap(),
             claim_complete: [0u32; MAX_CONTEXT_NUM],
-        }
+        })
     }
 
     fn size(&self) -> usize {

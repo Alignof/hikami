@@ -3,18 +3,30 @@ runner = """
 qemu-system-riscv64
 -cpu rv64,smstateen=true
 -machine virt
--bios none
+-bios default
 -nographic
 -m 2G
--initrd vmlinux_debug
 -drive file=rootfs.ext2,format=raw,id=hd0,if=none
--device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on
--netdev user,id=n1
--device virtio-net-pci,netdev=n1,iommu_platform=true,disable-legacy=on
--append root=/dev/vda,rw,console=ttyS0
--device riscv-iommu-pci
+-device ich9-ahci,id=ahci -device ide-hd,drive=hd0,bus=ahci.0 
 -kernel
 """
+
+# With IOMMU
+# runner = """
+# qemu-system-riscv64
+# -cpu rv64,smstateen=true
+# -machine virt
+# -bios default
+# -nographic
+# -m 2G
+# -drive file=rootfs.ext2,format=raw,id=hd0,if=none
+# -device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on
+# -netdev user,id=n1
+# -device virtio-net-pci,netdev=n1,iommu_platform=true,disable-legacy=on
+# -append root=/dev/vda,rw,console=ttyS0
+# -device riscv-iommu-pci
+# -kernel
+# """
 
 # for debug
 # runner = "../../qemu/build/qemu-system-riscv64 -S -gdb tcp::10000 -d int,in_asm,cpu_reset,mmu,page,guest_errors -machine virt -bios none -nographic -m 2G -initrd vmlinux_debug -drive file=rootfs.img,format=raw,id=hd0,if=none -device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on -append root=/dev/vda,rw,console=ttyS0 -device riscv-iommu-pci -kernel"
@@ -22,7 +34,6 @@ qemu-system-riscv64
 
 rustflags = [
   "-C", "link-arg=-Tmemory.x",
-  "-C", "link-arg=-Tlink.x",
   "-C", "target-feature=+h",
 ]
 

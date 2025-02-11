@@ -275,6 +275,30 @@ pub mod hcounteren {
     set_csr_as!(0x606);
 }
 
+pub mod hgeie {
+    //! Hypervisor guest external interrupt-enable register.
+    #![allow(dead_code)]
+
+    /// hcounteren register number.
+    const HGEIE: usize = 0x607;
+    /// Hypervisor counter enable.
+    pub struct Hgeie(usize);
+
+    /// Get the `GEILEN`.
+    pub fn get_geilen() -> usize {
+        let original_value = read();
+        write(0xffff_ffff);
+        let set_value = read();
+        write(original_value.0);
+
+        (set_value.0 >> 1).trailing_ones() as usize
+    }
+
+    write_csr_as!(0x607);
+    read_csr_as!(Hgeie, 0x607);
+    set_csr_as!(0x607);
+}
+
 pub mod henvcfg {
     //! Hypervisor environment configuration register.
     #![allow(dead_code)]
@@ -440,7 +464,7 @@ pub mod hgatp {
 
     /// Set Hgatp fields.
     pub fn set(mode: Mode, vmid: usize, ppn: usize) {
-        write((0xF & (mode as usize)) << 60 | (0x3FFF & vmid) << 44 | 0x0FFF_FFFF_FFFF & ppn);
+        write(((0xF & (mode as usize)) << 60) | ((0x3FFF & vmid) << 44) | 0x0FFF_FFFF_FFFF & ppn);
     }
 
     impl_bits!(Hgatp);

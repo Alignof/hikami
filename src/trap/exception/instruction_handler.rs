@@ -3,6 +3,7 @@
 //! - Illegal Instruction
 //! - Virtual Instruction
 
+use super::hs_forward_exception;
 use crate::emulate_extension::zicfiss::ZICFISS_DATA;
 use crate::emulate_extension::EmulateExtension;
 use crate::HYPERVISOR_DATA;
@@ -15,8 +16,9 @@ use riscv::register::{sepc, stval};
 #[inline]
 pub fn illegal_instruction() {
     let fault_inst_value = stval::read();
-    let fault_inst =
-        Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed");
+    let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
+        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}", sepc::read());
+    });
 
     // emulate the instruction
     match fault_inst.opc {
@@ -34,11 +36,7 @@ pub fn illegal_instruction() {
                 unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
             }
         },
-        _ => unimplemented!(
-            "unsupported illegal instruction: {:#?}, at {:#x}",
-            fault_inst,
-            sepc::read()
-        ),
+        _ => hs_forward_exception(),
     }
 
     let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
@@ -49,8 +47,9 @@ pub fn illegal_instruction() {
 #[inline]
 pub fn virtual_instruction() {
     let fault_inst_value = stval::read();
-    let fault_inst =
-        Instruction::try_from(fault_inst_value).expect("decoding load fault instruction failed");
+    let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
+        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}", sepc::read());
+    });
     let mut context = unsafe { HYPERVISOR_DATA.lock() }
         .get()
         .unwrap()

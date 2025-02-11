@@ -2,8 +2,7 @@
 
 use super::hstrap_exit;
 use crate::device::plic::ContextId;
-use crate::device::MmioDevice;
-use crate::h_extension::csrs::{hvip, vsip, VsInterruptKind};
+use crate::h_extension::csrs::{hvip, VsInterruptKind};
 use crate::HYPERVISOR_DATA;
 
 use riscv::register::scause::Interrupt;
@@ -14,14 +13,8 @@ use riscv::register::sie;
 pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     match interrupt_cause {
         Interrupt::SupervisorSoft => {
-            let hypervisor_data = HYPERVISOR_DATA.lock();
-            // TODO handle with device::Clint
-            let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
-            let clint_addr = hypervisor_data.get().unwrap().devices.clint.paddr();
-
-            vsip::set_ssoft();
-            let interrupt_addr = (clint_addr.raw() + hart_id * 4) as *mut u64;
-            interrupt_addr.write_volatile(0);
+            hvip::set(VsInterruptKind::Software);
+            sie::clear_ssoft();
         }
         Interrupt::SupervisorTimer => {
             hvip::set(VsInterruptKind::Timer);
@@ -41,6 +34,7 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
                 .update_claim_complete(&context_id);
 
             hvip::set(VsInterruptKind::External);
+            sie::clear_sext();
         }
         Interrupt::Unknown => panic!("unknown interrupt type"),
     }

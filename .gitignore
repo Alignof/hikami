@@ -19,6 +19,7 @@ Cargo.lock
 
 # Added by me
 .gdb_history
-vmlinux
-vmlinux_debug
+*.dtb
+vmlinux*
 rootfs.*
+initrd

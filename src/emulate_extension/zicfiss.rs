@@ -47,7 +47,7 @@ impl Zicfiss {
     #[allow(clippy::similar_names, clippy::cast_possible_truncation)]
     fn ssp_hp_ptr(&self) -> *mut usize {
         if let Ok(gpa) = vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize)) {
-            let hpa = g_stage_trans_addr(gpa);
+            let hpa = g_stage_trans_addr(gpa).unwrap();
             hpa.0 as *mut usize
         } else {
             unsafe {
@@ -84,7 +84,7 @@ impl Zicfiss {
     ///
     /// Chack corresponding `SSE` bit of xenvcfg.
     fn is_ss_enable(&self, sstatus: usize) -> bool {
-        let spp = sstatus >> 8 & 0x1;
+        let spp = (sstatus >> 8) & 0x1;
         if spp == 0 {
             self.senv_sse
         } else {
@@ -219,12 +219,12 @@ impl EmulateExtension for Zicfiss {
                     | ZicsrOpcode::CSRRWI
                     | ZicsrOpcode::CSRRSI,
                 ) => {
-                    if write_to_csr_value >> 3 & 0x1 == 1 {
+                    if (write_to_csr_value >> 3) & 0x1 == 1 {
                         self.senv_sse = true;
                     }
                 }
                 OpcodeKind::Zicsr(ZicsrOpcode::CSRRC | ZicsrOpcode::CSRRCI) => {
-                    if write_to_csr_value >> 3 & 0x1 == 1 {
+                    if (write_to_csr_value >> 3) & 0x1 == 1 {
                         self.senv_sse = false;
                     }
                 }

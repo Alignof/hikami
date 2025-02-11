@@ -1,84 +1,89 @@
 # hikami
 [![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)  
-Light weight type-1 hypervisor for RISC-V H-extension.
+A lightweight Type-1 hypervisor for RISC-V H-extension, featuring **RISC-V extension emulation**.
 
-This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor. (currently in progress)  
-Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)
+This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor.   
+Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)  
+Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
 
-## Run Linux
-### Build QEMU
-We need to build manually the QEMU to support IOMMU.  
-```sh
-$ git clone https://github.com/qemu/qemu.git -b staging
-$ cd qemu/
-# https://patchwork.ozlabs.org/project/qemu-devel/list/?series=417654
-$ wget https://patchwork.ozlabs.org/series/417654/mbox/ --output-document riscv-QEMU-RISC-V-IOMMU-Support.patch
-$ git apply riscv-QEMU-RISC-V-IOMMU-Support.patch
-$ ./configure --target-list=riscv64-softmmu
-$ make -j $(nproc)
-# $ sudo make install
-```
-Ver. 9.2 or later should officially support IOMMU, so it should no longer be necessary to apply patches.
-
-### Build Linux
-```sh
-$ git clone https://github.com/torvalds/linux -b v6.9
-
-$ cd /path/to/this/repository
-$ cp ./guest_image/.config /path/to/linux
-
-$ cd /path/to/linux
-$ make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- defconfig
-$ make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- -j$(nproc)
-$ mv vmlinux /path/to/this/repository
-```
-See also for custom guest image: `guest_image/README.md`.
-
-### Create rootfs
-```sh
-$ git clone https://gitee.com/mirrors/busyboxsource.git
-$ cd busyboxsource
-
-# Select: Settings -> Build Options -> Build static binary
-$ CROSS_COMPILE=riscv64-unknown-linux-gnu- make menuconfig
-
-$ CROSS_COMPILE=riscv64-unknown-linux-gnu- make -j8
-$ CROSS_COMPILE=riscv64-unknown-linux-gnu- make install
-
-$ cd ../
-$ qemu-img create rootfs.img  1g
-$ mkfs.ext4 rootfs.img
-
-$ mkdir rootfs
-$ mount -o loop rootfs.img rootfs
-$ cd rootfs
-$ cp -r ../busyboxsource/_install/* .
-$ mkdir proc dev tec etc/init.d
-
-$ cd etc/init.d/
-$ cat << EOS > rcS
-#!/bin/sh
-mount -t proc none /proc
-mount -t sysfs none /sys
-/sbin/mdev -s
-EOS
-
-$ chmod +x rcS
-
-$ umount rootfs
-$ mv rootfs.img /path/to/this/repository
-```
-
-### Run
-```sh
-# The actual command to be executed is written in .cargo/config.toml.
-$ cargo r
-```
+## Related projects
+- [ozora](https://github.com/Alignof/ozora): Generator for hypervisor(hikami) module and decoder (raki). 
+- [raki](https://github.com/Alignof/raki): RISC-V instruction decoder.
+- [wild-screen-alloc](https://github.com/Alignof/wild-screen-alloc): Slab allocator for bare-metal Rust.
 
 ## Documents
 ```sh
 $ cargo doc --open
 ```
+
+## Getting Started
+### Setup
+```sh
+$ git clone https://github.com/buildroot/buildroot.git
+$ cd buildroot/
+$ make qemu_riscv64_virt_defconfig
+$ make -j$(nproc)
+$ ln -s output/images/rootfs.ext2 path/to/hikami/rootfs.ext2
+$ ln -s output/build/linux-x.x.x/vmlinux path/to/hikami/guest_image/vmlinux
+# optional
+$ ln -s path/to/initrd path/to/hikami/guest_image/initrd
+
+# copy host dts and edit to change user memory config
+# QEMU's dtb can be obtained by adding the option `-machine dumpdtb=qemu.dtb`.
+$ vim guest_image/guest.dts
+```
+
+### Run on QEMU
+```sh
+# The actual command to be executed is written in .cargo/config.toml.
+$ cargo r
+```
+
+### Run on FPGA
+The target FPGAs are as the following. (boards supported by vivado-riscv repository)
+```
+- AMD VC707 
+- AMD KC705 
+- Digilent Genesys 2 
+- Digilent Nexys Video 
+- Digilent Nexys A7 100T 
+- Digilent Arty A7 100T
+```
+
+#### Building the FPGA environment
+```sh
+# set environment
+$ git clone https://github.com/Alignof/vivado-risc-v -b feature/hikami
+$ cd vivado-risc-v
+$ make update-submodules
+
+# Build FPGA bitstream
+# Connect a micro-B cable to `PROG`
+$ source /opt/Xilinx/Vivado/2024.2/settings64.sh
+$ make CONFIG=rocket64b1 BOARD=nexys-video bitstream
+
+# Prepare the SD card
+$ ./mk-sd-card
+
+# Program the FPGA flash memory
+$ Xilinx/Vivado/2023.2/bin/hw_server
+$ env HW_SERVER_URL=tcp:localhost:3121 xsdb -quiet board/jtag-freq.tcl
+$ make CONFIG=rocket64b2 BOARD=nexys-video flash
+```
+
+See also for an environment information: [https://github.com/Alignof/vivado-risc-v/blob/master/README.md](https://github.com/Alignof/vivado-risc-v/blob/master/README.md)
+
+#### Boot
+```sh
+# Connect a micro-B cable to `UART`
+$ sudo picocom -b 115200 /dev/ttyUSB2 # <- select the corresponding serial port 
+
+# login: debian
+# password: debian
+```
+
+### Run on Milk-V Megrez
+Coming soon...
 
 ## References
 - [The RISC-V Instruction Set Manual: Volume I Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/unpriv-isa-asciidoc.pdf)

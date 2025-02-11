@@ -1,44 +1,28 @@
-# Build guest image
+# Prepare guest image
 
-## device tree
+## Device tree
+Place `guest.dts` to be given to the guest.  
+It should require a change in memory layout etc.  
+Build is done automatically by cargo build.  
+
+## Initrd
+Place the symbolic link to the initrd.
+It is automatically embedded in the binary.  
+Or copy directly to `.guest_initrd` section with a bootloader such as u-boot.  
+
+## Linux
+Place the symbolic link to the vmlinux.
+It is automatically embedded in the binary.  
+
+## Example
 ```sh
-$ ./build_dtb.sh create
-$ vim guest.dts # edit dts
-$ ./build_dtb.sh build
-# guest.dtb is created to repository root.
-```
-
-## Linux (with debug info)
-```sh
-$ git clone https://github.com/torvalds/linux -b v6.9
-
-$ cd /path/to/this/repository
-$ cp ./guest_image/.config /path/to/linux
-
-$ cd /path/to/linux
-$ make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- defconfig
-$ make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- menuconfig
-$ DEBUG_KERNEL [=y], DEBUG_INFO [=y], EFI [=n], RELOCATABLE [=n]
-$ make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- -j$(nproc)
-$ mv vmlinux /path/to/linux/vmlinx_debug
-```
-
-## Linux (For Zicfiss)
-See [https://lwn.net/Articles/992578/](https://lwn.net/Articles/992578/).
-```sh
-# Toolchain
-$ git clone git@github.com:sifive/riscv-gnu-toolchain.git -b cfi-dev
-$ riscv-gnu-toolchain/configure --prefix=<path-to-where-to-build> --with-arch=rv64gc_zicfilp_zicfiss --enable-linux --disable-gdb  --with-extra-multilib-test="rv64gc_zicfilp_zicfiss-lp64d:-static"
-$ make -j$(nproc)
-
-# Opensbi
-$ git clone git@github.com:deepak0414/opensbi.git -b v6_cfi_spec_split_opensbi
-$ make CROSS_COMPILE=<your riscv toolchain> -j$(nproc) PLATFORM=generic
-
-# Linux
-$ git clone https://github.com/torvalds/linux -b v6.12-rc1
-$ wget https://patchwork.kernel.org/series/896898/mbox/ --output-document riscv-control-flow-integrity-for-usermode.patch
-$ git am riscv-control-flow-integrity-for-usermode.patch 
-$ make ARCH=riscv CROSS_COMPILE=<path-to-cfi-riscv-gnu-toolchain>/build/bin/riscv64-unknown-linux-gnu- -j$(nproc) defconfig
-$ make ARCH=riscv CROSS_COMPILE=<path-to-cfi-riscv-gnu-toolchain>/build/bin/riscv64-unknown-linux-gnu- -j$(nproc)
+$ cd guest_image/
+$ ls -l 
+total 28
+-rw-r--r-- 1 takana takana 4262 Feb  4 17:01 fpga.dts
+-rw-r--r-- 1 takana takana 4865 Feb  4 17:12 guest.dtb
+-rw-r--r-- 1 takana takana 5834 Feb  4 17:01 guest.dts
+lrwxrwxrwx 1 takana takana   41 Feb  4 17:09 initrd -> ../../vivado-risc-v/debian-riscv64/initrd
+-rw-r--r-- 1 takana takana  453 Feb  4 17:27 README.md
+lrwxrwxrwx 1 takana takana   40 Feb  4 17:09 vmlinux -> ../../vivado-risc-v/linux-stable/vmlinux
 ```

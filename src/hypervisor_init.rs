@@ -1,20 +1,20 @@
 //! HS-mode level initialization.
 
-use crate::device::MmioDevice;
 use crate::emulate_extension;
 use crate::guest::context::ContextData;
 use crate::guest::Guest;
 use crate::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstateen0, hstatus,
-    hvip, vsatp, VsInterruptKind,
+    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus, hvip,
+    vsatp, VsInterruptKind,
 };
 use crate::h_extension::instruction::hfence_gvma_all;
 use crate::memmap::{
-    constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
-    HostPhysicalAddress,
+    page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress, HostPhysicalAddress,
 };
-use crate::trap::hypervisor_supervisor::hstrap_vector;
-use crate::{HypervisorData, GUEST_DTB, HYPERVISOR_DATA};
+use crate::trap::hstrap_vector;
+use crate::ALLOCATOR;
+use crate::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
+use crate::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
 
@@ -24,11 +24,39 @@ use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 /// Entry point to HS-mode.
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
+    crate::println!("welcome to hikami");
+    crate::println!(
+        "hart_id: {}, dtb address: {:#x}, initrd address: {:#x}",
+        hart_id,
+        dtb_addr,
+        GUEST_INITRD.as_ptr() as usize
+    );
+
     // hart_id must be zero.
     assert_eq!(hart_id, 0);
 
     // dtb_addr test and hint for register usage.
     assert_ne!(dtb_addr, 0);
+
+    // clear bss section
+    unsafe {
+        use crate::{_end_bss, _start_bss};
+        use core::ptr::addr_of;
+
+        core::slice::from_raw_parts_mut(
+            addr_of!(_start_bss).cast_mut(),
+            addr_of!(_end_bss) as usize - addr_of!(_start_bss) as usize,
+        )
+        .fill(0);
+    }
+
+    unsafe {
+        // Initialize global allocator
+        ALLOCATOR.lock().init(
+            core::ptr::addr_of_mut!(_start_heap),
+            core::ptr::addr_of!(_hv_heap_size) as usize,
+        );
+    }
 
     // clear all hs-mode to vs-mode interrupts.
     hvip::clear(VsInterruptKind::External);
@@ -57,11 +85,12 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     henvcfg::set_cbcfe();
 
     // disable `ENVCFG` state
-    hstateen0::all_state_set();
-    hstateen0::clear_envcfg();
+    //hstateen0::all_state_set();
+    //hstateen0::clear_envcfg();
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
+
     // enable supervisor counter
     unsafe {
         asm!("csrw scounteren, {bits}", bits = in(reg) 0xffff_ffff_u32);
@@ -92,15 +121,8 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // create new guest data
-    let guest_id = hart_id + 1;
-    let guest_memory_begin = guest_memory::DRAM_BASE + guest_id * guest_memory::DRAM_SIZE_PER_GUEST;
+    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB);
     let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
-    let new_guest = Guest::new(
-        hart_id,
-        &ROOT_PAGE_TABLE,
-        &GUEST_DTB,
-        guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
-    );
 
     // parse device tree
     let device_tree = unsafe {
@@ -114,24 +136,22 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     hypervisor_data.get_or_init(|| HypervisorData::new(device_tree));
 
-    // load guest elf from address
-    let initrd = &hypervisor_data.get_mut().unwrap().devices().initrd;
+    // load guest elf `from GUEST_KERNEL`
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            initrd.paddr().raw() as *mut u8,
-            initrd.size(),
+            GUEST_KERNEL.as_ptr(),
+            GUEST_KERNEL.len(),
         ))
         .unwrap()
     };
 
     // load guest image
     let (guest_entry_point, elf_end_addr) =
-        new_guest.load_guest_elf(&guest_elf, initrd.paddr().raw() as *mut u8);
+        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
 
-    // filling remain memory region
-    new_guest.filling_memory_region(
-        elf_end_addr..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST,
-    );
+    // allocate page tables to all remain guest memory region
+    let guest_memory_end = new_guest.memory_region().end;
+    new_guest.allocate_memory_region(elf_end_addr..guest_memory_end);
 
     // set device memory map
     hypervisor_data
@@ -145,7 +165,13 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hfence_gvma_all();
 
     // initialize IOMMU
-    hypervisor_data.get_mut().unwrap().devices().init_iommu();
+    hypervisor_data
+        .get_mut()
+        .unwrap()
+        .devices()
+        .pci
+        .as_ref()
+        .map(super::device::pci::Pci::init_pci_devices);
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
@@ -204,6 +230,7 @@ fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // init guest stack pointer is don't care
     sscratch::write(0);
 
+    crate::println!("Guest start (hart: {})", hart_id);
     unsafe {
         // enter VS-mode
         asm!(

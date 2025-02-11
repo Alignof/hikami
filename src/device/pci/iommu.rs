@@ -3,29 +3,107 @@
 
 mod register_map;
 
-use super::{
-    pci::{ConfigSpaceRegister, Pci},
-    PciDevice,
+use super::config_register::{
+    get_bar_size, read_config_register, write_config_register, ConfigSpaceHeaderField,
 };
+use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::h_extension::csrs::hgatp;
-use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress};
+use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress, MemoryMap};
 use crate::PageBlock;
 use register_map::{IoMmuMode, IoMmuRegisters};
 
+use alloc::vec::Vec;
+use core::ops::Range;
 use fdt::Fdt;
 
 /// IOMMU: I/O memory management unit.
 #[derive(Debug)]
 pub struct IoMmu {
-    /// PCI Bus number
-    bus: u32,
-    /// PCI Device number
-    device: u32,
-    /// PCI Function number
-    function: u32,
+    /// Bus - device - function
+    _ident: Bdf,
+    /// IOMMU memory mapped register
+    reg_space: Range<HostPhysicalAddress>,
+    /// PCI Vender ID
+    _vender_id: u32,
+    /// PCI Device ID
+    _device_id: u32,
 }
 
 impl IoMmu {
+    /// Create self instance from device tree.
+    /// * `device_tree`: struct Fdt
+    /// * `node_path`: node path in fdt
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn new_from_dtb(
+        device_tree: &Fdt,
+        compatibles: &[&str],
+        pci_config_space_base_addr: HostPhysicalAddress,
+        pci_addr_space: &PciAddressSpace,
+    ) -> Option<Self> {
+        let pci_reg = device_tree
+            .find_compatible(compatibles)?
+            .raw_reg()
+            .unwrap()
+            .next()
+            .unwrap();
+
+        assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
+
+        let pci_first_reg = (u32::from(pci_reg.address[0]) << 24)
+            | (u32::from(pci_reg.address[1]) << 16)
+            | (u32::from(pci_reg.address[2]) << 8)
+            | u32::from(pci_reg.address[3]);
+        let ident = Bdf::new(pci_first_reg);
+
+        let config_space_header_addr =
+            pci_config_space_base_addr.0 | ident.calc_config_space_header_offset();
+        let memory_space_kind = (read_config_register(
+            config_space_header_addr,
+            ConfigSpaceHeaderField::BaseAddressRegister0,
+        ) >> 1)
+            & 0b11;
+        let iommu_reg_addr = match memory_space_kind {
+            0b00 => pci_addr_space.base_addr_32bit_memory_space(),
+            0b10 => pci_addr_space.base_addr_64bit_memory_space(),
+            0b01 | 0b11 => panic!("[pci BAR] reserved field"),
+            _ => unreachable!(),
+        };
+
+        let bar_size = get_bar_size(
+            config_space_header_addr,
+            ConfigSpaceHeaderField::BaseAddressRegister0,
+        );
+        // set iommu reg space
+        write_config_register(
+            config_space_header_addr,
+            ConfigSpaceHeaderField::BaseAddressRegister0,
+            iommu_reg_addr.raw() as u32,
+        );
+        write_config_register(
+            config_space_header_addr,
+            ConfigSpaceHeaderField::BaseAddressRegister1,
+            (iommu_reg_addr.raw() >> 32) as u32,
+        );
+        write_config_register(
+            config_space_header_addr,
+            ConfigSpaceHeaderField::Command,
+            0b10, // enable memory space
+        );
+
+        // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
+        Some(IoMmu {
+            _ident: ident,
+            reg_space: Range {
+                start: iommu_reg_addr,
+                end: iommu_reg_addr + bar_size as usize,
+            },
+            // TODO: obtain from pci register.
+            // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html
+            _vender_id: 0x1efd,
+            _device_id: 0xedf1,
+        })
+    }
+
     /// Set page table in IOMMU.
     fn init_page_table(ddt_addr: HostPhysicalAddress) {
         /// Offset of `iohgatp` register [byte].
@@ -49,51 +127,20 @@ impl IoMmu {
 }
 
 impl PciDevice for IoMmu {
-    fn new(device_tree: &Fdt, node_path: &str) -> Option<Self> {
-        let pci_reg = device_tree
-            .find_node(node_path)?
-            .raw_reg()
-            .unwrap()
-            .next()
-            .unwrap();
-        assert_eq!(pci_reg.address.len(), 12); // 4 bytes * 3
-        let pci_first_reg = u32::from(pci_reg.address[0]) << 24
-            | u32::from(pci_reg.address[1]) << 16
-            | u32::from(pci_reg.address[2]) << 8
-            | u32::from(pci_reg.address[3]);
-
-        // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
-        Some(IoMmu {
-            bus: pci_first_reg >> 16 & 0b1111_1111, // 8 bit
-            device: pci_first_reg >> 11 & 0b1_1111, // 5 bit
-            function: pci_first_reg >> 8 & 0b111,   // 3 bit
-        })
+    fn new(
+        _bdf: Bdf,
+        _vendor_id: u32,
+        _device_id: u32,
+        _pci_config_space_base_addr: HostPhysicalAddress,
+        _pci_addr_space: &PciAddressSpace,
+        _memory_maps: &mut Vec<MemoryMap>,
+    ) -> Self {
+        unreachable!("use `IoMmu::new_from_dtb` instead.");
     }
 
-    fn init(&self, pci: &Pci) {
-        let iommu_reg_addr: u32 = u32::try_from(pci.pci_memory_maps()[0].phys.start.0).unwrap();
-        pci.write_config_register(
-            self.bus,
-            self.device,
-            self.function,
-            ConfigSpaceRegister::BaseAddressRegister1,
-            iommu_reg_addr,
-        );
-        pci.write_config_register(
-            self.bus,
-            self.device,
-            self.function,
-            ConfigSpaceRegister::BaseAddressRegister2,
-            0x0000_0000,
-        );
-        pci.write_config_register(
-            self.bus,
-            self.device,
-            self.function,
-            ConfigSpaceRegister::Command,
-            0b10, // memory space enable
-        );
-        let registers = iommu_reg_addr as *mut IoMmuRegisters;
+    #[allow(clippy::cast_possible_truncation)]
+    fn init(&self, _pci_config_space_base_addr: HostPhysicalAddress) {
+        let registers = self.reg_space.start.raw() as *mut IoMmuRegisters;
         let registers = unsafe { &mut *registers };
 
         // 6.2. Guidelines for initialization
