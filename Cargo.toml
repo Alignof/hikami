@@ -17,11 +17,15 @@ missing_crate_level_docs = "warn"
 panic = 'abort'
 codegen-units = 1
 
+[workspace]
+members = [ "extension_manager" ]
+
 [features]
 # debug log
 debug_log = []
 
 [dependencies]
+extension_manager = { path = "extension_manager" }
 elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"
 linked_list_allocator = "0.10.5"
