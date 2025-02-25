@@ -1,12 +1,13 @@
 //! Emulation Zicfiss (Shadow Stack)
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
-use super::{pseudo_vs_exception, EmulateExtension, EmulatedCsr};
+use super::pseudo_vs_exception;
 use crate::memmap::{
     page_table::{g_stage_trans_addr, vs_stage_trans_addr},
     GuestVirtualAddress,
 };
 use crate::HYPERVISOR_DATA;
+use hikami::{EmulateExtension, EmulatedCsr};
 
 use core::cell::OnceCell;
 use raki::{Instruction, OpcodeKind, ZicfissOpcode, ZicsrOpcode};
@@ -37,7 +38,7 @@ impl Zicfiss {
     /// Constructor for `Zicfiss`.
     pub fn new() -> Self {
         Zicfiss {
-            ssp: EmulatedCsr(0),
+            ssp: EmulatedCsr::new(0),
             henv_sse: false,
             senv_sse: false,
         }
@@ -46,7 +47,7 @@ impl Zicfiss {
     /// Return host physical shadow stack pointer as `*mut usize`.
     #[allow(clippy::similar_names, clippy::cast_possible_truncation)]
     fn ssp_hp_ptr(&self) -> *mut usize {
-        if let Ok(gpa) = vs_stage_trans_addr(GuestVirtualAddress(self.ssp.0 as usize)) {
+        if let Ok(gpa) = vs_stage_trans_addr(GuestVirtualAddress(self.ssp.bits() as usize)) {
             let hpa = g_stage_trans_addr(gpa).unwrap();
             hpa.0 as *mut usize
         } else {
@@ -54,15 +55,15 @@ impl Zicfiss {
                 HYPERVISOR_DATA.force_unlock();
                 ZICFISS_DATA.force_unlock();
             }
-            pseudo_vs_exception(STORE_AMO_PAGE_FAULT, self.ssp.0 as usize);
+            pseudo_vs_exception(STORE_AMO_PAGE_FAULT, self.ssp.bits() as usize);
         }
     }
 
     /// Push value to shadow stack
     pub fn ss_push(&mut self, value: usize) {
         unsafe {
-            self.ssp = EmulatedCsr(
-                (self.ssp.0 as *const usize).byte_sub(core::mem::size_of::<usize>()) as u64,
+            self.ssp = EmulatedCsr::new(
+                (self.ssp.bits() as *const usize).byte_sub(core::mem::size_of::<usize>()) as u64,
             );
             self.ssp_hp_ptr().write_volatile(value);
         }
@@ -72,8 +73,8 @@ impl Zicfiss {
     pub fn ss_pop(&mut self) -> usize {
         unsafe {
             let pop_value = self.ssp_hp_ptr().read_volatile();
-            self.ssp = EmulatedCsr(
-                (self.ssp.0 as *const usize).byte_add(core::mem::size_of::<usize>()) as u64,
+            self.ssp = EmulatedCsr::new(
+                (self.ssp.bits() as *const usize).byte_add(core::mem::size_of::<usize>()) as u64,
             );
 
             pop_value
@@ -145,7 +146,7 @@ impl EmulateExtension for Zicfiss {
             }
             OpcodeKind::Zicfiss(ZicfissOpcode::SSRDP) => {
                 if self.is_ss_enable(sstatus) {
-                    context.set_xreg(inst.rd.unwrap(), self.ssp.0);
+                    context.set_xreg(inst.rd.unwrap(), self.ssp.bits());
                 } else {
                     context.set_xreg(inst.rd.unwrap(), 0);
                 }
