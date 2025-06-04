@@ -2,12 +2,12 @@
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
 use super::pseudo_vs_exception;
+use crate::emulate_extension::{EmulateExtension, EmulatedCsr};
 use crate::memmap::{
     page_table::{g_stage_trans_addr, vs_stage_trans_addr},
     GuestVirtualAddress,
 };
 use crate::HYPERVISOR_DATA;
-use hikami::{EmulateExtension, EmulatedCsr};
 
 use core::cell::OnceCell;
 use raki::{Instruction, OpcodeKind, ZicfissOpcode, ZicsrOpcode};
