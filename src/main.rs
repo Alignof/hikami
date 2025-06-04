@@ -6,15 +6,7 @@
 // TODO: FIX AND REMOVE IT!!!
 #![allow(static_mut_refs)]
 
-extern crate alloc;
-mod device;
-mod emulate_extension;
-mod guest;
-mod h_extension;
 mod hypervisor_init;
-mod log;
-mod memmap;
-mod trap;
 
 use core::arch::naked_asm;
 use core::panic::PanicInfo;
@@ -22,9 +14,9 @@ use core::panic::PanicInfo;
 use linked_list_allocator::LockedHeap;
 
 use crate::hypervisor_init::hstart;
-use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
-use hikami::{HypervisorData, PageBlock, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
-use hikami::{_end_bss, _hv_heap_size, _stack_start, _start_bss, _start_heap, _top_b_stack};
+use hikami::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
+use hikami::println;
+use hikami::{_end_bss, _start_bss, _top_b_stack};
 
 /// Panic handler
 #[panic_handler]
