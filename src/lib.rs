@@ -5,13 +5,13 @@
 #![allow(static_mut_refs)]
 
 extern crate alloc;
-mod device;
-mod emulate_extension;
-mod guest;
-mod h_extension;
-mod log;
-mod memmap;
-mod trap;
+pub mod device;
+pub mod emulate_extension;
+pub mod guest;
+pub mod h_extension;
+pub mod log;
+pub mod memmap;
+pub mod trap;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
