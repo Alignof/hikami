@@ -37,6 +37,7 @@ impl Guest {
     ///
     /// - Zero filling root page table.
     /// - Map guest dtb to guest memory space.
+    #[must_use]
     pub fn new(
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
@@ -150,21 +151,25 @@ impl Guest {
     }
 
     /// Return HART(HARdware Thread) id.
+    #[must_use]
     pub fn hart_id(&self) -> usize {
         self.hart_id
     }
 
     /// Return Stack top (end of memory region)
+    #[must_use]
     pub fn stack_top(&self) -> HostPhysicalAddress {
         self.stack_top_addr
     }
 
     /// Return guest device tree address. (GPA)
+    #[must_use]
     pub fn guest_dtb_addr(&self) -> GuestPhysicalAddress {
         self.dtb_addr
     }
 
     /// Return guest dram space start
+    #[must_use]
     pub fn memory_region(&self) -> &Range<GuestPhysicalAddress> {
         &self.memory_region
     }
@@ -273,6 +278,7 @@ impl Guest {
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
     #[cfg(not(feature = "identity_map"))]
+    #[must_use]
     pub fn load_guest_elf(
         &self,
         guest_elf: &ElfBytes<AnyEndian>,

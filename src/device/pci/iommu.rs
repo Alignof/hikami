@@ -34,6 +34,7 @@ impl IoMmu {
     /// * `device_tree`: struct Fdt
     /// * `node_path`: node path in fdt
     #[allow(clippy::cast_possible_truncation)]
+    #[must_use]
     pub fn new_from_dtb(
         device_tree: &Fdt,
         compatibles: &[&str],

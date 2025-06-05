@@ -22,6 +22,7 @@ pub struct GuestPhysicalAddress(pub usize);
 
 impl GuestPhysicalAddress {
     /// Convert to usize.
+    #[must_use]
     pub fn raw(self) -> usize {
         self.0
     }
@@ -60,6 +61,7 @@ pub struct HostPhysicalAddress(pub usize);
 
 impl HostPhysicalAddress {
     /// Convert to usize.
+    #[must_use]
     pub fn raw(self) -> usize {
         self.0
     }
@@ -107,6 +109,7 @@ impl MemoryMap {
     /// Create new `MemoryMap`.
     ///
     /// `flags` is mapped to bitmap.
+    #[must_use]
     pub fn new(
         virt: Range<GuestPhysicalAddress>,
         phys: Range<HostPhysicalAddress>,

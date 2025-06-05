@@ -40,6 +40,7 @@ pub enum DeviceEmulateError {
 /// It recives trapped address (and value) and emulate load/store.
 pub trait EmulateDevice {
     /// Pass through loading memory
+    #[must_use]
     fn pass_through_loading(dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
         unsafe { dst_ptr.read_volatile() }
@@ -223,6 +224,7 @@ pub struct Devices {
 
 impl Devices {
     /// Constructor for `Devices`.
+    #[must_use]
     pub fn new(device_tree: Fdt) -> Self {
         Devices {
             uart: uart::Uart::try_new(&device_tree, &["ns16550a", "riscv,axi-uart-1.0"])

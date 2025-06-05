@@ -34,8 +34,15 @@ pub struct Zicfiss {
     pub senv_sse: bool,
 }
 
+impl Default for Zicfiss {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Zicfiss {
     /// Constructor for `Zicfiss`.
+    #[must_use]
     pub fn new() -> Self {
         Zicfiss {
             ssp: EmulatedCsr::new(0),

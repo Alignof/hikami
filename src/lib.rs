@@ -122,6 +122,7 @@ pub struct PageBlock([u8; 0x1000]);
 
 impl PageBlock {
     /// Return aligned address of page size memory block.
+    #[must_use]
     pub fn alloc() -> HostPhysicalAddress {
         let mut host_physical_block_as_vec: Vec<core::mem::MaybeUninit<PageBlock>> =
             Vec::with_capacity(1);
