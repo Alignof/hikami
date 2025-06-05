@@ -28,6 +28,7 @@ pub struct Uart {
 
 impl Uart {
     /// Return address of LSR register.
+    #[must_use]
     pub fn lsr_addr(&self) -> HostPhysicalAddress {
         self.base_addr + register::LSR_OFFSET
     }

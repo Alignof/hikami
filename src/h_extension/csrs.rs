@@ -8,6 +8,7 @@ macro_rules! impl_bits {
     ($register:ident) => {
         #[allow(dead_code)]
         impl $register {
+            #[must_use]
             pub fn bits(&self) -> usize {
                 self.0
             }
@@ -21,6 +22,7 @@ macro_rules! read_csr_as {
     ($register:ident, $csr_number:literal) => {
         #[inline]
         #[allow(dead_code)]
+        #[must_use]
         pub fn read() -> $register {
             let csr_out;
             unsafe {
@@ -152,6 +154,7 @@ pub mod vsatp {
     impl Vsatp {
         /// Current address-translation scheme
         #[inline]
+        #[must_use]
         pub fn mode(&self) -> Mode {
             match self.0 >> 60 {
                 0 => Mode::Bare,
@@ -165,6 +168,7 @@ pub mod vsatp {
 
         /// Physical page number
         #[inline]
+        #[must_use]
         pub fn ppn(&self) -> usize {
             self.0 & 0xFFF_FFFF_FFFF // bits 0-43
         }
@@ -285,6 +289,7 @@ pub mod hgeie {
     pub struct Hgeie(usize);
 
     /// Get the `GEILEN`.
+    #[must_use]
     pub fn get_geilen() -> usize {
         let original_value = read();
         write(0xffff_ffff);
@@ -437,11 +442,13 @@ pub mod hgatp {
 
     impl Hgatp {
         /// Return ppn.
+        #[must_use]
         pub fn ppn(&self) -> usize {
             self.0 & 0xfff_ffff_ffff // 44 bit
         }
 
         /// Return translation mode.
+        #[must_use]
         pub fn mode(&self) -> Mode {
             match (self.0 >> 60) & 0b1111 {
                 0 => Mode::Bare,

@@ -32,11 +32,13 @@ pub struct EmulatedCsr(u64);
 
 impl EmulatedCsr {
     /// Create self
+    #[must_use]
     pub fn new(value: u64) -> Self {
         EmulatedCsr(value)
     }
 
     /// Return raw data.
+    #[must_use]
     pub fn bits(&self) -> u64 {
         self.0
     }

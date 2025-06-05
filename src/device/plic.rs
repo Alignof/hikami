@@ -28,11 +28,13 @@ impl ContextId {
     /// Create new `ContextId` from hart id.
     ///
     /// Each hart has two id for machine and supervisor.
+    #[must_use]
     pub fn new(hart_id: usize, is_supervisor: bool) -> Self {
         ContextId(2 * hart_id + usize::from(is_supervisor))
     }
 
     /// Return raw usize value.
+    #[must_use]
     pub fn raw(&self) -> usize {
         self.0
     }
