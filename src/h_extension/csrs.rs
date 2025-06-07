@@ -2,6 +2,8 @@
 //!
 //! The specification referred to "The RISC-V Instruction Set Manual: Volume II Version 20240411".
 
+#![allow(missing_docs)]
+
 /// Implement bits for struct
 #[macro_export]
 macro_rules! impl_bits {
