@@ -13,6 +13,10 @@ use riscv::register::scause::{self, Trap};
 
 /// Switch to original mode stack and save contexts.
 ///
+/// # Panics
+/// Panics if `hypervisor_data.get().unwrap()` is called on a `None` value.
+/// This typically occurs if the hypervisor data has not been initialized.
+///
 /// # Safety
 /// Drop all global variables.
 #[inline(always)]
