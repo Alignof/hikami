@@ -84,7 +84,7 @@ fn update_sepc_by_inst_type(is_compressed: bool, context: &mut guest::context::C
 
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
-pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
+pub fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::IllegalInstruction => instruction_handler::illegal_instruction(),
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
@@ -109,5 +109,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
         _ => hs_forward_exception(),
     }
 
-    hstrap_exit();
+    unsafe {
+        hstrap_exit();
+    }
 }
