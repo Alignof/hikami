@@ -12,6 +12,9 @@ use core::arch::asm;
 use riscv::register::scause::{self, Trap};
 
 /// Switch to original mode stack and save contexts.
+///
+/// # Safety
+/// Drop all global variables.
 #[inline(always)]
 #[allow(clippy::inline_always)]
 pub unsafe fn hstrap_exit() -> ! {
@@ -93,7 +96,7 @@ pub unsafe fn hstrap_exit() -> ! {
 /// ```
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn hstrap_vector() -> ! {
+pub extern "C" fn hstrap_vector() -> ! {
     unsafe {
         asm!(
             ".align 4
@@ -151,7 +154,7 @@ pub unsafe extern "C" fn hstrap_vector() -> ! {
 }
 
 /// Separated from `hsrap_vector` by stack pointer circumstance.
-pub unsafe extern "C" fn hstrap_vector2() -> ! {
+pub extern "C" fn hstrap_vector2() -> ! {
     match scause::read().cause() {
         Trap::Interrupt(interrupt_cause) => trap_interrupt(interrupt_cause),
         Trap::Exception(exception_cause) => trap_exception(exception_cause),

@@ -202,13 +202,15 @@ pub mod hstatus {
     write_csr_as!(0x600);
 
     /// set spv bit (Supervisor Previous Virtualization mode, 7 bit)
-    pub unsafe fn set_spv() {
-        core::arch::asm!(
-            "
+    pub fn set_spv() {
+        unsafe {
+            core::arch::asm!(
+                "
             csrs hstatus, {bits}
             ",
-            bits = in(reg) 0b1000_0000
-        );
+                bits = in(reg) 0b1000_0000
+            );
+        }
     }
 }
 
