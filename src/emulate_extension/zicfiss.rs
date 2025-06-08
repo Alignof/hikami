@@ -2,12 +2,12 @@
 //! Ref: [https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf](https://github.com/riscv/riscv-cfi/releases/download/v1.0/riscv-cfi.pdf)
 
 use super::pseudo_vs_exception;
+use crate::emulate_extension::{EmulateExtension, EmulatedCsr};
 use crate::memmap::{
     page_table::{g_stage_trans_addr, vs_stage_trans_addr},
     GuestVirtualAddress,
 };
 use crate::HYPERVISOR_DATA;
-use hikami::{EmulateExtension, EmulatedCsr};
 
 use core::cell::OnceCell;
 use raki::{Instruction, OpcodeKind, ZicfissOpcode, ZicsrOpcode};
@@ -34,8 +34,15 @@ pub struct Zicfiss {
     pub senv_sse: bool,
 }
 
+impl Default for Zicfiss {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Zicfiss {
     /// Constructor for `Zicfiss`.
+    #[must_use]
     pub fn new() -> Self {
         Zicfiss {
             ssp: EmulatedCsr::new(0),

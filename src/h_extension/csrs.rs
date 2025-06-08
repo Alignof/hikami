@@ -2,12 +2,15 @@
 //!
 //! The specification referred to "The RISC-V Instruction Set Manual: Volume II Version 20240411".
 
+#![allow(missing_docs)]
+
 /// Implement bits for struct
 #[macro_export]
 macro_rules! impl_bits {
     ($register:ident) => {
         #[allow(dead_code)]
         impl $register {
+            #[must_use]
             pub fn bits(&self) -> usize {
                 self.0
             }
@@ -21,6 +24,7 @@ macro_rules! read_csr_as {
     ($register:ident, $csr_number:literal) => {
         #[inline]
         #[allow(dead_code)]
+        #[must_use]
         pub fn read() -> $register {
             let csr_out;
             unsafe {
@@ -119,7 +123,10 @@ pub mod vsip {
     read_csr_as!(Vsip, 0x244);
     write_csr_as!(0x244);
 
-    /// set SSIP bit (`SupervisorSoftwareInterruptPending`, 1 bit)
+    /// Set SSIP bit (`SupervisorSoftwareInterruptPending`, 1 bit)
+    ///
+    /// # Safety
+    /// make sure S-mode config.
     pub unsafe fn set_ssoft() {
         core::arch::asm!(
             "
@@ -129,7 +136,10 @@ pub mod vsip {
         );
     }
 
-    /// set STIP bit (`SupervisorTimerInterruptPending`, 5 bit)
+    /// Set STIP bit (`SupervisorTimerInterruptPending`, 5 bit)
+    ///
+    /// # Safety
+    /// make sure S-mode config.
     pub unsafe fn set_stimer() {
         core::arch::asm!(
             "
@@ -152,6 +162,7 @@ pub mod vsatp {
     impl Vsatp {
         /// Current address-translation scheme
         #[inline]
+        #[must_use]
         pub fn mode(&self) -> Mode {
             match self.0 >> 60 {
                 0 => Mode::Bare,
@@ -165,6 +176,7 @@ pub mod vsatp {
 
         /// Physical page number
         #[inline]
+        #[must_use]
         pub fn ppn(&self) -> usize {
             self.0 & 0xFFF_FFFF_FFFF // bits 0-43
         }
@@ -196,13 +208,15 @@ pub mod hstatus {
     write_csr_as!(0x600);
 
     /// set spv bit (Supervisor Previous Virtualization mode, 7 bit)
-    pub unsafe fn set_spv() {
-        core::arch::asm!(
-            "
+    pub fn set_spv() {
+        unsafe {
+            core::arch::asm!(
+                "
             csrs hstatus, {bits}
             ",
-            bits = in(reg) 0b1000_0000
-        );
+                bits = in(reg) 0b1000_0000
+            );
+        }
     }
 }
 
@@ -285,6 +299,7 @@ pub mod hgeie {
     pub struct Hgeie(usize);
 
     /// Get the `GEILEN`.
+    #[must_use]
     pub fn get_geilen() -> usize {
         let original_value = read();
         write(0xffff_ffff);
@@ -437,11 +452,13 @@ pub mod hgatp {
 
     impl Hgatp {
         /// Return ppn.
+        #[must_use]
         pub fn ppn(&self) -> usize {
             self.0 & 0xfff_ffff_ffff // 44 bit
         }
 
         /// Return translation mode.
+        #[must_use]
         pub fn mode(&self) -> Mode {
             match (self.0 >> 60) & 0b1111 {
                 0 => Mode::Bare,

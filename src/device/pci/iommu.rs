@@ -33,7 +33,11 @@ impl IoMmu {
     /// Create self instance from device tree.
     /// * `device_tree`: struct Fdt
     /// * `node_path`: node path in fdt
+    ///
+    /// # Panics
+    /// Panics if a pci device is not found in device tree.
     #[allow(clippy::cast_possible_truncation)]
+    #[must_use]
     pub fn new_from_dtb(
         device_tree: &Fdt,
         compatibles: &[&str],
