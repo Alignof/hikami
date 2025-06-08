@@ -17,6 +17,9 @@ impl core::fmt::Write for Writer {
 }
 
 /// Print function calling from print macro
+///
+/// # Panics
+/// It will panic if formatting is failed.
 pub fn print_for_macro(args: fmt::Arguments) {
     let mut writer = Writer;
     writer.write_fmt(args).unwrap();

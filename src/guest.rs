@@ -156,6 +156,9 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
+    ///
+    /// # Panics
+    /// Panics if it failed to calculate `aligned_segment_size` or failed to convert to usize.
     #[must_use]
     pub fn load_guest_elf(
         &self,

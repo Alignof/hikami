@@ -47,7 +47,18 @@ impl AddressFieldSv39 for GuestVirtualAddress {
     }
 }
 
-/// Translate gva to gpa in sv39
+/// Translate gva to gpa in `Sv39`.
+///
+/// # Errors
+/// This function will return an error if:
+/// * An invalid Page Table Entry (PTE) is encountered during the page table walk.
+/// * For a PTE that points to a superpage, remain PPN fields
+///   that must be zero according to the specification is non-zero.
+/// * The walk finishes all three levels of the page table hierarchy without reaching a leaf PTE.
+///
+/// # Panics
+/// This function will panic if:
+/// * The current `vsatp` register's mode is not `Sv39`.
 #[allow(clippy::cast_possible_truncation)]
 pub fn trans_addr(
     gva: GuestVirtualAddress,

@@ -30,7 +30,7 @@ fn main() {
         .and_then(|packages| {
             packages
                 .iter()
-                .find(|pkg| pkg.get("name").and_then(|n| n.as_str()) == Some(&root_package_name))
+                .find(|pkg| pkg.get("name").and_then(|n| n.as_str()) == Some(root_package_name))
         })
         .expect("Failed to find root_crate package");
 

@@ -123,7 +123,10 @@ pub mod vsip {
     read_csr_as!(Vsip, 0x244);
     write_csr_as!(0x244);
 
-    /// set SSIP bit (`SupervisorSoftwareInterruptPending`, 1 bit)
+    /// Set SSIP bit (`SupervisorSoftwareInterruptPending`, 1 bit)
+    ///
+    /// # Safety
+    /// make sure S-mode config.
     pub unsafe fn set_ssoft() {
         core::arch::asm!(
             "
@@ -133,7 +136,10 @@ pub mod vsip {
         );
     }
 
-    /// set STIP bit (`SupervisorTimerInterruptPending`, 5 bit)
+    /// Set STIP bit (`SupervisorTimerInterruptPending`, 5 bit)
+    ///
+    /// # Safety
+    /// make sure S-mode config.
     pub unsafe fn set_stimer() {
         core::arch::asm!(
             "

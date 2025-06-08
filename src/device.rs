@@ -47,6 +47,9 @@ pub trait EmulateDevice {
     }
 
     /// Emulate loading port registers.
+    ///
+    /// # Errors
+    /// It will return an error if loading failed.
     #[allow(clippy::cast_possible_truncation)]
     fn emulate_loading(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError>;
 
@@ -59,6 +62,9 @@ pub trait EmulateDevice {
     }
 
     /// Emulate storing port registers.
+    ///
+    /// # Errors
+    /// It will return an error if storing failed.
     fn emulate_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
@@ -224,6 +230,9 @@ pub struct Devices {
 
 impl Devices {
     /// Constructor for `Devices`.
+    ///
+    /// # Panics
+    /// Panics if UART or PLIC or CLINT are not found in device tree.
     #[must_use]
     pub fn new(device_tree: Fdt) -> Self {
         Devices {

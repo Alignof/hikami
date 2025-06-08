@@ -65,6 +65,9 @@ impl EmulatedCsr {
 /// Throw an VS-level exception.
 /// * `exception_num`: Exception number. (stored to vscause)
 /// * `trap_value`: Trap value. (stored to vstval)
+///
+/// # Panics
+/// Panics if failed to get `hypervisor_data`.
 pub fn pseudo_vs_exception(exception_num: usize, trap_value: usize) -> ! {
     unsafe {
         let hypervisor_data = HYPERVISOR_DATA.lock();
