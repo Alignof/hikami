@@ -25,8 +25,11 @@ members = [ "extension_manager" ]
 debug_log = []
 # identity memory map
 identity_map = []
+# for `extension_manager`
+enable_extension = [ "hikami_zicfiss" ]
 
 [dependencies]
+hikami_zicfiss = { path = "../hikami_zicfiss", optional = true }
 extension_manager = { path = "extension_manager" }
 elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"

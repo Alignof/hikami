@@ -13,8 +13,7 @@ use riscv::register::sstatus;
 /// Initialize singletons for extension emulation.
 /// TODO: Remove it when `OnceCell` is replaced to `LazyCell`.
 pub fn initialize() {
-    use zicfiss::{Zicfiss, ZICFISS_DATA};
-    unsafe { ZICFISS_DATA.lock() }.get_or_init(Zicfiss::new);
+    extension_manager::initialize!();
 }
 
 /// Trait for extention emulation.
