@@ -87,21 +87,21 @@ impl HypervisorData {
 }
 
 /// Guest kernel image
-#[link_section = ".guest_kernel"]
-pub static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
-    *include_bytes!("../guest_image/vmlinux");
+#[unsafe(link_section = ".guest_kernel")]
+pub static GUEST_KERNEL: [u8; include_bytes!("../../guest_image/vmlinux").len()] =
+    *include_bytes!("../../guest_image/vmlinux");
 
 /// Device tree blob that is passed to guest
-#[link_section = ".guest_dtb"]
-pub static GUEST_DTB: [u8; include_bytes!("../guest_image/guest.dtb").len()] =
-    *include_bytes!("../guest_image/guest.dtb");
+#[unsafe(link_section = ".guest_dtb")]
+pub static GUEST_DTB: [u8; include_bytes!("../../guest_image/guest.dtb").len()] =
+    *include_bytes!("../../guest_image/guest.dtb");
 
 /// Guest intird
-#[link_section = ".guest_initrd"]
-pub static GUEST_INITRD: [u8; include_bytes!("../guest_image/initrd").len()] =
-    *include_bytes!("../guest_image/initrd");
+#[unsafe(link_section = ".guest_initrd")]
+pub static GUEST_INITRD: [u8; include_bytes!("../../guest_image/initrd").len()] =
+    *include_bytes!("../../guest_image/initrd");
 
-extern "C" {
+unsafe extern "C" {
     /// stack top (defined in `memory.x`)
     pub static _stack_start: u8;
     /// start of heap (defined in `memory.x`)

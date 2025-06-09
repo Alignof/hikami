@@ -14,9 +14,9 @@ use core::panic::PanicInfo;
 use linked_list_allocator::LockedHeap;
 
 use crate::hypervisor_init::hstart;
-use hikami::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
-use hikami::println;
-use hikami::{_end_bss, _start_bss, _top_b_stack};
+use hikami_core::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
+use hikami_core::println;
+use hikami_core::{_end_bss, _start_bss, _top_b_stack};
 
 /// Panic handler
 #[panic_handler]

@@ -17,7 +17,7 @@ use core::slice::from_raw_parts_mut;
 pub const FIRST_LV_PAGE_TABLE_LEN: usize = 2048;
 
 /// Device tree blob that is passed to guest
-#[link_section = ".root_page_table"]
+#[unsafe(link_section = ".root_page_table")]
 pub static ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
     [PageTableEntry(0u64); FIRST_LV_PAGE_TABLE_LEN];
 

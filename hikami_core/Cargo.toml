@@ -1,0 +1,15 @@
+[package]
+name = "hikami_core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+extension_manager = { path = "../extension_manager" }
+elf = { workspace = true }
+fdt = { workspace = true }
+raki = { workspace = true }
+riscv = { workspace = true }
+rustsbi = { workspace = true }
+sbi-rt = { workspace = true }
+sbi-spec = { workspace = true }
+spin = { workspace = true }

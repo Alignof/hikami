@@ -1,21 +1,21 @@
 //! HS-mode level initialization.
 
 use crate::ALLOCATOR;
-use hikami::emulate_extension;
-use hikami::guest::context::ContextData;
-use hikami::guest::Guest;
-use hikami::h_extension::csrs::{
+use hikami_core::emulate_extension;
+use hikami_core::guest::context::ContextData;
+use hikami_core::guest::Guest;
+use hikami_core::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus, hvip,
     vsatp, VsInterruptKind,
 };
-use hikami::h_extension::instruction::hfence_gvma_all;
-use hikami::memmap::{
+use hikami_core::h_extension::instruction::hfence_gvma_all;
+use hikami_core::memmap::{
     constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
     HostPhysicalAddress,
 };
-use hikami::trap::hstrap_vector;
-use hikami::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
-use hikami::{_hv_heap_size, _start_heap};
+use hikami_core::trap::hstrap_vector;
+use hikami_core::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
+use hikami_core::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
 
@@ -180,7 +180,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .devices()
         .pci
         .as_ref()
-        .map(hikami::device::pci::Pci::init_pci_devices);
+        .map(hikami_core::device::pci::Pci::init_pci_devices);
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);

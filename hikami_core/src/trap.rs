@@ -98,7 +98,7 @@ pub unsafe fn hstrap_exit() -> ! {
 /// #[repr(align(4))]
 /// pub unsafe extern "C" fn hstrap_vector() -> ! { }
 /// ```
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn hstrap_vector() -> ! {
     unsafe {

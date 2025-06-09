@@ -23,7 +23,7 @@ use sbi_handler::{
 };
 
 /// Delegate exception to supervisor mode from VS-mode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(always)]
 #[allow(clippy::inline_always, clippy::module_name_repetitions)]
 pub extern "C" fn hs_forward_exception() {
