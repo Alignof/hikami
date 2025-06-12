@@ -12,7 +12,28 @@ use syn::Ident;
 
 include!(concat!(env!("OUT_DIR"), "/dependencies.rs"));
 
-/// Initialize all global variable.
+/// Import all global varables.
+#[proc_macro]
+pub fn import_global_variables(_input: TokenStream) -> TokenStream {
+    let calls = CRATES.iter().map(|crate_name| {
+        let global_var_name = format!("{}_DATA", crate_name.to_uppercase());
+
+        let crate_ident = Ident::new(crate_name, Span::call_site());
+        let global_var_ident = Ident::new(&global_var_name, Span::call_site());
+
+        quote! {
+            use #crate_ident::#global_var_ident;
+        }
+    });
+
+    let expanded = quote! {
+        #(#calls)*
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Initialize all global variables.
 #[proc_macro]
 pub fn initialize(_input: TokenStream) -> TokenStream {
     let calls = CRATES.iter().map(|crate_name| {
