@@ -186,7 +186,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
 
     // initialize emulate_extension data
-    emulate_extension::initialize();
+    extension_manager::initialize!();
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0

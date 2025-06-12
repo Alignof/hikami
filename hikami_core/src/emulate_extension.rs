@@ -8,12 +8,6 @@ use core::arch::asm;
 use raki::Instruction;
 use riscv::register::sstatus;
 
-/// Initialize singletons for extension emulation.
-/// TODO: Remove it when `OnceCell` is replaced to `LazyCell`.
-pub fn initialize() {
-    extension_manager::initialize!();
-}
-
 /// Trait for extention emulation.
 pub trait EmulateExtension {
     /// Emulate instruction
