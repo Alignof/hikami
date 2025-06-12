@@ -15,24 +15,21 @@ include!(concat!(env!("OUT_DIR"), "/dependencies.rs"));
 /// Initialize all global variable.
 #[proc_macro]
 pub fn initialize(_input: TokenStream) -> TokenStream {
-    let calls = CRATES.iter().map(|name| {
-        // crate name format: hikami_modulename
-        let module_name = name
-            .strip_prefix("hikami_")
-            .expect("Crate name should start with 'hikami_'");
-        let mut struct_name_chars = module_name.chars();
+    let calls = CRATES.iter().map(|crate_name| {
+        // crate name format: hikami_module-name
+        let mut struct_name_chars = crate_name.chars();
         let struct_name = match struct_name_chars.next() {
             None => String::new(),
             Some(c) => c.to_uppercase().collect::<String>() + struct_name_chars.as_str(),
         };
-        let global_var_name = format!("{}_DATA", module_name.to_uppercase());
+        let global_var_name = format!("{}_DATA", crate_name.to_uppercase());
 
-        let module_ident = Ident::new(module_name, Span::call_site());
+        let crate_ident = Ident::new(crate_name, Span::call_site());
         let struct_ident = Ident::new(&struct_name, Span::call_site());
         let global_var_ident = Ident::new(&global_var_name, Span::call_site());
 
         quote! {
-            use #module_ident::{#struct_ident, #global_var_ident};
+            use #crate_ident::{#struct_ident, #global_var_ident};
             unsafe {
                 #global_var_ident.lock().get_or_init(#struct_ident::new);
             }

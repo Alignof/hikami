@@ -1,7 +1,5 @@
 //! Extension emulation
 
-pub mod zicfiss;
-
 use crate::h_extension::csrs::vstvec;
 use crate::trap::hstrap_exit;
 use crate::HYPERVISOR_DATA;
