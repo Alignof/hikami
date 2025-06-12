@@ -1,15 +1,9 @@
-//! Trap VS-mode exception / interrupt.
-
-mod exception;
-mod interrupt;
+//! Trap VS-mode exception.
 
 use crate::guest::context::ContextData;
-use exception::trap_exception;
-use interrupt::trap_interrupt;
 
 use crate::HYPERVISOR_DATA;
 use core::arch::asm;
-use riscv::register::scause::{self, Trap};
 
 /// Switch to original mode stack and save contexts.
 ///
@@ -28,8 +22,9 @@ pub unsafe fn hstrap_exit() -> ! {
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
-    asm!(
-        ".align 4
+    unsafe {
+        asm!(
+            ".align 4
         fence.i
 
         // set to stack top
@@ -82,85 +77,9 @@ pub unsafe fn hstrap_exit() -> ! {
 
         sret
         ",
-        HS_CONTEXT_SIZE = const size_of::<ContextData>(),
-        stack_top = in(reg) stack_top.raw(),
-        options(noreturn)
-    );
-}
-
-/// Trap vector for HS-mode.
-/// Switch to hypervisor stack and save contexts.
-///
-/// ## `fn_align`
-/// function alignment (feature `fn_align`).  
-/// See: [https://github.com/rust-lang/rust/issues/82232](https://github.com/rust-lang/rust/issues/82232).
-/// ```no_run
-/// #[repr(align(4))]
-/// pub unsafe extern "C" fn hstrap_vector() -> ! { }
-/// ```
-#[unsafe(no_mangle)]
-#[inline(never)]
-pub extern "C" fn hstrap_vector() -> ! {
-    unsafe {
-        asm!(
-            ".align 4
-            fence.i
-
-            // swap original mode sp for HS-mode sp 
-            csrrw sp, sscratch, sp
-            addi sp, sp, -{HS_CONTEXT_SIZE}
-
-            // save registers
-            sd ra, 1*8(sp)
-            sd gp, 3*8(sp)
-            sd tp, 4*8(sp)
-            sd t0, 5*8(sp)
-            sd t1, 6*8(sp)
-            sd t2, 7*8(sp)
-            sd s0, 8*8(sp)
-            sd s1, 9*8(sp)
-            sd a0, 10*8(sp)
-            sd a1, 11*8(sp)
-            sd a2, 12*8(sp)
-            sd a3, 13*8(sp)
-            sd a4, 14*8(sp)
-            sd a5, 15*8(sp)
-            sd a6, 16*8(sp)
-            sd a7, 17*8(sp)
-            sd s2, 18*8(sp)
-            sd s3, 19*8(sp)
-            sd s4, 20*8(sp)
-            sd s5, 21*8(sp)
-            sd s6, 22*8(sp)
-            sd s7, 23*8(sp)
-            sd s8, 24*8(sp)
-            sd s9, 25*8(sp)
-            sd s10, 26*8(sp)
-            sd s11, 27*8(sp)
-            sd t3, 28*8(sp)
-            sd t4, 29*8(sp)
-            sd t5, 30*8(sp)
-            sd t6, 31*8(sp)
-
-            // save sstatus
-            csrr t0, sstatus
-            sd t0, 32*8(sp)
-
-            // save pc
-            csrr t1, sepc
-            sd t1, 33*8(sp)
-            ",
             HS_CONTEXT_SIZE = const size_of::<ContextData>(),
+            stack_top = in(reg) stack_top.raw(),
+            options(noreturn)
         );
-    }
-
-    hstrap_vector2();
-}
-
-/// Separated from `hsrap_vector` by stack pointer circumstance.
-pub extern "C" fn hstrap_vector2() -> ! {
-    match scause::read().cause() {
-        Trap::Interrupt(interrupt_cause) => trap_interrupt(interrupt_cause),
-        Trap::Exception(exception_cause) => trap_exception(exception_cause),
     }
 }

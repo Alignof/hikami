@@ -1,7 +1,7 @@
 //! HS-mode level initialization.
 
+use crate::trap::hstrap_vector;
 use crate::ALLOCATOR;
-use hikami_core::emulate_extension;
 use hikami_core::guest::context::ContextData;
 use hikami_core::guest::Guest;
 use hikami_core::h_extension::csrs::{
@@ -13,7 +13,6 @@ use hikami_core::memmap::{
     constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
     HostPhysicalAddress,
 };
-use hikami_core::trap::hstrap_vector;
 use hikami_core::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
 use hikami_core::{_hv_heap_size, _start_heap};
 

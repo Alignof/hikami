@@ -6,7 +6,7 @@
 use super::hs_forward_exception;
 use crate::emulate_extension::zicfiss::ZICFISS_DATA;
 use crate::emulate_extension::EmulateExtension;
-use crate::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use raki::{Instruction, OpcodeKind};

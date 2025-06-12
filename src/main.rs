@@ -7,6 +7,7 @@
 #![allow(static_mut_refs)]
 
 mod hypervisor_init;
+mod trap;
 
 use core::arch::naked_asm;
 use core::panic::PanicInfo;

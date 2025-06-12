@@ -42,8 +42,13 @@ enable_extension = [ "hikami_zicfiss" ]
 [dependencies]
 hikami_core = { path = "hikami_core" }
 hikami_zicfiss = { path = "../hikami_zicfiss", optional = true }
+extension_manager = { path = "extension_manager" }
 
 elf = { workspace = true }
 fdt = { workspace = true }
+raki = { workspace = true }
 riscv = { workspace = true }
+rustsbi = { workspace = true }
+sbi-rt = { workspace = true }
+sbi-spec = { workspace = true }
 linked_list_allocator = { workspace = true }
