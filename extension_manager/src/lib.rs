@@ -16,7 +16,10 @@ include!(concat!(env!("OUT_DIR"), "/dependencies.rs"));
 #[proc_macro]
 pub fn import_global_variables(_input: TokenStream) -> TokenStream {
     let calls = CRATES.iter().map(|crate_name| {
-        let global_var_name = format!("{}_DATA", crate_name.to_uppercase());
+        let ext_name = crate_name
+            .strip_prefix("hikami_")
+            .expect("Crate name should start with 'hikami_'");
+        let global_var_name = format!("{}_DATA", ext_name.to_uppercase());
 
         let crate_ident = Ident::new(crate_name, Span::call_site());
         let global_var_ident = Ident::new(&global_var_name, Span::call_site());
@@ -37,13 +40,16 @@ pub fn import_global_variables(_input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn initialize(_input: TokenStream) -> TokenStream {
     let calls = CRATES.iter().map(|crate_name| {
-        // crate name format: hikami_module-name
-        let mut struct_name_chars = crate_name.chars();
+        let ext_name = crate_name
+            .strip_prefix("hikami_")
+            .expect("Crate name should start with 'hikami_'");
+        // crate name format: hikami_extension-name
+        let mut struct_name_chars = ext_name.chars();
         let struct_name = match struct_name_chars.next() {
             None => String::new(),
             Some(c) => c.to_uppercase().collect::<String>() + struct_name_chars.as_str(),
         };
-        let global_var_name = format!("{}_DATA", crate_name.to_uppercase());
+        let global_var_name = format!("{}_DATA", ext_name.to_uppercase());
 
         let crate_ident = Ident::new(crate_name, Span::call_site());
         let struct_ident = Ident::new(&struct_name, Span::call_site());
