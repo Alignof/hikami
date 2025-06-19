@@ -4,13 +4,14 @@
 //! - Virtual Instruction
 
 use super::hs_forward_exception;
-use crate::emulate_extension::zicfiss::ZICFISS_DATA;
-use crate::emulate_extension::EmulateExtension;
+use hikami_core::emulate_extension::EmulateExtension;
 use hikami_core::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use raki::{Instruction, OpcodeKind};
 use riscv::register::{sepc, stval};
+
+extension_manager::import_global_variables!();
 
 /// Trap `Illegal instruction` exception.
 #[inline]
