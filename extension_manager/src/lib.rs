@@ -33,6 +33,31 @@ pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// Genrate all `EmulateExtension::instruction` arm from extension crate lists.
+fn generate_instruction_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
+    CRATES.iter().map(|crate_name| {
+        let ext_name = crate_name
+            .strip_prefix("hikami_")
+            .expect("Crate name should start with 'hikami_'");
+        let global_var_name = format!("{}_DATA", ext_name.to_uppercase());
+
+        let mut variant_name_chars = ext_name.chars();
+        let variant_name = match variant_name_chars.next() {
+            None => String::new(),
+            Some(c) => c.to_uppercase().collect::<String>() + variant_name_chars.as_str(),
+        };
+        let variant_ident = Ident::new(&variant_name, Span::call_site());
+        let global_var_ident = Ident::new(&global_var_name, Span::call_site());
+
+        quote! {
+            OpcodeKind::#variant_ident(_) => unsafe { #global_var_ident.lock() }
+                    .get_mut()
+                    .unwrap()
+                    .instruction(&fault_inst),
+        }
+    })
+}
+
 /// Import all global varables.
 #[proc_macro]
 pub fn import_global_variables(_input: TokenStream) -> TokenStream {
