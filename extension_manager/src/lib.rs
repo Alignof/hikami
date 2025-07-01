@@ -12,6 +12,27 @@ use syn::Ident;
 
 include!(concat!(env!("OUT_DIR"), "/dependencies.rs"));
 
+/// Handle all illegal instruction.
+#[proc_macro]
+pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
+    let inst_arms = generate_instruction_arms();
+    let expanded = quote! {
+        match fault_inst.opc {
+            #(#inst_arms)*
+            OpcodeKind::Zicsr(_) => {
+                let rs2 = fault_inst.rs2.unwrap();
+                unimplemented!("unsupported CSRs: {rs2:#x}");
+            }
+            _ => hs_forward_exception(),
+        }
+
+        let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+        context.update_sepc_by_inst(&fault_inst);
+    };
+
+    TokenStream::from(expanded)
+}
+
 /// Import all global varables.
 #[proc_macro]
 pub fn import_global_variables(_input: TokenStream) -> TokenStream {

@@ -22,26 +22,7 @@ pub fn illegal_instruction() {
     });
 
     // emulate the instruction
-    match fault_inst.opc {
-        OpcodeKind::Zicfiss(_) => unsafe { ZICFISS_DATA.lock() }
-            .get_mut()
-            .unwrap()
-            .instruction(&fault_inst),
-        OpcodeKind::Zicsr(_) => match fault_inst.rs2.unwrap() {
-            // ssp
-            0x11 => unsafe { ZICFISS_DATA.lock() }
-                .get_mut()
-                .unwrap()
-                .csr(&fault_inst),
-            unsupported_csr_num => {
-                unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
-            }
-        },
-        _ => hs_forward_exception(),
-    }
-
-    let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
-    context.update_sepc_by_inst(&fault_inst);
+    extension_manager::handle_illegal_inst!();
 }
 
 /// Trap `Virtual instruction` exception.
