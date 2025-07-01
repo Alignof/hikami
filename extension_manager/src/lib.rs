@@ -16,6 +16,7 @@ include!(concat!(env!("OUT_DIR"), "/dependencies.rs"));
 #[proc_macro]
 pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
     let inst_arms = generate_instruction_arms();
+    let csr_arms = generate_csr_arms();
     let expanded = quote! {
         match fault_inst.opc {
             #(#inst_arms)*
@@ -31,6 +32,31 @@ pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Expand all `EmulateExtension::csr`.
+fn generate_csr_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
+    CRATES.iter().map(|crate_name| {
+        let ext_name = crate_name
+            .strip_prefix("hikami_")
+            .expect("Crate name should start with 'hikami_'");
+        let global_var_name = format!("{}_DATA", ext_name.to_uppercase());
+        let global_var_ident = Ident::new(&global_var_name, Span::call_site());
+
+        quote! {
+            if unsafe { #global_var_ident.lock().get().unwrap().is_csr_defined(rs2) } {
+                unsafe { #global_var_ident.lock() }
+                    .get_mut()
+                    .unwrap()
+                    .csr(&fault_inst);
+
+                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+                context.update_sepc_by_inst(&fault_inst);
+
+                return;
+            }
+        }
+    })
 }
 
 /// Genrate all `EmulateExtension::instruction` arm from extension crate lists.
