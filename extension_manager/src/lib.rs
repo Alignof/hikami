@@ -21,7 +21,8 @@ pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
         match fault_inst.opc {
             #(#inst_arms)*
             OpcodeKind::Zicsr(_) => {
-                let rs2 = fault_inst.rs2.unwrap();
+                let rs2 = fault_inst.rs2.unwrap() as u16;
+                #(#csr_arms)*
                 unimplemented!("unsupported CSRs: {rs2:#x}");
             }
             _ => hs_forward_exception(),
