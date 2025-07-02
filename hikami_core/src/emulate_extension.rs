@@ -15,8 +15,8 @@ pub trait EmulateExtension {
     /// Emulate CSR
     fn csr(&mut self, inst: &Instruction);
     /// Emulate CSR field that already exists.
-    fn csr_field(&mut self, inst: &Instruction, write_to_csr_value: u64, read_csr_value: &mut u64);
-    /// Return whether given csr value defined in the extension.
+    fn csr_field(&mut self, inst: &Instruction);
+    /// Return whether given csr value is defined in the extension.
     fn is_csr_defined(&self, csr_num: u16) -> bool;
     /// Return whether given csr value has newly defined field.
     fn is_csr_field_defined(&self, csr_num: u16) -> bool;
