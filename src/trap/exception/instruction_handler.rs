@@ -7,7 +7,6 @@ use super::hs_forward_exception;
 use hikami_core::emulate_extension::EmulateExtension;
 use hikami_core::HYPERVISOR_DATA;
 
-use core::arch::asm;
 use raki::{Instruction, OpcodeKind};
 use riscv::register::{sepc, stval};
 
@@ -32,45 +31,7 @@ pub fn virtual_instruction() {
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
         panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}", sepc::read());
     });
-    let mut context = unsafe { HYPERVISOR_DATA.lock() }
-        .get()
-        .unwrap()
-        .guest()
-        .context;
 
     // emulate CSR set
-    match fault_inst.opc {
-        OpcodeKind::Zicsr(_) => {
-            match fault_inst.rs2.unwrap() {
-                // senvcfg
-                0x10a => {
-                    let mut read_from_csr_value: u64;
-                    unsafe {
-                        asm!("csrr {0}, senvcfg", out(reg) read_from_csr_value);
-                    }
-
-                    let write_to_csr_value = context.xreg(fault_inst.rs1.unwrap());
-
-                    // update emulated CSR field.
-                    unsafe { ZICFISS_DATA.lock() }.get_mut().unwrap().csr_field(
-                        &fault_inst,
-                        write_to_csr_value,
-                        &mut read_from_csr_value,
-                    );
-
-                    // commit result
-                    unsafe {
-                        asm!("csrw senvcfg, {0}", in(reg) write_to_csr_value);
-                    }
-                    context.set_xreg(fault_inst.rd.unwrap(), read_from_csr_value);
-                }
-                unsupported_csr_num => {
-                    unimplemented!("unsupported CSRs: {unsupported_csr_num:#x}")
-                }
-            }
-        }
-        _ => unreachable!(),
-    }
-
-    context.update_sepc_by_inst(&fault_inst);
+    extension_manager::handle_virtual_inst!();
 }

@@ -12,7 +12,49 @@ use syn::Ident;
 
 include!(concat!(env!("OUT_DIR"), "/dependencies.rs"));
 
-/// Handle all illegal instruction.
+/// Handle all virtual instruction exception.
+#[proc_macro]
+pub fn handle_virtual_inst(_input: TokenStream) -> TokenStream {
+    let csr_field_arms = generate_csr_field_arms();
+    let expanded = quote! {
+        match fault_inst.opc {
+            OpcodeKind::Zicsr(_) => {
+                let csr_num = fault_inst.rs2.unwrap() as u16;
+                #(#csr_field_arms)*
+            }
+            _ => unreachable!(),
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Expand all `EmulateExtension::csr_field`.
+fn generate_csr_field_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
+    CRATES.iter().map(|crate_name| {
+        let ext_name = crate_name
+            .strip_prefix("hikami_")
+            .expect("Crate name should start with 'hikami_'");
+        let global_var_name = format!("{}_DATA", ext_name.to_uppercase());
+        let global_var_ident = Ident::new(&global_var_name, Span::call_site());
+
+        quote! {
+            if unsafe { #global_var_ident.lock().get().unwrap().is_csr_field_defined(csr_num) } {
+                // update emulated CSR field.
+                unsafe { ZICFISS_DATA.lock() }.get_mut().unwrap().csr_field(
+                    &fault_inst,
+                );
+
+                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+                context.update_sepc_by_inst(&fault_inst);
+
+                return;
+            }
+        }
+    })
+}
+
+/// Handle all illegal instruction exception.
 #[proc_macro]
 pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
     let inst_arms = generate_instruction_arms();
@@ -21,9 +63,9 @@ pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
         match fault_inst.opc {
             #(#inst_arms)*
             OpcodeKind::Zicsr(_) => {
-                let rs2 = fault_inst.rs2.unwrap() as u16;
+                let csr_num = fault_inst.rs2.unwrap() as u16;
                 #(#csr_arms)*
-                unimplemented!("unsupported CSRs: {rs2:#x}");
+                unimplemented!("unsupported CSRs: {csr_num:#x}");
             }
             _ => hs_forward_exception(),
         }
@@ -45,7 +87,7 @@ fn generate_csr_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
         let global_var_ident = Ident::new(&global_var_name, Span::call_site());
 
         quote! {
-            if unsafe { #global_var_ident.lock().get().unwrap().is_csr_defined(rs2) } {
+            if unsafe { #global_var_ident.lock().get().unwrap().is_csr_defined(csr_num) } {
                 unsafe { #global_var_ident.lock() }
                     .get_mut()
                     .unwrap()
