@@ -105,6 +105,7 @@ impl PageTableEntry {
     }
 
     /// Is pte invalid?
+    #[allow(clippy::no_effect_underscore_binding)]
     fn is_invalid(self) -> bool {
         let pte_v = self.0 & 0x1;
         let _pte_r = (self.0 >> 1) & 0x1;
