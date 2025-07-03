@@ -2,7 +2,7 @@
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
 use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::h_extension::csrs::{hvip, VsInterruptKind};
+use crate::h_extension::csrs::{VsInterruptKind, hvip};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 

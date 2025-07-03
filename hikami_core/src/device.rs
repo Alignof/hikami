@@ -9,8 +9,8 @@ mod rtc;
 pub mod uart;
 mod virtio;
 
-use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr, PteFlag};
-use crate::memmap::{page_table, GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::page_table::{PteFlag, constants::PAGE_SIZE, g_stage_trans_addr};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 use alloc::vec::Vec;
 use fdt::Fdt;
 

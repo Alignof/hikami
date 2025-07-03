@@ -8,7 +8,7 @@ pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use config_register::{read_config_register, ConfigSpaceHeaderField};
+use config_register::{ConfigSpaceHeaderField, read_config_register};
 
 use alloc::vec::Vec;
 use core::ops::Range;

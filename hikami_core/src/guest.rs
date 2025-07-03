@@ -4,16 +4,16 @@ pub mod context;
 
 use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
 use crate::memmap::{
+    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
     constant::guest_memory,
     page_table,
-    page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
-    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
+    page_table::{PageTableEntry, PteFlag, constants::PAGE_SIZE},
 };
-use crate::{PageBlock, GUEST_INITRD};
+use crate::{GUEST_INITRD, PageBlock};
 use context::{Context, ContextData};
 
 use core::ops::Range;
-use elf::{endian::AnyEndian, ElfBytes};
+use elf::{ElfBytes, endian::AnyEndian};
 
 /// Guest Information
 #[derive(Debug)]
@@ -88,15 +88,12 @@ impl Guest {
             let host_physical_addr = HostPhysicalAddress(guest_physical_addr.raw());
 
             // create memory mapping
-            page_table::sv39x4::generate_page_table(
-                page_table_addr,
-                &[MemoryMap::new(
-                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                    host_physical_addr..host_physical_addr + PAGE_SIZE,
-                    // allow writing data to dtb to modify device tree on guest OS.
-                    &[Dirty, Accessed, Write, Read, User, Valid],
-                )],
-            );
+            page_table::sv39x4::generate_page_table(page_table_addr, &[MemoryMap::new(
+                guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                host_physical_addr..host_physical_addr + PAGE_SIZE,
+                // allow writing data to dtb to modify device tree on guest OS.
+                &[Dirty, Accessed, Write, Read, User, Valid],
+            )]);
         }
 
         GuestPhysicalAddress(guest_dtb.as_ptr() as usize)
@@ -136,15 +133,12 @@ impl Guest {
             }
 
             // create memory mapping
-            page_table::sv39x4::generate_page_table(
-                page_table_addr,
-                &[MemoryMap::new(
-                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                    aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                    // allow writing data to dtb to modify device tree on guest OS.
-                    &[Dirty, Accessed, Write, Read, User, Valid],
-                )],
-            );
+            page_table::sv39x4::generate_page_table(page_table_addr, &[MemoryMap::new(
+                guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
+                // allow writing data to dtb to modify device tree on guest OS.
+                &[Dirty, Accessed, Write, Read, User, Valid],
+            )]);
         }
 
         guest_dtb_addr
@@ -347,9 +341,8 @@ impl Guest {
                     }
 
                     // create memory mapping
-                    page_table::sv39x4::generate_page_table(
-                        self.page_table_addr,
-                        &[MemoryMap::new(
+                    page_table::sv39x4::generate_page_table(self.page_table_addr, &[
+                        MemoryMap::new(
                             guest_physical_addr..guest_physical_addr + PAGE_SIZE,
                             aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
                             match prog_header.p_flags & 0b111 {
@@ -364,8 +357,8 @@ impl Guest {
                                 0b111 => &[Dirty, Accessed, Exec, Write, Read, User, Valid],
                                 _ => panic!("unsupported flags"),
                             },
-                        )],
-                    );
+                        ),
+                    ]);
                 }
             }
         }
@@ -384,14 +377,11 @@ impl Guest {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
             let host_physical_addr = HostPhysicalAddress(guest_physical_addr.raw());
             // create memory mapping
-            page_table::sv39x4::generate_page_table(
-                self.page_table_addr,
-                &[MemoryMap::new(
-                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                    host_physical_addr..host_physical_addr + PAGE_SIZE,
-                    all_pte_flags_are_set,
-                )],
-            );
+            page_table::sv39x4::generate_page_table(self.page_table_addr, &[MemoryMap::new(
+                guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                host_physical_addr..host_physical_addr + PAGE_SIZE,
+                all_pte_flags_are_set,
+            )]);
         }
     }
 
@@ -431,14 +421,11 @@ impl Guest {
             }
 
             // create memory mapping
-            page_table::sv39x4::generate_page_table(
-                self.page_table_addr,
-                &[MemoryMap::new(
-                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                    aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                    all_pte_flags_are_set,
-                )],
-            );
+            page_table::sv39x4::generate_page_table(self.page_table_addr, &[MemoryMap::new(
+                guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
+                all_pte_flags_are_set,
+            )]);
         }
     }
 }

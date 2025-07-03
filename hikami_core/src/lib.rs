@@ -19,8 +19,8 @@ use core::cell::OnceCell;
 
 use device::Devices;
 use guest::Guest;
-use memmap::constant::MAX_HART_NUM;
 use memmap::HostPhysicalAddress;
+use memmap::constant::MAX_HART_NUM;
 
 use fdt::Fdt;
 use spin::Mutex;

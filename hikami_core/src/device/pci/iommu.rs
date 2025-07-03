@@ -4,12 +4,12 @@
 mod register_map;
 
 use super::config_register::{
-    get_bar_size, read_config_register, write_config_register, ConfigSpaceHeaderField,
+    ConfigSpaceHeaderField, get_bar_size, read_config_register, write_config_register,
 };
 use super::{Bdf, PciAddressSpace, PciDevice};
-use crate::h_extension::csrs::hgatp;
-use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress, MemoryMap};
 use crate::PageBlock;
+use crate::h_extension::csrs::hgatp;
+use crate::memmap::{HostPhysicalAddress, MemoryMap, page_table::constants::PAGE_SIZE};
 use register_map::{IoMmuMode, IoMmuRegisters};
 
 use alloc::vec::Vec;

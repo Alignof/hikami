@@ -4,8 +4,8 @@
 //! [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf) p.151
 
 use super::{
-    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
     PageTableAddress, PageTableEntry, PageTableLevel, PageTableMemory, PteFlag, TransAddrError,
+    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
 };
 use crate::h_extension::csrs::hgatp;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};

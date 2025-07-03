@@ -1,8 +1,8 @@
 //! Extension emulation
 
+use crate::HYPERVISOR_DATA;
 use crate::h_extension::csrs::vstvec;
 use crate::trap::hstrap_exit;
-use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use raki::Instruction;

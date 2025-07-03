@@ -128,12 +128,14 @@ pub mod vsip {
     /// # Safety
     /// make sure S-mode config.
     pub unsafe fn set_ssoft() {
-        core::arch::asm!(
-            "
+        unsafe {
+            core::arch::asm!(
+                "
             csrs vsip, {bits}
             ",
-            bits = in(reg) 0b0010
-        );
+                bits = in(reg) 0b0010
+            );
+        }
     }
 
     /// Set STIP bit (`SupervisorTimerInterruptPending`, 5 bit)
@@ -141,12 +143,14 @@ pub mod vsip {
     /// # Safety
     /// make sure S-mode config.
     pub unsafe fn set_stimer() {
-        core::arch::asm!(
-            "
+        unsafe {
+            core::arch::asm!(
+                "
             csrs vsip, {bits}
             ",
-            bits = in(reg) 0b0010_0000
-        );
+                bits = in(reg) 0b0010_0000
+            );
+        }
     }
 }
 
