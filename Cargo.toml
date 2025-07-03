@@ -20,6 +20,8 @@ codegen-units = 1
 [features]
 # debug log
 debug_log = []
+# identity memory map
+identity_map = []
 
 [dependencies]
 elf = { version = "0.7.2", default-features = false }
