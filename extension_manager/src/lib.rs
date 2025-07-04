@@ -41,7 +41,7 @@ fn generate_csr_field_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
         quote! {
             if unsafe { #global_var_ident.lock().get().unwrap().is_csr_field_defined(csr_num) } {
                 // update emulated CSR field.
-                unsafe { ZICFISS_DATA.lock() }.get_mut().unwrap().csr_field(
+                unsafe { #global_var_ident.lock() }.get_mut().unwrap().csr_field(
                     &fault_inst,
                 );
 
