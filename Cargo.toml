@@ -33,9 +33,9 @@ spin = "0.9.8"
 
 [features]
 # debug log
-debug_log = []
+debug_log = [ "hikami_core/debug_log" ]
 # identity memory map
-identity_map = []
+identity_map = [ "hikami_core/identity_map" ]
 # default on
 default = [ "enable_extension" ]
 # for `extension_manager`

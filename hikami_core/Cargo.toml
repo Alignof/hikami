@@ -3,6 +3,12 @@ name = "hikami_core"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+# debug log
+debug_log = []
+# identity memory map
+identity_map = []
+
 [dependencies]
 elf = { workspace = true }
 fdt = { workspace = true }
