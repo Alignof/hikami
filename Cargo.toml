@@ -43,8 +43,7 @@ enable_extension = [ "hikami_zbb" ]
 
 [dependencies]
 hikami_core = { path = "hikami_core" }
-hikami_zbb = { path = "../hikami_zbb", optional = true }
-#hikami_zbb = { git = "https://github.com/Alignof/hikami_zbb", branch = "develop", optional = true }
+hikami_zbb = { git = "https://github.com/Alignof/hikami_zbb", branch = "develop", optional = true }
 extension_manager = { path = "extension_manager" }
 
 elf = { workspace = true }
