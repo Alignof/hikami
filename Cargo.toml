@@ -55,3 +55,6 @@ rustsbi = { workspace = true }
 sbi-rt = { workspace = true }
 sbi-spec = { workspace = true }
 linked_list_allocator = { workspace = true }
+
+[patch.'https://github.com/Alignof/hikami']
+hikami_core = { path = "hikami_core" }
