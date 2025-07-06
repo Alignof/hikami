@@ -55,8 +55,8 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 /// - jump to hstart
 ///
 /// TODO: Remove the `.attribute arch, "rv64gc"` directive when the LLVM problem is fixed.
-#[link_section = ".text.entry"]
-#[no_mangle]
+#[unsafe(link_section = ".text.entry")]
+#[unsafe(no_mangle)]
 #[naked]
 extern "C" fn _start() -> ! {
     unsafe {

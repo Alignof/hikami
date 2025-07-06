@@ -29,8 +29,9 @@ pub unsafe fn hstrap_exit() -> ! {
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
-    asm!(
-        ".align 4
+    unsafe {
+        asm!(
+            ".align 4
         fence.i
 
         // set to stack top
@@ -83,10 +84,11 @@ pub unsafe fn hstrap_exit() -> ! {
 
         sret
         ",
-        HS_CONTEXT_SIZE = const size_of::<ContextData>(),
-        stack_top = in(reg) stack_top.raw(),
-        options(noreturn)
-    );
+            HS_CONTEXT_SIZE = const size_of::<ContextData>(),
+            stack_top = in(reg) stack_top.raw(),
+            options(noreturn)
+        );
+    }
 }
 
 /// Trap vector for HS-mode.

@@ -33,7 +33,7 @@ enable_extension = [ "hikami_zbb" ]
 
 See also: [https://github.com/Alignof/hikami_zbb](https://github.com/Alignof/hikami_zbb)
 
-During the build process, extension_manager automatically detects these crates and expands the necessary code to initialize the extension and dispatch instruction handling.
+During the build process, `extension_manager` automatically detects these crates and expands the necessary code to initialize the extension and dispatch instruction handling.
 This approach simplifies the management of multiple extensions and enhances the modularity of the hypervisor.
 
 ## Getting Started
