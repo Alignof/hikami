@@ -16,6 +16,26 @@ Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
 $ cargo doc --open
 ```
 
+## Extension Management
+hikami utilizes a procedural macro crate called `extension_manager` to dynamically incorporate RISC-V extension emulations. 
+This allows for adding or removing extension supports without modifying the core hypervisor code.
+
+To enable an extension, simply add the extension crate name to the `enable_extension` feature list in the root `Cargo.toml` file. 
+For example, to enable the `Zbb` extension, you would add `hikami_zbb` as follows:
+
+```toml
+# hikami/Cargo.toml
+[dependencies]
+hikami_zbb = { git = "https://github.com/Alignof/hikami_zbb", optional = true }
+[features]
+enable_extension = [ "hikami_zbb" ]
+```
+
+See also: [https://github.com/Alignof/hikami_zbb](https://github.com/Alignof/hikami_zbb)
+
+During the build process, extension_manager automatically detects these crates and expands the necessary code to initialize the extension and dispatch instruction handling.
+This approach simplifies the management of multiple extensions and enhances the modularity of the hypervisor.
+
 ## Getting Started
 ### Setup
 ```sh

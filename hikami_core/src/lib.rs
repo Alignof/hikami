@@ -19,8 +19,8 @@ use core::cell::OnceCell;
 
 use device::Devices;
 use guest::Guest;
-use memmap::HostPhysicalAddress;
 use memmap::constant::MAX_HART_NUM;
+use memmap::HostPhysicalAddress;
 
 use fdt::Fdt;
 use spin::Mutex;
@@ -85,21 +85,6 @@ impl HypervisorData {
         self.guests[hart_id] = Some(new_guest);
     }
 }
-
-/// Guest kernel image
-#[unsafe(link_section = ".guest_kernel")]
-pub static GUEST_KERNEL: [u8; include_bytes!("../../guest_image/vmlinux").len()] =
-    *include_bytes!("../../guest_image/vmlinux");
-
-/// Device tree blob that is passed to guest
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB: [u8; include_bytes!("../../guest_image/guest.dtb").len()] =
-    *include_bytes!("../../guest_image/guest.dtb");
-
-/// Guest intird
-#[unsafe(link_section = ".guest_initrd")]
-pub static GUEST_INITRD: [u8; include_bytes!("../../guest_image/initrd").len()] =
-    *include_bytes!("../../guest_image/initrd");
 
 unsafe extern "C" {
     /// stack top (defined in `memory.x`)
