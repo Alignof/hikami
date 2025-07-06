@@ -1,7 +1,7 @@
 //! HS-mode level initialization.
 
 use crate::trap::hstrap_vector;
-use crate::ALLOCATOR;
+use crate::{ALLOCATOR, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL};
 use hikami_core::guest::context::ContextData;
 use hikami_core::guest::Guest;
 use hikami_core::h_extension::csrs::{
@@ -13,7 +13,7 @@ use hikami_core::memmap::{
     constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
     HostPhysicalAddress,
 };
-use hikami_core::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
+use hikami_core::{HypervisorData, HYPERVISOR_DATA};
 use hikami_core::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
@@ -147,18 +147,19 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // load guest image
     let (guest_entry_point, elf_end_addr) =
-        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
+        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr(), &GUEST_INITRD);
 
     if cfg!(feature = "identity_map") {
         let guest_memory_start =
             guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
         new_guest.allocate_memory_region(
             guest_memory_start..guest_memory_start + guest_memory::DRAM_SIZE_PER_GUEST,
+            &GUEST_INITRD,
         );
     } else {
         // allocate page tables to all remain guest memory region
         let guest_memory_end = new_guest.memory_region().end;
-        new_guest.allocate_memory_region(elf_end_addr..guest_memory_end);
+        new_guest.allocate_memory_region(elf_end_addr..guest_memory_end, &GUEST_INITRD);
     }
 
     // set device memory map

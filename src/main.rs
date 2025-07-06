@@ -19,6 +19,21 @@ use hikami_core::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
 use hikami_core::println;
 use hikami_core::{_end_bss, _start_bss, _top_b_stack};
 
+/// Guest kernel image
+#[unsafe(link_section = ".guest_kernel")]
+pub static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
+    *include_bytes!("../guest_image/vmlinux");
+
+/// Device tree blob that is passed to guest
+#[unsafe(link_section = ".guest_dtb")]
+pub static GUEST_DTB: [u8; include_bytes!("../guest_image/guest.dtb").len()] =
+    *include_bytes!("../guest_image/guest.dtb");
+
+/// Guest intird
+#[unsafe(link_section = ".guest_initrd")]
+pub static GUEST_INITRD: [u8; include_bytes!("../guest_image/initrd").len()] =
+    *include_bytes!("../guest_image/initrd");
+
 /// Panic handler
 #[panic_handler]
 pub fn panic(info: &PanicInfo) -> ! {
