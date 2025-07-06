@@ -24,7 +24,7 @@ members = [ "extension_manager" , "hikami_core"]
 elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"
 linked_list_allocator = "0.10.5"
-raki = "1.3.1"
+raki = { git = "https://github.com/Alignof/raki", branch = "feature/Zbb"}
 riscv = "0.11.1"
 rustsbi = "0.4.0"
 sbi-rt = "0.0.3"
@@ -39,11 +39,11 @@ identity_map = [ "hikami_core/identity_map" ]
 # default on
 default = [ "enable_extension" ]
 # for `extension_manager`
-enable_extension = [ "hikami_zicfiss" ]
+enable_extension = [ "hikami_zbb" ]
 
 [dependencies]
 hikami_core = { path = "hikami_core" }
-hikami_zicfiss = { path = "../hikami_zicfiss", optional = true }
+hikami_zbb = { path = "../hikami_zbb", optional = true }
 extension_manager = { path = "extension_manager" }
 
 elf = { workspace = true }
