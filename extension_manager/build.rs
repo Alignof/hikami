@@ -5,6 +5,8 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() {
+    println!("cargo:rerun-if-changed=Cargo.toml");
+
     // exec `cargo metadata` and get a json.
     let output = Command::new("cargo")
         .args(["metadata", "--format-version=1", "--no-deps"])
