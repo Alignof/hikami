@@ -55,8 +55,8 @@ fn main() {
 
     // output crates list to `OUT_DIR/dependencies.rs`
     let out_dir = env::var("OUT_DIR").unwrap();
-    let out_path = format!("{}/dependencies.rs", out_dir);
-    let content = format!("static CRATES: &[&str] = &{:?};", crate_names);
+    let out_path = format!("{out_dir}/dependencies.rs");
+    let content = format!("static CRATES: &[&str] = &{crate_names:?};");
 
     fs::write(out_path, content).expect("Failed to write dependencies.rs");
 }
