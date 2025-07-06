@@ -179,6 +179,9 @@ impl HostPhysicalAddress {
 }
 
 /// VS-stage address translation.
+///
+/// # Errors
+/// Returns an error when call it in Bare mode or unsupported mode.
 pub fn vs_stage_trans_addr(
     gva: GuestVirtualAddress,
 ) -> Result<GuestPhysicalAddress, (TransAddrError, &'static str)> {
@@ -194,6 +197,9 @@ pub fn vs_stage_trans_addr(
 }
 
 /// G-stage address translation.
+///
+/// # Errors
+/// Returns an error when call it in Bare mode or unsupported mode.
 pub fn g_stage_trans_addr(
     gpa: GuestPhysicalAddress,
 ) -> Result<HostPhysicalAddress, (TransAddrError, &'static str)> {

@@ -4,13 +4,13 @@
 
 mod command;
 
-use super::config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderField};
+use super::config_register::{ConfigSpaceHeaderField, get_bar_size, read_config_register};
 use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::device::DeviceEmulateError;
 use crate::memmap::page_table::g_stage_trans_addr;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use command::{
-    CommandHeader, CommandTable, CommandTableGpaStorage, TransferDirection, COMMAND_HEADER_SIZE,
+    COMMAND_HEADER_SIZE, CommandHeader, CommandTable, CommandTableGpaStorage, TransferDirection,
 };
 
 use alloc::boxed::Box;

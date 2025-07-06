@@ -1,10 +1,8 @@
 //! Extension emulation
 
-pub mod zicfiss;
-
+use crate::HYPERVISOR_DATA;
 use crate::h_extension::csrs::vstvec;
 use crate::trap::hstrap_exit;
-use crate::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use raki::Instruction;
@@ -17,14 +15,25 @@ pub trait EmulateExtension {
     /// Emulate CSR
     fn csr(&mut self, inst: &Instruction);
     /// Emulate CSR field that already exists.
-    fn csr_field(&mut self, inst: &Instruction, write_to_csr_value: u64, read_csr_value: &mut u64);
+    fn csr_field(&mut self, inst: &Instruction);
+    /// Return whether given csr value is defined in the extension.
+    fn is_csr_defined(&self, csr_num: u16) -> bool;
+    /// Return whether given csr value has newly defined field.
+    fn is_csr_field_defined(&self, csr_num: u16) -> bool;
 }
 
 /// Holding a CSR value for CSRs emulation.
 pub struct EmulatedCsr(u64);
 
 impl EmulatedCsr {
+    /// Create self
+    #[must_use]
+    pub fn new(value: u64) -> Self {
+        EmulatedCsr(value)
+    }
+
     /// Return raw data.
+    #[must_use]
     pub fn bits(&self) -> u64 {
         self.0
     }
@@ -48,16 +57,12 @@ impl EmulatedCsr {
     }
 }
 
-/// Initialize singletons for extension emulation.
-/// TODO: Remove it when `OnceCell` is replaced to `LazyCell`.
-pub fn initialize() {
-    use zicfiss::{Zicfiss, ZICFISS_DATA};
-    unsafe { ZICFISS_DATA.lock() }.get_or_init(Zicfiss::new);
-}
-
 /// Throw an VS-level exception.
 /// * `exception_num`: Exception number. (stored to vscause)
 /// * `trap_value`: Trap value. (stored to vstval)
+///
+/// # Panics
+/// Panics if failed to get `hypervisor_data`.
 pub fn pseudo_vs_exception(exception_num: usize, trap_value: usize) -> ! {
     unsafe {
         let hypervisor_data = HYPERVISOR_DATA.lock();

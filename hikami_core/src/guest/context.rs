@@ -28,6 +28,7 @@ pub struct Context {
 
 impl Context {
     /// Constructor for `Context`.
+    #[must_use]
     pub fn new(address: HostPhysicalAddress) -> Self {
         Context { address }
     }
@@ -45,6 +46,7 @@ impl Context {
     }
 
     /// Return regular register value.
+    #[must_use]
     pub fn xreg(self, index: usize) -> u64 {
         if index == 0 {
             0
@@ -59,6 +61,7 @@ impl Context {
     }
 
     /// Return sepc value.
+    #[must_use]
     pub fn sepc(self) -> usize {
         self.get_context().sepc
     }
@@ -80,6 +83,7 @@ impl Context {
     }
 
     /// Return sstatus value.
+    #[must_use]
     pub fn sstatus(self) -> usize {
         self.get_context().sstatus
     }

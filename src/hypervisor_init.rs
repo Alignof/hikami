@@ -1,21 +1,20 @@
 //! HS-mode level initialization.
 
-use crate::emulate_extension;
-use crate::guest::context::ContextData;
-use crate::guest::Guest;
-use crate::h_extension::csrs::{
+use crate::trap::hstrap_vector;
+use crate::{ALLOCATOR, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL};
+use hikami_core::guest::context::ContextData;
+use hikami_core::guest::Guest;
+use hikami_core::h_extension::csrs::{
     hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus, hvip,
     vsatp, VsInterruptKind,
 };
-use crate::h_extension::instruction::hfence_gvma_all;
-use crate::memmap::{
+use hikami_core::h_extension::instruction::hfence_gvma_all;
+use hikami_core::memmap::{
     constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
     HostPhysicalAddress,
 };
-use crate::trap::hstrap_vector;
-use crate::ALLOCATOR;
-use crate::{HypervisorData, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL, HYPERVISOR_DATA};
-use crate::{_hv_heap_size, _start_heap};
+use hikami_core::{HypervisorData, HYPERVISOR_DATA};
+use hikami_core::{_hv_heap_size, _start_heap};
 
 use core::arch::asm;
 
@@ -148,18 +147,19 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // load guest image
     let (guest_entry_point, elf_end_addr) =
-        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
+        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr(), &GUEST_INITRD);
 
     if cfg!(feature = "identity_map") {
         let guest_memory_start =
             guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
         new_guest.allocate_memory_region(
             guest_memory_start..guest_memory_start + guest_memory::DRAM_SIZE_PER_GUEST,
+            &GUEST_INITRD,
         );
     } else {
         // allocate page tables to all remain guest memory region
         let guest_memory_end = new_guest.memory_region().end;
-        new_guest.allocate_memory_region(elf_end_addr..guest_memory_end);
+        new_guest.allocate_memory_region(elf_end_addr..guest_memory_end, &GUEST_INITRD);
     }
 
     // set device memory map
@@ -180,13 +180,13 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .devices()
         .pci
         .as_ref()
-        .map(super::device::pci::Pci::init_pci_devices);
+        .map(hikami_core::device::pci::Pci::init_pci_devices);
 
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
 
     // initialize emulate_extension data
-    emulate_extension::initialize();
+    extension_manager::initialize!();
 
     unsafe {
         // sstatus.SUM = 1, sstatus.SPP = 0

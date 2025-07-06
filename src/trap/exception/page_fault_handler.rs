@@ -4,11 +4,11 @@
 //! - Store AMO guest page fault
 
 use super::{hs_forward_exception, update_sepc_by_inst_type};
-use crate::device::EmulateDevice;
-use crate::h_extension::csrs::{htinst, htval};
-use crate::memmap::page_table::{g_stage_trans_addr, vs_stage_trans_addr};
-use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
-use crate::HYPERVISOR_DATA;
+use hikami_core::device::EmulateDevice;
+use hikami_core::h_extension::csrs::{htinst, htval};
+use hikami_core::memmap::page_table::{g_stage_trans_addr, vs_stage_trans_addr};
+use hikami_core::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
+use hikami_core::HYPERVISOR_DATA;
 
 use raki::Instruction;
 use riscv::register::sepc;

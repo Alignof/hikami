@@ -1,8 +1,8 @@
 //! Sv57: Page-Based 57-bit Virtual-Memory System
 
 use super::{
-    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
     PageTableAddress, PageTableEntry, PageTableLevel, TransAddrError,
+    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
 };
 use crate::h_extension::csrs::vsatp;
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress};
@@ -50,7 +50,18 @@ impl AddressFieldSv57 for GuestVirtualAddress {
     }
 }
 
-/// Translate gva to gpa in sv57
+/// Translate gva to gpa in `Sv57`.
+///
+/// # Errors
+/// This function will return an error if:
+/// * An invalid Page Table Entry (PTE) is encountered during the page table walk.
+/// * For a PTE that points to a superpage, remain PPN fields
+///   that must be zero according to the specification is non-zero.
+/// * The walk finishes all five levels of the page table hierarchy without reaching a leaf PTE.
+///
+/// # Panics
+/// This function will panic if:
+/// * The current `vsatp` register's mode is not `Sv57`.
 #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
 pub fn trans_addr(
     gva: GuestVirtualAddress,

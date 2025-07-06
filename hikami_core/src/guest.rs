@@ -9,7 +9,7 @@ use crate::memmap::{
     page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
 };
-use crate::{PageBlock, GUEST_INITRD};
+use crate::PageBlock;
 use context::{Context, ContextData};
 
 use core::ops::Range;
@@ -37,10 +37,11 @@ impl Guest {
     ///
     /// - Zero filling root page table.
     /// - Map guest dtb to guest memory space.
+    #[must_use]
     pub fn new(
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
-        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
+        guest_dtb: &'static [u8],
     ) -> Self {
         // calculate guest memory region
         let guest_memory_begin: GuestPhysicalAddress =
@@ -108,7 +109,7 @@ impl Guest {
     fn map_guest_dtb(
         hart_id: usize,
         page_table_addr: HostPhysicalAddress,
-        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
+        guest_dtb: &'static [u8],
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
@@ -150,21 +151,25 @@ impl Guest {
     }
 
     /// Return HART(HARdware Thread) id.
+    #[must_use]
     pub fn hart_id(&self) -> usize {
         self.hart_id
     }
 
     /// Return Stack top (end of memory region)
+    #[must_use]
     pub fn stack_top(&self) -> HostPhysicalAddress {
         self.stack_top_addr
     }
 
     /// Return guest device tree address. (GPA)
+    #[must_use]
     pub fn guest_dtb_addr(&self) -> GuestPhysicalAddress {
         self.dtb_addr
     }
 
     /// Return guest dram space start
+    #[must_use]
     pub fn memory_region(&self) -> &Range<GuestPhysicalAddress> {
         &self.memory_region
     }
@@ -186,11 +191,13 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
+    /// * `guest_initrd` - Initrd raw slice.
     #[cfg(feature = "identity_map")]
     pub fn load_guest_elf(
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
+        guest_initrd: &'static [u8],
     ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
         /// Segment type `PT_LOAD`
         ///
@@ -236,8 +243,8 @@ impl Guest {
             }
         }
 
-        if !GUEST_INITRD.is_empty() {
-            let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+        if !guest_initrd.is_empty() {
+            let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
             let guest_base =
                 guest_memory::DRAM_BASE + guest_memory::DRAM_SIZE_PER_GUEST * (self.hart_id + 1);
             let initrd_start = guest_base + guest_memory::DRAM_SIZE_PER_GUEST - aligned_initrd_size;
@@ -245,14 +252,14 @@ impl Guest {
             crate::println!(
                 "initrd (GPA): {:#x}..{:#x}",
                 initrd_start.raw(),
-                initrd_start.raw() + GUEST_INITRD.len()
+                initrd_start.raw() + guest_initrd.len()
             );
 
             unsafe {
                 core::ptr::copy(
-                    GUEST_INITRD.as_ptr(),
+                    guest_initrd.as_ptr(),
                     initrd_start.raw() as *mut u8,
-                    GUEST_INITRD.len(),
+                    guest_initrd.len(),
                 );
             }
         }
@@ -272,11 +279,17 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
+    /// * `guest_initrd` - Initrd raw slice.
+    ///
+    /// # Panics
+    /// Panics if it failed to calculate `aligned_segment_size` or failed to convert to usize.
     #[cfg(not(feature = "identity_map"))]
+    #[must_use]
     pub fn load_guest_elf(
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
+        _guest_initrd: &'static [u8],
     ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
         /// Segment type `PT_LOAD`
         ///
@@ -366,7 +379,11 @@ impl Guest {
 
     /// Allocate guest memory space from heap and create corresponding page table.
     #[cfg(feature = "identity_map")]
-    pub fn allocate_memory_region(&self, region: Range<GuestPhysicalAddress>) {
+    pub fn allocate_memory_region(
+        &self,
+        region: Range<GuestPhysicalAddress>,
+        _guest_initrd: &'static [u8],
+    ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
@@ -388,18 +405,22 @@ impl Guest {
 
     /// Allocate guest memory space from heap and create corresponding page table.
     #[cfg(not(feature = "identity_map"))]
-    pub fn allocate_memory_region(&self, region: Range<GuestPhysicalAddress>) {
+    pub fn allocate_memory_region(
+        &self,
+        region: Range<GuestPhysicalAddress>,
+        guest_initrd: &'static [u8],
+    ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
 
-        let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+        let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
         let initrd_start = region.end - aligned_initrd_size;
-        if !GUEST_INITRD.is_empty() {
+        if !guest_initrd.is_empty() {
             crate::println!(
                 "initrd (GPA): {:#x}..{:#x}",
                 initrd_start.raw(),
-                initrd_start.raw() + GUEST_INITRD.len()
+                initrd_start.raw() + guest_initrd.len()
             );
         }
 
@@ -414,7 +435,7 @@ impl Guest {
                 unsafe {
                     let offset = guest_physical_addr.raw() - initrd_start.raw();
                     core::ptr::copy(
-                        GUEST_INITRD.as_ptr().byte_add(offset),
+                        guest_initrd.as_ptr().byte_add(offset),
                         aligned_page_size_block_addr.raw() as *mut u8,
                         PAGE_SIZE,
                     );

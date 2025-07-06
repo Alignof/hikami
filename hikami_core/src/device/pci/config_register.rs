@@ -70,6 +70,7 @@ impl ConfigSpaceHeaderField {
 
 /// Get size of BAR.
 #[allow(clippy::cast_possible_truncation)]
+#[must_use]
 pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) -> u32 {
     let config_reg_addr = config_reg_base_addr + reg as usize;
     match reg {
@@ -93,6 +94,7 @@ pub fn get_bar_size(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) ->
 
 /// Read config data from "PCI Configuration Space".
 #[allow(clippy::cast_possible_truncation)]
+#[must_use]
 pub fn read_config_register(config_reg_base_addr: usize, reg: ConfigSpaceHeaderField) -> u32 {
     // the register requires 32 bit size access.
     let config_reg_32bit_addr = (config_reg_base_addr + (reg as usize)) & !0b11;
