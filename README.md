@@ -1,9 +1,9 @@
 # hikami
-[![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)  
+[![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)\
 A lightweight Type-1 hypervisor for RISC-V H-extension, featuring **RISC-V extension emulation**.
 
-This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor.   
-Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)  
+This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor.\ 
+Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)\
 Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
 
 ## Related projects
@@ -33,7 +33,7 @@ enable_extension = [ "hikami_zbb" ]
 
 See also: [https://github.com/Alignof/hikami_zbb](https://github.com/Alignof/hikami_zbb)
 
-During the build process, extension_manager automatically detects these crates and expands the necessary code to initialize the extension and dispatch instruction handling.
+During the build process, `extension_manager` automatically detects these crates and expands the necessary code to initialize the extension and dispatch instruction handling.
 This approach simplifies the management of multiple extensions and enhances the modularity of the hypervisor.
 
 ## Getting Started
@@ -112,5 +112,5 @@ Coming soon...
 - [hypocaust-2](https://github.com/KuangjuX/hypocaust-2)
 
 ## Acknowledgement
-Exploratory IT Human Resources Project (MITOU Program) of Information-technology Promotion Agency, Japan (IPA) in the fiscal year 2024.  
+Exploratory IT Human Resources Project (MITOU Program) of Information-technology Promotion Agency, Japan (IPA) in the fiscal year 2024.\
 [https://www.ipa.go.jp/jinzai/mitou/it/2024/gaiyou-tn-3.html](https://www.ipa.go.jp/jinzai/mitou/it/2024/gaiyou-tn-3.html)

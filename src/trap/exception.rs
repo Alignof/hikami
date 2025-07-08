@@ -5,12 +5,12 @@ mod page_fault_handler;
 mod sbi_handler;
 
 use super::hstrap_exit;
+use hikami_core::HYPERVISOR_DATA;
 use hikami_core::guest;
 use hikami_core::h_extension::{
-    csrs::{htval, vstvec},
     HvException,
+    csrs::{htval, vstvec},
 };
-use hikami_core::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use riscv::register::{
@@ -24,7 +24,6 @@ use sbi_handler::{
 
 /// Delegate exception to supervisor mode from VS-mode.
 #[unsafe(no_mangle)]
-#[inline(always)]
 #[allow(clippy::inline_always, clippy::module_name_repetitions)]
 pub extern "C" fn hs_forward_exception() {
     unsafe {

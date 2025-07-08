@@ -4,8 +4,8 @@
 //! - Virtual Instruction
 
 use super::hs_forward_exception;
-use hikami_core::emulate_extension::EmulateExtension;
 use hikami_core::HYPERVISOR_DATA;
+use hikami_core::emulate_extension::EmulateExtension;
 
 use raki::{Instruction, OpcodeKind};
 use riscv::register::{sepc, stval};

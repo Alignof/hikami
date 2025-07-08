@@ -6,8 +6,8 @@ mod interrupt;
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
-use hikami_core::guest::context::ContextData;
 use hikami_core::HYPERVISOR_DATA;
+use hikami_core::guest::context::ContextData;
 
 use core::arch::asm;
 use riscv::register::scause::{self, Trap};
@@ -29,8 +29,9 @@ pub unsafe fn hstrap_exit() -> ! {
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
-    asm!(
-        ".align 4
+    unsafe {
+        asm!(
+            ".align 4
         fence.i
 
         // set to stack top
@@ -83,17 +84,18 @@ pub unsafe fn hstrap_exit() -> ! {
 
         sret
         ",
-        HS_CONTEXT_SIZE = const size_of::<ContextData>(),
-        stack_top = in(reg) stack_top.raw(),
-        options(noreturn)
-    );
+            HS_CONTEXT_SIZE = const size_of::<ContextData>(),
+            stack_top = in(reg) stack_top.raw(),
+            options(noreturn)
+        );
+    }
 }
 
 /// Trap vector for HS-mode.
 /// Switch to hypervisor stack and save contexts.
 ///
 /// ## `fn_align`
-/// function alignment (feature `fn_align`).  
+/// function alignment (feature `fn_align`).\
 /// See: [https://github.com/rust-lang/rust/issues/82232](https://github.com/rust-lang/rust/issues/82232).
 /// ```no_run
 /// #[repr(align(4))]

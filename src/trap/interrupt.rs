@@ -1,9 +1,9 @@
 //! Trap VS-mode interrupt.
 
 use super::hstrap_exit;
-use hikami_core::device::plic::ContextId;
-use hikami_core::h_extension::csrs::{hvip, VsInterruptKind};
 use hikami_core::HYPERVISOR_DATA;
+use hikami_core::device::plic::ContextId;
+use hikami_core::h_extension::csrs::{VsInterruptKind, hvip};
 
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
