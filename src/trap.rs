@@ -95,7 +95,7 @@ pub unsafe fn hstrap_exit() -> ! {
 /// Switch to hypervisor stack and save contexts.
 ///
 /// ## `fn_align`
-/// function alignment (feature `fn_align`).  
+/// function alignment (feature `fn_align`).\
 /// See: [https://github.com/rust-lang/rust/issues/82232](https://github.com/rust-lang/rust/issues/82232).
 /// ```no_run
 /// #[repr(align(4))]

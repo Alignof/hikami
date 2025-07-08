@@ -1,4 +1,4 @@
-//! Handle VS-mode Ecall exception  
+//! Handle VS-mode Ecall exception\
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
 use hikami_core::h_extension::csrs::{hvip, VsInterruptKind};
