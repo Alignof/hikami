@@ -1,8 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
-// TODO: remove nightly when `naked_functions` become stable.
-#![feature(naked_functions)]
 // TODO: FIX AND REMOVE IT!!!
 #![allow(static_mut_refs)]
 
@@ -57,12 +55,11 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 /// TODO: Remove the `.attribute arch, "rv64gc"` directive when the LLVM problem is fixed.
 #[unsafe(link_section = ".text.entry")]
 #[unsafe(no_mangle)]
-#[naked]
+#[unsafe(naked)]
 extern "C" fn _start() -> ! {
-    unsafe {
-        // set stack pointer
-        naked_asm!(
-            r#"
+    // set stack pointer
+    naked_asm!(
+        r#"
             .attribute arch, "rv64gc"
             li t0, {stack_size_per_hart}
             mul t1, a0, t0
@@ -74,10 +71,9 @@ extern "C" fn _start() -> ! {
 
             call {hstart}
             "#,
-            stack_top = sym _top_b_stack,
-            stack_size_per_hart = const STACK_SIZE_PER_HART,
-            DRAM_BASE = const DRAM_BASE,
-            hstart = sym hstart,
-        )
-    }
+        stack_top = sym _top_b_stack,
+        stack_size_per_hart = const STACK_SIZE_PER_HART,
+        DRAM_BASE = const DRAM_BASE,
+        hstart = sym hstart,
+    )
 }
