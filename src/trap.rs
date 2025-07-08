@@ -6,8 +6,8 @@ mod interrupt;
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
-use hikami_core::guest::context::ContextData;
 use hikami_core::HYPERVISOR_DATA;
+use hikami_core::guest::context::ContextData;
 
 use core::arch::asm;
 use riscv::register::scause::{self, Trap};

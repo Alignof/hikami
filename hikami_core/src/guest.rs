@@ -2,18 +2,18 @@
 
 pub mod context;
 
+use crate::PageBlock;
 use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
 use crate::memmap::{
+    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
     constant::guest_memory,
     page_table,
-    page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
-    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
+    page_table::{PageTableEntry, PteFlag, constants::PAGE_SIZE},
 };
-use crate::PageBlock;
 use context::{Context, ContextData};
 
 use core::ops::Range;
-use elf::{endian::AnyEndian, ElfBytes};
+use elf::{ElfBytes, endian::AnyEndian};
 
 /// Guest Information
 #[derive(Debug)]

@@ -2,23 +2,23 @@
 
 use crate::trap::hstrap_vector;
 use crate::{ALLOCATOR, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL};
-use hikami_core::guest::context::ContextData;
 use hikami_core::guest::Guest;
+use hikami_core::guest::context::ContextData;
 use hikami_core::h_extension::csrs::{
-    hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie, hstatus, hvip,
-    vsatp, VsInterruptKind,
+    VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie,
+    hstatus, hvip, vsatp,
 };
 use hikami_core::h_extension::instruction::hfence_gvma_all;
 use hikami_core::memmap::{
-    constant::guest_memory, page_table::sv39x4::ROOT_PAGE_TABLE, GuestPhysicalAddress,
-    HostPhysicalAddress,
+    GuestPhysicalAddress, HostPhysicalAddress, constant::guest_memory,
+    page_table::sv39x4::ROOT_PAGE_TABLE,
 };
-use hikami_core::{HypervisorData, HYPERVISOR_DATA};
 use hikami_core::{_hv_heap_size, _start_heap};
+use hikami_core::{HYPERVISOR_DATA, HypervisorData};
 
 use core::arch::asm;
 
-use elf::{endian::AnyEndian, ElfBytes};
+use elf::{ElfBytes, endian::AnyEndian};
 use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 
 /// Entry point to HS-mode.

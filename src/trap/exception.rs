@@ -5,12 +5,12 @@ mod page_fault_handler;
 mod sbi_handler;
 
 use super::hstrap_exit;
+use hikami_core::HYPERVISOR_DATA;
 use hikami_core::guest;
 use hikami_core::h_extension::{
-    csrs::{htval, vstvec},
     HvException,
+    csrs::{htval, vstvec},
 };
-use hikami_core::HYPERVISOR_DATA;
 
 use core::arch::asm;
 use riscv::register::{
