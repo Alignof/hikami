@@ -15,7 +15,6 @@ use command::{
 
 use alloc::boxed::Box;
 use alloc::vec;
-use alloc::vec::Vec;
 use core::ops::Range;
 
 /// Number of SATA port.
@@ -406,7 +405,6 @@ impl PciDevice for Sata {
         device_id: u32,
         pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
-        _memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
         let config_space_header_addr =
             pci_config_space_base_addr.0 | bdf.calc_config_space_header_offset();

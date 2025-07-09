@@ -12,7 +12,6 @@ use crate::h_extension::csrs::hgatp;
 use crate::memmap::{HostPhysicalAddress, MemoryMap, page_table::constants::PAGE_SIZE};
 use register_map::{IoMmuMode, IoMmuRegisters};
 
-use alloc::vec::Vec;
 use core::ops::Range;
 use fdt::Fdt;
 
@@ -137,7 +136,6 @@ impl PciDevice for IoMmu {
         _device_id: u32,
         _pci_config_space_base_addr: HostPhysicalAddress,
         _pci_addr_space: &PciAddressSpace,
-        _memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
         unreachable!("use `IoMmu::new_from_dtb` instead.");
     }

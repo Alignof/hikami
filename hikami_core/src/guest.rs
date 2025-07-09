@@ -75,7 +75,7 @@ impl Guest {
     fn map_guest_dtb(
         _hart_id: usize,
         page_table_addr: HostPhysicalAddress,
-        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
+        guest_dtb: &'static [u8],
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
