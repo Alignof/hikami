@@ -33,6 +33,22 @@ enable_extension = [ "hikami_zbb" ]
 
 See also: [https://github.com/Alignof/hikami_zbb](https://github.com/Alignof/hikami_zbb)
 
+and add `zbb=false` option to qemu args in `.cargo/config.toml`.
+```toml
+[target.riscv64imac-unknown-none-elf]
+runner = """
+qemu-system-riscv64
+-cpu rv64,smstateen=true,zbb=false
+-machine virt
+-bios default
+-nographic
+-m 2G
+-drive file=rootfs.ext2,format=raw,id=hd0,if=none
+-device ich9-ahci,id=ahci -device ide-hd,drive=hd0,bus=ahci.0 
+-kernel
+"""
+```
+
 During the build process, `extension_manager` automatically detects these crates and expands the necessary code to initialize the extension and dispatch instruction handling.
 This approach simplifies the management of multiple extensions and enhances the modularity of the hypervisor.
 

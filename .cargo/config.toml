@@ -1,4 +1,6 @@
 [target.riscv64imac-unknown-none-elf]
+# if you wanna test zbb emulation, you can:
+# -cpu rv64,smstateen=true -> -cpu rv64,smstateen=true,zbb=false
 runner = """
 qemu-system-riscv64
 -cpu rv64,smstateen=true
