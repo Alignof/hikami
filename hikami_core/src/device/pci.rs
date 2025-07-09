@@ -8,7 +8,7 @@ pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use config_register::{read_config_register, ConfigSpaceHeaderField};
+use config_register::{ConfigSpaceHeaderField, read_config_register};
 
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -298,7 +298,7 @@ impl MmioDevice for Pci {
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices = PciDevices::new(device_tree, base_address, &pci_addr_space);
 
-        // 32 bit memory map
+        // 32 bit reserved memory map
         memory_maps.push(MemoryMap::new(
             GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
                 ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
@@ -306,7 +306,7 @@ impl MmioDevice for Pci {
             &PTE_FLAGS_FOR_DEVICE,
         ));
 
-        // 64 bit memory map
+        // 64 bit reserved memory map
         memory_maps.push(MemoryMap::new(
             GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
                 ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
@@ -331,6 +331,7 @@ impl MmioDevice for Pci {
         self.base_addr
     }
 
+    /// mapping sata register region.
     fn memmap(&self) -> MemoryMap {
         let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(
