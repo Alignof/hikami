@@ -5,26 +5,25 @@ mod page_fault_handler;
 mod sbi_handler;
 
 use super::hstrap_exit;
-use crate::guest;
-use crate::h_extension::{
-    csrs::{htval, vstvec},
+use hikami_core::HYPERVISOR_DATA;
+use hikami_core::guest;
+use hikami_core::h_extension::{
     HvException,
+    csrs::{htval, vstvec},
 };
-use crate::HYPERVISOR_DATA;
-use sbi_handler::sbi_call;
 
 use core::arch::asm;
 use riscv::register::{
     scause::{self, Exception},
     stval,
 };
+use sbi_handler::sbi_call;
 use sbi_handler::{
     sbi_base_handler, sbi_fwft_handler, sbi_pmu_handler, sbi_rfnc_handler, sbi_time_handler,
 };
 
 /// Delegate exception to supervisor mode from VS-mode.
-#[no_mangle]
-#[inline(always)]
+#[unsafe(no_mangle)]
 #[allow(clippy::inline_always, clippy::module_name_repetitions)]
 pub extern "C" fn hs_forward_exception() {
     unsafe {
@@ -84,7 +83,7 @@ fn update_sepc_by_inst_type(is_compressed: bool, context: &mut guest::context::C
 
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
-pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
+pub fn trap_exception(exception_cause: Exception) -> ! {
     match exception_cause {
         Exception::IllegalInstruction => instruction_handler::illegal_instruction(),
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
@@ -109,5 +108,7 @@ pub unsafe fn trap_exception(exception_cause: Exception) -> ! {
         _ => hs_forward_exception(),
     }
 
-    hstrap_exit();
+    unsafe {
+        hstrap_exit();
+    }
 }

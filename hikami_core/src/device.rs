@@ -9,8 +9,8 @@ mod rtc;
 pub mod uart;
 mod virtio;
 
-use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr, PteFlag};
-use crate::memmap::{page_table, GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::page_table::{PteFlag, constants::PAGE_SIZE, g_stage_trans_addr};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 use alloc::vec::Vec;
 use fdt::Fdt;
 
@@ -40,12 +40,16 @@ pub enum DeviceEmulateError {
 /// It recives trapped address (and value) and emulate load/store.
 pub trait EmulateDevice {
     /// Pass through loading memory
+    #[must_use]
     fn pass_through_loading(dst_addr: HostPhysicalAddress) -> u32 {
         let dst_ptr = dst_addr.raw() as *const u32;
         unsafe { dst_ptr.read_volatile() }
     }
 
     /// Emulate loading port registers.
+    ///
+    /// # Errors
+    /// It will return an error if loading failed.
     #[allow(clippy::cast_possible_truncation)]
     fn emulate_loading(&self, dst_addr: HostPhysicalAddress) -> Result<u32, DeviceEmulateError>;
 
@@ -58,6 +62,9 @@ pub trait EmulateDevice {
     }
 
     /// Emulate storing port registers.
+    ///
+    /// # Errors
+    /// It will return an error if storing failed.
     fn emulate_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
@@ -223,6 +230,10 @@ pub struct Devices {
 
 impl Devices {
     /// Constructor for `Devices`.
+    ///
+    /// # Panics
+    /// Panics if UART or PLIC or CLINT are not found in device tree.
+    #[must_use]
     pub fn new(device_tree: Fdt) -> Self {
         Devices {
             uart: uart::Uart::try_new(&device_tree, &["ns16550a", "riscv,axi-uart-1.0"])
@@ -260,15 +271,25 @@ impl Devices {
             self.clint.memmap(),
         ]);
 
-        if let Some(pci) = &self.pci {
-            device_mapping.push(pci.memmap());
-            device_mapping.extend_from_slice(pci.pci_memory_maps());
-        }
         if let Some(rtc) = &self.rtc {
             device_mapping.push(rtc.memmap());
         }
         if let Some(initrd) = &self.initrd {
             device_mapping.push(initrd.memmap());
+        }
+
+        if let Some(pci) = &self.pci {
+            device_mapping.push(pci.memmap());
+
+            if cfg!(feature = "identity_map") {
+                // mapping whole memory mapped register region of block divices.
+                device_mapping.extend_from_slice(pci.pci_memory_maps());
+            }
+        }
+        if cfg!(feature = "identity_map") {
+            if let Some(mmc) = &self.mmc {
+                device_mapping.push(mmc.memmap());
+            }
         }
 
         device_mapping

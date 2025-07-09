@@ -1,26 +1,26 @@
 //! Trap VS-mode interrupt.
 
 use super::hstrap_exit;
-use crate::device::plic::ContextId;
-use crate::h_extension::csrs::{hvip, VsInterruptKind};
-use crate::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR_DATA;
+use hikami_core::device::plic::ContextId;
+use hikami_core::h_extension::csrs::{VsInterruptKind, hvip};
 
 use riscv::register::scause::Interrupt;
 use riscv::register::sie;
 
 /// Trap handler for Interrupt
 #[allow(clippy::module_name_repetitions)]
-pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
+pub fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
     match interrupt_cause {
-        Interrupt::SupervisorSoft => {
+        Interrupt::SupervisorSoft => unsafe {
             hvip::set(VsInterruptKind::Software);
             sie::clear_ssoft();
-        }
-        Interrupt::SupervisorTimer => {
+        },
+        Interrupt::SupervisorTimer => unsafe {
             hvip::set(VsInterruptKind::Timer);
             sie::clear_stimer();
-        }
-        Interrupt::SupervisorExternal => {
+        },
+        Interrupt::SupervisorExternal => unsafe {
             let mut hypervisor_data = HYPERVISOR_DATA.lock();
             let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
             let context_id = ContextId::new(hart_id, true);
@@ -35,9 +35,11 @@ pub unsafe fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
 
             hvip::set(VsInterruptKind::External);
             sie::clear_sext();
-        }
+        },
         Interrupt::Unknown => panic!("unknown interrupt type"),
     }
 
-    hstrap_exit();
+    unsafe {
+        hstrap_exit();
+    }
 }

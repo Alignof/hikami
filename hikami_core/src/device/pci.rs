@@ -8,7 +8,7 @@ pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use config_register::{read_config_register, ConfigSpaceHeaderField};
+use config_register::{ConfigSpaceHeaderField, read_config_register};
 
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -30,6 +30,7 @@ impl Bdf {
     /// - `range_phys_hi`: Upper 32-bit data of child addresses.
     ///
     /// Ref: [https://elinux.org/Device_Tree_Usage#PCI_Address_Translation](https://elinux.org/Device_Tree_Usage#PCI_Address_Translation)
+    #[must_use]
     pub fn new(range_phys_hi: u32) -> Self {
         Bdf {
             bus: (range_phys_hi >> 16) & 0b1111_1111, // 8 bit
@@ -39,6 +40,7 @@ impl Bdf {
     }
 
     /// Calculate offset of config space header
+    #[must_use]
     pub fn calc_config_space_header_offset(&self) -> usize {
         ((self.bus & 0b1111_1111) << 20) as usize
             | ((self.device & 0b1_1111) << 15) as usize
@@ -58,12 +60,14 @@ pub trait PciDevice {
         device_id: u32,
         pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
-        memory_maps: &mut Vec<MemoryMap>,
     ) -> Self;
 
     /// Initialize pci device.
     /// * `pci`: struct `Pci`
     fn init(&self, pci_config_space_base_addr: HostPhysicalAddress);
+
+    /// Return memory map between physical to physical (identity map) for crate page table.
+    fn memmap(&self) -> MemoryMap;
 }
 
 #[derive(Debug)]
@@ -82,7 +86,6 @@ impl PciDevices {
         device_tree: &Fdt,
         pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
-        memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
         /// Max PCI bus size.
         const PCI_MAX_BUS: u8 = 255;
@@ -138,7 +141,6 @@ impl PciDevices {
                             device_id.into(),
                             pci_config_space_base_addr,
                             pci_addr_space,
-                            memory_maps,
                         ));
                     }
 
@@ -175,6 +177,10 @@ pub struct PciAddressSpace {
 
 impl PciAddressSpace {
     /// Constructor of `PciAddressSpace`.
+    ///
+    /// # Panics
+    /// Panics if `ranges` in device tree does not have seven fields or does not be aliged 4 bytes.
+    #[must_use]
     pub fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
         /// Bytes size of u32.
         const BYTES_U32: usize = 4;
@@ -232,11 +238,13 @@ impl PciAddressSpace {
     }
 
     /// Return base address of 32-bit memory space.
+    #[must_use]
     pub fn base_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
         self.bit32_memory_space.start
     }
 
     /// Return base address of 64-bit memory space.
+    #[must_use]
     pub fn base_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
         self.bit64_memory_space.start
     }
@@ -263,6 +271,7 @@ impl Pci {
     /// Return memory maps of Generic PCI host controller
     ///
     /// Ref: [https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt](https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/host-generic-pci.txt)
+    #[must_use]
     pub fn pci_memory_maps(&self) -> &[MemoryMap] {
         &self.memory_maps
     }
@@ -287,10 +296,9 @@ impl MmioDevice for Pci {
         let mut memory_maps = Vec::new();
         let base_address = HostPhysicalAddress(region.starting_address as usize);
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
-        let pci_devices =
-            PciDevices::new(device_tree, base_address, &pci_addr_space, &mut memory_maps);
+        let pci_devices = PciDevices::new(device_tree, base_address, &pci_addr_space);
 
-        // 32 bit memory map
+        // 32 bit reserved memory map
         memory_maps.push(MemoryMap::new(
             GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
                 ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
@@ -298,7 +306,7 @@ impl MmioDevice for Pci {
             &PTE_FLAGS_FOR_DEVICE,
         ));
 
-        // 64 bit memory map
+        // 64 bit reserved memory map
         memory_maps.push(MemoryMap::new(
             GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
                 ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
@@ -323,6 +331,7 @@ impl MmioDevice for Pci {
         self.base_addr
     }
 
+    /// mapping sata register region.
     fn memmap(&self) -> MemoryMap {
         let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(

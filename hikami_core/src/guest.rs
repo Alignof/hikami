@@ -2,18 +2,18 @@
 
 pub mod context;
 
+use crate::PageBlock;
 use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
 use crate::memmap::{
+    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
     constant::guest_memory,
     page_table,
-    page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
-    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
+    page_table::{PageTableEntry, PteFlag, constants::PAGE_SIZE},
 };
-use crate::{PageBlock, GUEST_INITRD};
 use context::{Context, ContextData};
 
 use core::ops::Range;
-use elf::{endian::AnyEndian, ElfBytes};
+use elf::{ElfBytes, endian::AnyEndian};
 
 /// Guest Information
 #[derive(Debug)]
@@ -37,10 +37,11 @@ impl Guest {
     ///
     /// - Zero filling root page table.
     /// - Map guest dtb to guest memory space.
+    #[must_use]
     pub fn new(
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
-        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
+        guest_dtb: &'static [u8],
     ) -> Self {
         // calculate guest memory region
         let guest_memory_begin: GuestPhysicalAddress =
@@ -70,10 +71,45 @@ impl Guest {
     /// Load guest device tree and create corresponding page table
     ///
     /// Guest device tree will be placed start of guest memory region.
+    #[cfg(feature = "identity_map")]
+    fn map_guest_dtb(
+        _hart_id: usize,
+        page_table_addr: HostPhysicalAddress,
+        guest_dtb: &'static [u8],
+    ) -> GuestPhysicalAddress {
+        use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
+
+        assert!(guest_dtb.len() < guest_memory::GUEST_DTB_REGION_SIZE);
+
+        let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+
+        for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
+            let guest_physical_addr = GuestPhysicalAddress(guest_dtb.as_ptr() as usize + offset);
+            let host_physical_addr = HostPhysicalAddress(guest_physical_addr.raw());
+
+            // create memory mapping
+            page_table::sv39x4::generate_page_table(
+                page_table_addr,
+                &[MemoryMap::new(
+                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                    host_physical_addr..host_physical_addr + PAGE_SIZE,
+                    // allow writing data to dtb to modify device tree on guest OS.
+                    &[Dirty, Accessed, Write, Read, User, Valid],
+                )],
+            );
+        }
+
+        GuestPhysicalAddress(guest_dtb.as_ptr() as usize)
+    }
+
+    /// Load guest device tree and create corresponding page table
+    ///
+    /// Guest device tree will be placed start of guest memory region.
+    #[cfg(not(feature = "identity_map"))]
     fn map_guest_dtb(
         hart_id: usize,
         page_table_addr: HostPhysicalAddress,
-        guest_dtb: &'static [u8; include_bytes!("../guest_image/guest.dtb").len()],
+        guest_dtb: &'static [u8],
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
@@ -115,21 +151,25 @@ impl Guest {
     }
 
     /// Return HART(HARdware Thread) id.
+    #[must_use]
     pub fn hart_id(&self) -> usize {
         self.hart_id
     }
 
     /// Return Stack top (end of memory region)
+    #[must_use]
     pub fn stack_top(&self) -> HostPhysicalAddress {
         self.stack_top_addr
     }
 
     /// Return guest device tree address. (GPA)
+    #[must_use]
     pub fn guest_dtb_addr(&self) -> GuestPhysicalAddress {
         self.dtb_addr
     }
 
     /// Return guest dram space start
+    #[must_use]
     pub fn memory_region(&self) -> &Range<GuestPhysicalAddress> {
         &self.memory_region
     }
@@ -137,6 +177,94 @@ impl Guest {
     /// Return guest dram space start
     fn dram_base(&self) -> GuestPhysicalAddress {
         self.memory_region.start
+    }
+
+    /// Load an elf to guest memory page.
+    ///
+    /// It only load `PT_LOAD` type segments.
+    /// Entry address is base address of the dram.
+    ///
+    /// # Return
+    /// - Entry point address in Guest memory space.
+    /// - End address of the ELF. (for filling remind memory space)
+    ///
+    /// # Arguments
+    /// * `guest_elf` - Elf loading guest space.
+    /// * `elf_addr` - Elf address.
+    /// * `guest_initrd` - Initrd raw slice.
+    #[cfg(feature = "identity_map")]
+    pub fn load_guest_elf(
+        &self,
+        guest_elf: &ElfBytes<AnyEndian>,
+        elf_addr: *const u8,
+        guest_initrd: &'static [u8],
+    ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
+        /// Segment type `PT_LOAD`
+        ///
+        /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
+        const PT_LOAD: u32 = 1;
+
+        let mut elf_end: GuestPhysicalAddress = GuestPhysicalAddress::default();
+
+        for prog_header in guest_elf
+            .segments()
+            .expect("failed to get segments from elf")
+            .iter()
+        {
+            if prog_header.p_type == PT_LOAD {
+                let segment_gpa = GuestPhysicalAddress(
+                    guest_memory::DRAM_BASE.raw()
+                        + guest_memory::DRAM_SIZE_PER_GUEST * (self.hart_id + 1)
+                        + prog_header.p_paddr as usize,
+                );
+                elf_end = core::cmp::max(
+                    elf_end,
+                    segment_gpa + prog_header.p_memsz as usize + PAGE_SIZE,
+                );
+                unsafe {
+                    core::ptr::copy(
+                        elf_addr.wrapping_add(prog_header.p_offset as usize) as *const u8,
+                        segment_gpa.raw() as *mut u8,
+                        prog_header.p_memsz as usize,
+                    );
+                }
+
+                if prog_header.p_memsz > prog_header.p_filesz {
+                    unsafe {
+                        core::ptr::write_bytes(
+                            elf_addr.wrapping_add(
+                                prog_header.p_offset as usize + prog_header.p_filesz as usize,
+                            ) as *mut u8,
+                            0,
+                            (prog_header.p_memsz - prog_header.p_filesz) as usize,
+                        );
+                    }
+                }
+            }
+        }
+
+        if !guest_initrd.is_empty() {
+            let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+            let guest_base =
+                guest_memory::DRAM_BASE + guest_memory::DRAM_SIZE_PER_GUEST * (self.hart_id + 1);
+            let initrd_start = guest_base + guest_memory::DRAM_SIZE_PER_GUEST - aligned_initrd_size;
+
+            crate::println!(
+                "initrd (GPA): {:#x}..{:#x}",
+                initrd_start.raw(),
+                initrd_start.raw() + guest_initrd.len()
+            );
+
+            unsafe {
+                core::ptr::copy(
+                    guest_initrd.as_ptr(),
+                    initrd_start.raw() as *mut u8,
+                    guest_initrd.len(),
+                );
+            }
+        }
+
+        (self.dram_base(), elf_end)
     }
 
     /// Load an elf to new allocated guest memory page.
@@ -151,10 +279,17 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
+    /// * `guest_initrd` - Initrd raw slice.
+    ///
+    /// # Panics
+    /// Panics if it failed to calculate `aligned_segment_size` or failed to convert to usize.
+    #[cfg(not(feature = "identity_map"))]
+    #[must_use]
     pub fn load_guest_elf(
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
+        _guest_initrd: &'static [u8],
     ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
         /// Segment type `PT_LOAD`
         ///
@@ -243,18 +378,49 @@ impl Guest {
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
-    pub fn allocate_memory_region(&self, region: Range<GuestPhysicalAddress>) {
+    #[cfg(feature = "identity_map")]
+    pub fn allocate_memory_region(
+        &self,
+        region: Range<GuestPhysicalAddress>,
+        _guest_initrd: &'static [u8],
+    ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
 
-        let aligned_initrd_size = GUEST_INITRD.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+        for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
+            let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
+            let host_physical_addr = HostPhysicalAddress(guest_physical_addr.raw());
+            // create memory mapping
+            page_table::sv39x4::generate_page_table(
+                self.page_table_addr,
+                &[MemoryMap::new(
+                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                    host_physical_addr..host_physical_addr + PAGE_SIZE,
+                    all_pte_flags_are_set,
+                )],
+            );
+        }
+    }
+
+    /// Allocate guest memory space from heap and create corresponding page table.
+    #[cfg(not(feature = "identity_map"))]
+    pub fn allocate_memory_region(
+        &self,
+        region: Range<GuestPhysicalAddress>,
+        guest_initrd: &'static [u8],
+    ) {
+        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+
+        let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+
+        let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
         let initrd_start = region.end - aligned_initrd_size;
-        if !GUEST_INITRD.is_empty() {
+        if !guest_initrd.is_empty() {
             crate::println!(
                 "initrd (GPA): {:#x}..{:#x}",
                 initrd_start.raw(),
-                initrd_start.raw() + GUEST_INITRD.len()
+                initrd_start.raw() + guest_initrd.len()
             );
         }
 
@@ -269,7 +435,7 @@ impl Guest {
                 unsafe {
                     let offset = guest_physical_addr.raw() - initrd_start.raw();
                     core::ptr::copy(
-                        GUEST_INITRD.as_ptr().byte_add(offset),
+                        guest_initrd.as_ptr().byte_add(offset),
                         aligned_page_size_block_addr.raw() as *mut u8,
                         PAGE_SIZE,
                     );

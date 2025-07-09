@@ -2,7 +2,7 @@
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
 use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::h_extension::csrs::{hvip, VsInterruptKind};
+use crate::h_extension::csrs::{VsInterruptKind, hvip};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
@@ -28,11 +28,13 @@ impl ContextId {
     /// Create new `ContextId` from hart id.
     ///
     /// Each hart has two id for machine and supervisor.
+    #[must_use]
     pub fn new(hart_id: usize, is_supervisor: bool) -> Self {
         ContextId(2 * hart_id + usize::from(is_supervisor))
     }
 
     /// Return raw usize value.
+    #[must_use]
     pub fn raw(&self) -> usize {
         self.0
     }
@@ -81,6 +83,9 @@ impl Plic {
     }
 
     /// Emulate reading plic register.
+    ///
+    /// # Errors
+    /// It will return an error if `dst_addr` is out of range.
     pub fn emulate_loading(
         &self,
         dst_addr: HostPhysicalAddress,
@@ -97,6 +102,9 @@ impl Plic {
     }
 
     /// Emulate storing plic context register.
+    ///
+    /// # Errors
+    /// It will return an error if `dst_addr` is out of range.
     fn context_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,
@@ -136,6 +144,9 @@ impl Plic {
     }
 
     /// Emulate storing plic register.
+    ///
+    /// # Errors
+    /// It will return an error if `dst_addr` is out of range.
     pub fn emulate_storing(
         &mut self,
         dst_addr: HostPhysicalAddress,

@@ -1,74 +1,36 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
-// TODO: remove nightly when `naked_functions` become stable.
-#![feature(naked_functions)]
 // TODO: FIX AND REMOVE IT!!!
 #![allow(static_mut_refs)]
 
-extern crate alloc;
-mod device;
-mod emulate_extension;
-mod guest;
-mod h_extension;
 mod hypervisor_init;
-mod log;
-mod memmap;
 mod trap;
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
 use core::arch::naked_asm;
-use core::cell::OnceCell;
 use core::panic::PanicInfo;
 
-use fdt::Fdt;
 use linked_list_allocator::LockedHeap;
-use spin::Mutex;
 
-use crate::device::Devices;
-use crate::guest::Guest;
 use crate::hypervisor_init::hstart;
-use crate::memmap::constant::{DRAM_BASE, MAX_HART_NUM, STACK_SIZE_PER_HART};
-use crate::memmap::HostPhysicalAddress;
-
-#[global_allocator]
-/// Global allocator.
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
-// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
-
-/// Singleton for this hypervisor.
-static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
+use hikami_core::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
+use hikami_core::println;
+use hikami_core::{_end_bss, _start_bss, _top_b_stack};
 
 /// Guest kernel image
-#[link_section = ".guest_kernel"]
-static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
+#[unsafe(link_section = ".guest_kernel")]
+pub static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
     *include_bytes!("../guest_image/vmlinux");
 
 /// Device tree blob that is passed to guest
-#[link_section = ".guest_dtb"]
-static GUEST_DTB: [u8; include_bytes!("../guest_image/guest.dtb").len()] =
+#[unsafe(link_section = ".guest_dtb")]
+pub static GUEST_DTB: [u8; include_bytes!("../guest_image/guest.dtb").len()] =
     *include_bytes!("../guest_image/guest.dtb");
 
 /// Guest intird
-#[link_section = ".guest_initrd"]
-static GUEST_INITRD: [u8; include_bytes!("../guest_image/initrd").len()] =
+#[unsafe(link_section = ".guest_initrd")]
+pub static GUEST_INITRD: [u8; include_bytes!("../guest_image/initrd").len()] =
     *include_bytes!("../guest_image/initrd");
-
-extern "C" {
-    /// stack top (defined in `memory.x`)
-    static _stack_start: u8;
-    /// start of heap (defined in `memory.x`)
-    static mut _start_heap: u8;
-    /// heap size (defined in `memory.x`)
-    static _hv_heap_size: u8;
-    /// boot stack top (defined in `memory.x`)
-    static _top_b_stack: u8;
-    /// start of bss and sbss section.
-    static _start_bss: u8;
-    /// end of bss and sbss section.
-    static _end_bss: u8;
-}
 
 /// Panic handler
 #[panic_handler]
@@ -79,81 +41,10 @@ pub fn panic(info: &PanicInfo) -> ! {
     }
 }
 
-/// Aligned page size memory block
-#[repr(C, align(0x1000))]
-struct PageBlock([u8; 0x1000]);
-
-impl PageBlock {
-    /// Return aligned address of page size memory block.
-    fn alloc() -> HostPhysicalAddress {
-        let mut host_physical_block_as_vec: Vec<core::mem::MaybeUninit<PageBlock>> =
-            Vec::with_capacity(1);
-        unsafe {
-            host_physical_block_as_vec.set_len(1);
-        }
-
-        let host_physical_block_slice = host_physical_block_as_vec.into_boxed_slice();
-        HostPhysicalAddress(Box::into_raw(host_physical_block_slice) as *const u8 as usize)
-    }
-}
-
-/// Global data for hypervisor.
-///
-/// FIXME: Rename me!
-#[derive(Debug)]
-pub struct HypervisorData {
-    /// Current hart id (zero indexed).
-    current_hart: usize,
-    /// Guests data
-    guests: [Option<guest::Guest>; MAX_HART_NUM],
-    /// Devices data.
-    devices: device::Devices,
-}
-
-impl HypervisorData {
-    /// Initialize hypervisor.
-    ///
-    /// # Panics
-    /// It will be panic when parsing device tree failed.
-    #[must_use]
-    pub fn new(device_tree: Fdt) -> Self {
-        HypervisorData {
-            current_hart: 0,
-            guests: [const { None }; MAX_HART_NUM],
-            devices: Devices::new(device_tree),
-        }
-    }
-
-    /// Return Device objects.
-    ///
-    /// # Panics
-    /// It will be panic if devices are uninitialized.
-    #[must_use]
-    pub fn devices(&mut self) -> &mut device::Devices {
-        &mut self.devices
-    }
-
-    /// Return current hart's guest.
-    ///
-    /// # Panics
-    /// It will be panic if current HART's guest data is empty.
-    #[must_use]
-    pub fn guest(&self) -> &Guest {
-        self.guests[self.current_hart]
-            .as_ref()
-            .expect("guest data not found")
-    }
-
-    /// Add new guest data.
-    ///
-    /// # Panics
-    /// It will be panic if `hart_id` is greater than `MAX_HART_NUM`.
-    pub fn register_guest(&mut self, new_guest: Guest) {
-        let hart_id = new_guest.hart_id();
-        assert!(hart_id < MAX_HART_NUM);
-        self.guests[hart_id] = Some(new_guest);
-    }
-}
+#[global_allocator]
+/// Global allocator.
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
+// static mut ALLOCATOR: WildScreenAlloc = WildScreenAlloc::empty();
 
 /// Entry function of the hypervisor.
 ///
@@ -162,14 +53,13 @@ impl HypervisorData {
 /// - jump to hstart
 ///
 /// TODO: Remove the `.attribute arch, "rv64gc"` directive when the LLVM problem is fixed.
-#[link_section = ".text.entry"]
-#[no_mangle]
-#[naked]
+#[unsafe(link_section = ".text.entry")]
+#[unsafe(no_mangle)]
+#[unsafe(naked)]
 extern "C" fn _start() -> ! {
-    unsafe {
-        // set stack pointer
-        naked_asm!(
-            r#"
+    // set stack pointer
+    naked_asm!(
+        r#"
             .attribute arch, "rv64gc"
             li t0, {stack_size_per_hart}
             mul t1, a0, t0
@@ -181,10 +71,9 @@ extern "C" fn _start() -> ! {
 
             call {hstart}
             "#,
-            stack_top = sym _top_b_stack,
-            stack_size_per_hart = const STACK_SIZE_PER_HART,
-            DRAM_BASE = const DRAM_BASE,
-            hstart = sym hstart,
-        )
-    }
+        stack_top = sym _top_b_stack,
+        stack_size_per_hart = const STACK_SIZE_PER_HART,
+        DRAM_BASE = const DRAM_BASE,
+        hstart = sym hstart,
+    )
 }

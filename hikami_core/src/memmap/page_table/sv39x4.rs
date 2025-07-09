@@ -4,8 +4,8 @@
 //! [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf) p.151
 
 use super::{
-    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
     PageTableAddress, PageTableEntry, PageTableLevel, PageTableMemory, PteFlag, TransAddrError,
+    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
 };
 use crate::h_extension::csrs::hgatp;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
@@ -17,7 +17,7 @@ use core::slice::from_raw_parts_mut;
 pub const FIRST_LV_PAGE_TABLE_LEN: usize = 2048;
 
 /// Device tree blob that is passed to guest
-#[link_section = ".root_page_table"]
+#[unsafe(link_section = ".root_page_table")]
 pub static ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
     [PageTableEntry(0u64); FIRST_LV_PAGE_TABLE_LEN];
 
@@ -75,6 +75,9 @@ pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
 /// Generate third-level page table. (Sv39x4)
 ///
 /// The number of address translation stages is determined by the size of the range.
+///
+/// # Panics
+/// Panics if `root_table_start_addr` is not aligned 16 Kib.
 #[allow(clippy::module_name_repetitions)]
 pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: &[MemoryMap]) {
     use crate::memmap::AddressRangeUtil;
@@ -152,7 +155,18 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
     }
 }
 
-/// Translate gpa to hpa in sv39x4
+/// Translate gva to gpa in `Sv39x4`.
+///
+/// # Errors
+/// This function will return an error if:
+/// * An invalid Page Table Entry (PTE) is encountered during the page table walk.
+/// * For a PTE that points to a superpage, remain PPN fields
+///   that must be zero according to the specification is non-zero.
+/// * The walk finishes all three levels of the page table hierarchy without reaching a leaf PTE.
+///
+/// # Panics
+/// This function will panic if:
+/// * The current `vsatp` register's mode is not `Sv39x4`.
 #[allow(clippy::cast_possible_truncation)]
 pub fn trans_addr(
     gpa: GuestPhysicalAddress,

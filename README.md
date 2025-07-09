@@ -1,9 +1,9 @@
 # hikami
-[![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)  
+[![Rust](https://github.com/Alignof/hikami/actions/workflows/rust.yml/badge.svg)](https://github.com/Alignof/hikami/actions/workflows/rust.yml)\
 A lightweight Type-1 hypervisor for RISC-V H-extension, featuring **RISC-V extension emulation**.
 
-This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor.   
-Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)  
+This project aims not only to realize a lightweight hypervisor that can be used on RISC-V H extensions, but also to easily reproduce and manage the "extension" on the hypervisor.\ 
+Poster in RISC-V Days Tokyo 2024 Summer: [PDF](https://riscv.or.jp/wp-content/uploads/RV-Days_Tokyo_2024_Summer_paper_9.pdf)\
 Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
 
 ## Related projects
@@ -15,6 +15,42 @@ Paper in ComSys2024(ja): [link](https://ipsj.ixsq.nii.ac.jp/records/241051)
 ```sh
 $ cargo doc --open
 ```
+
+## Extension Management
+hikami utilizes a procedural macro crate called `extension_manager` to dynamically incorporate RISC-V extension emulations. 
+This allows for adding or removing extension supports without modifying the core hypervisor code.
+
+To enable an extension, simply add the extension crate name to the `enable_extension` feature list in the root `Cargo.toml` file. 
+For example, to enable the `Zbb` extension, you would add `hikami_zbb` as follows:
+
+```toml
+# hikami/Cargo.toml
+[dependencies]
+hikami_zbb = { git = "https://github.com/Alignof/hikami_zbb", optional = true }
+[features]
+enable_extension = [ "hikami_zbb" ]
+```
+
+See also: [https://github.com/Alignof/hikami_zbb](https://github.com/Alignof/hikami_zbb)
+
+and add `zbb=false` option to qemu args in `.cargo/config.toml`.
+```toml
+[target.riscv64imac-unknown-none-elf]
+runner = """
+qemu-system-riscv64
+-cpu rv64,smstateen=true,zbb=false
+-machine virt
+-bios default
+-nographic
+-m 2G
+-drive file=rootfs.ext2,format=raw,id=hd0,if=none
+-device ich9-ahci,id=ahci -device ide-hd,drive=hd0,bus=ahci.0 
+-kernel
+"""
+```
+
+During the build process, `extension_manager` automatically detects these crates and expands the necessary code to initialize the extension and dispatch instruction handling.
+This approach simplifies the management of multiple extensions and enhances the modularity of the hypervisor.
 
 ## Getting Started
 ### Setup
@@ -92,5 +128,5 @@ Coming soon...
 - [hypocaust-2](https://github.com/KuangjuX/hypocaust-2)
 
 ## Acknowledgement
-Exploratory IT Human Resources Project (MITOU Program) of Information-technology Promotion Agency, Japan (IPA) in the fiscal year 2024.  
+Exploratory IT Human Resources Project (MITOU Program) of Information-technology Promotion Agency, Japan (IPA) in the fiscal year 2024.\
 [https://www.ipa.go.jp/jinzai/mitou/it/2024/gaiyou-tn-3.html](https://www.ipa.go.jp/jinzai/mitou/it/2024/gaiyou-tn-3.html)

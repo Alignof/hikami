@@ -1,8 +1,8 @@
 //! Utility for HBA (= ATA) command.
 
 use crate::device::DmaHostBuffer;
-use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::GuestPhysicalAddress;
+use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 
 use alloc::vec::Vec;
 
