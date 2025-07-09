@@ -271,10 +271,6 @@ impl Devices {
             self.clint.memmap(),
         ]);
 
-        if let Some(pci) = &self.pci {
-            device_mapping.push(pci.memmap());
-            device_mapping.extend_from_slice(pci.pci_memory_maps());
-        }
         if let Some(rtc) = &self.rtc {
             device_mapping.push(rtc.memmap());
         }
@@ -282,16 +278,23 @@ impl Devices {
             device_mapping.push(initrd.memmap());
         }
 
-        // disable drive emulation if `identity_map` feature is enabled
-        if cfg!(feature = "identity_map") {
-            if let Some(mmc) = &self.mmc {
-                device_mapping.push(mmc.memmap());
-            }
-            if let Some(pci) = &self.pci {
+        if let Some(pci) = &self.pci {
+            device_mapping.push(pci.memmap());
+
+            // mapping whole region of block divices
+            if cfg!(feature = "identity_map") {
+                device_mapping.extend_from_slice(pci.pci_memory_maps());
+            } else {
+                // mapping pass-through registers' region
                 if let Some(sata) = &pci.pci_devices.sata {
                     use pci::PciDevice;
                     device_mapping.push(sata.memmap());
                 }
+            }
+        }
+        if cfg!(feature = "identity_map") {
+            if let Some(mmc) = &self.mmc {
+                device_mapping.push(mmc.memmap());
             }
         }
 
