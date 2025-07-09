@@ -281,15 +281,9 @@ impl Devices {
         if let Some(pci) = &self.pci {
             device_mapping.push(pci.memmap());
 
-            // mapping whole region of block divices
             if cfg!(feature = "identity_map") {
+                // mapping whole memory mapped register region of block divices.
                 device_mapping.extend_from_slice(pci.pci_memory_maps());
-            } else {
-                // mapping pass-through registers' region
-                if let Some(sata) = &pci.pci_devices.sata {
-                    use pci::PciDevice;
-                    device_mapping.push(sata.memmap());
-                }
             }
         }
         if cfg!(feature = "identity_map") {
