@@ -4,18 +4,17 @@
 
 mod command;
 
-use super::config_register::{ConfigSpaceHeaderField, get_bar_size, read_config_register};
+use super::config_register::{get_bar_size, read_config_register, ConfigSpaceHeaderField};
 use super::{Bdf, PciAddressSpace, PciDevice};
 use crate::device::DeviceEmulateError;
 use crate::memmap::page_table::g_stage_trans_addr;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use command::{
-    COMMAND_HEADER_SIZE, CommandHeader, CommandTable, CommandTableGpaStorage, TransferDirection,
+    CommandHeader, CommandTable, CommandTableGpaStorage, TransferDirection, COMMAND_HEADER_SIZE,
 };
 
 use alloc::boxed::Box;
 use alloc::vec;
-use alloc::vec::Vec;
 use core::ops::Range;
 
 /// Number of SATA port.
@@ -406,7 +405,6 @@ impl PciDevice for Sata {
         device_id: u32,
         pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
-        _memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
         let config_space_header_addr =
             pci_config_space_base_addr.0 | bdf.calc_config_space_header_offset();

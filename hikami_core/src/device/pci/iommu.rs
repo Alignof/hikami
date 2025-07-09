@@ -4,15 +4,14 @@
 mod register_map;
 
 use super::config_register::{
-    ConfigSpaceHeaderField, get_bar_size, read_config_register, write_config_register,
+    get_bar_size, read_config_register, write_config_register, ConfigSpaceHeaderField,
 };
 use super::{Bdf, PciAddressSpace, PciDevice};
-use crate::PageBlock;
 use crate::h_extension::csrs::hgatp;
-use crate::memmap::{HostPhysicalAddress, MemoryMap, page_table::constants::PAGE_SIZE};
+use crate::memmap::{page_table::constants::PAGE_SIZE, HostPhysicalAddress, MemoryMap};
+use crate::PageBlock;
 use register_map::{IoMmuMode, IoMmuRegisters};
 
-use alloc::vec::Vec;
 use core::ops::Range;
 use fdt::Fdt;
 
@@ -137,7 +136,6 @@ impl PciDevice for IoMmu {
         _device_id: u32,
         _pci_config_space_base_addr: HostPhysicalAddress,
         _pci_addr_space: &PciAddressSpace,
-        _memory_maps: &mut Vec<MemoryMap>,
     ) -> Self {
         unreachable!("use `IoMmu::new_from_dtb` instead.");
     }
