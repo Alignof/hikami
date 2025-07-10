@@ -28,5 +28,5 @@ pub mod guest_memory {
     /// Dram memory space per HART.
     pub const DRAM_SIZE_PER_GUEST: usize = 256 * 1024 * 1024; // 256 MB = 0x1000_0000
     /// Guest DTB space size
-    pub const GUEST_DTB_REGION_SIZE: usize = 0x2000;
+    pub const GUEST_DTB_REGION_SIZE: usize = 0x10000;
 }
