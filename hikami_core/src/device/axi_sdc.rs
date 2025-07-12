@@ -27,6 +27,13 @@ pub struct Mmc {
     is_transferring: bool,
 }
 
+impl Mmc {
+    /// Return base address of memory mapped register region.
+    fn base_addr(&self) -> HostPhysicalAddress {
+        HostPhysicalAddress(self.register_map_region.starting_address as usize)
+    }
+}
+
 impl EmulateDevice for Mmc {
     /// Emulate loading port registers.
     #[allow(clippy::cast_possible_truncation)]
@@ -41,14 +48,14 @@ impl EmulateDevice for Mmc {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
             // Argument
             //
             // Start transfer when write command to `Argument`
             // See: https://github.com/eugene-tarassov/vivado-risc-v/blob/d72a439f786b455cc321e2e615d7954a75f9ebde/sdc/axi_sdc_controller.v#L392
             0 => {
-                let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
+                let registers_ptr = self.base_addr().raw() as *mut SdcRegisters;
                 let command = unsafe { ((*registers_ptr).command) as usize };
                 let dma_gpa = GuestPhysicalAddress(unsafe { (*registers_ptr).dma_addres } as usize);
 
@@ -86,7 +93,7 @@ impl EmulateDevice for Mmc {
             60 => {
                 // end transfer
                 if value == 0 && self.is_transferring {
-                    let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
+                    let registers_ptr = self.base_addr().raw() as *mut SdcRegisters;
                     // restore address
                     unsafe {
                         (*registers_ptr).dma_addres = self.dma_addr.raw() as u64;
