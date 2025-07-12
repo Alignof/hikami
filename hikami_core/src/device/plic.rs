@@ -196,7 +196,7 @@ impl MmioDevice for Plic {
         self.register_map_regions
             .clone()
             .into_iter()
-            .map(|region| MemoryMap::from(region))
+            .map(MemoryMap::from)
             .collect()
     }
 }

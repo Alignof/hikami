@@ -31,7 +31,7 @@ impl MmioDevice for Rtc {
         self.register_map_regions
             .clone()
             .into_iter()
-            .map(|region| MemoryMap::from(region))
+            .map(MemoryMap::from)
             .collect()
     }
 }

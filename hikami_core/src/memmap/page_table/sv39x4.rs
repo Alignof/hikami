@@ -104,13 +104,11 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
 
         assert!(
             memmap.virt.start % trans_page_level.size() == 0,
-            "memmap: {:#x?}",
-            memmap
+            "memmap: {memmap:#x?}"
         );
         assert!(
             memmap.phys.start % trans_page_level.size() == 0,
-            "memmap: {:#x?}",
-            memmap
+            "memmap: {memmap:#x?}"
         );
 
         for offset in (0..memmap.virt.len()).step_by(trans_page_level.size()) {
