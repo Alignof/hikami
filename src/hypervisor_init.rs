@@ -76,10 +76,10 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     hie::set(VsInterruptKind::Software);
 
     // enable Sstc extention
-    henvcfg::set_stce();
-    henvcfg::set_cde();
-    henvcfg::set_cbze();
-    henvcfg::set_cbcfe();
+    //henvcfg::set_stce();
+    //henvcfg::set_cde();
+    //henvcfg::set_cbze();
+    //henvcfg::set_cbcfe();
 
     // disable `ENVCFG` state
     //hstateen0::all_state_set();
