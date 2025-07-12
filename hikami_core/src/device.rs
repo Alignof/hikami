@@ -188,8 +188,8 @@ pub trait MmioDevice {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
     where
         Self: Sized;
-    /// Return memory map between physical to physical (identity map) for crate page table.
-    fn memmap(&self) -> MemoryMap;
+    /// Return memory maps between physical to physical (identity map) for crate page table.
+    fn memmap(&self) -> Vec<MemoryMap>;
 }
 
 /// Manage devices sush as uart, plic, etc...
@@ -261,24 +261,22 @@ impl Devices {
         let mut device_mapping: Vec<MemoryMap> = self
             .virtio_list
             .iter()
-            .flat_map(|virt| [virt.memmap()])
+            .flat_map(|virt| virt.memmap())
             .collect();
 
-        device_mapping.extend_from_slice(&[
-            self.uart.memmap(),
-            self.plic.memmap(),
-            self.clint.memmap(),
-        ]);
+        device_mapping.extend_from_slice(&self.uart.memmap());
+        device_mapping.extend_from_slice(&self.plic.memmap());
+        device_mapping.extend_from_slice(&self.clint.memmap());
 
         if let Some(rtc) = &self.rtc {
-            device_mapping.push(rtc.memmap());
+            device_mapping.extend_from_slice(&rtc.memmap());
         }
         if let Some(initrd) = &self.initrd {
-            device_mapping.push(initrd.memmap());
+            device_mapping.extend_from_slice(&initrd.memmap());
         }
 
         if let Some(pci) = &self.pci {
-            device_mapping.push(pci.memmap());
+            device_mapping.extend_from_slice(&pci.memmap());
 
             if cfg!(feature = "identity_map") {
                 // mapping whole memory mapped register region of block divices.
@@ -287,7 +285,7 @@ impl Devices {
         }
         if cfg!(feature = "identity_map") {
             if let Some(mmc) = &self.mmc {
-                device_mapping.push(mmc.memmap());
+                device_mapping.extend_from_slice(&mmc.memmap());
             }
         }
 
