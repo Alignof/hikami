@@ -122,3 +122,23 @@ impl MemoryMap {
         }
     }
 }
+
+impl From<fdt::standard_nodes::MemoryRegion> for MemoryMap {
+    fn from(region: fdt::standard_nodes::MemoryRegion) -> Self {
+        let size = region.size.unwrap();
+        let virt_start = GuestPhysicalAddress(region.starting_address as usize);
+        let phys_start = HostPhysicalAddress(region.starting_address as usize);
+        MemoryMap::new(
+            virt_start..virt_start + size,
+            phys_start..phys_start + size,
+            &[
+                PteFlag::Dirty,
+                PteFlag::Accessed,
+                PteFlag::Write,
+                PteFlag::Read,
+                PteFlag::User,
+                PteFlag::Valid,
+            ],
+        )
+    }
+}

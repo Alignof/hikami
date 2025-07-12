@@ -1,12 +1,13 @@
 //! PLIC: Platform-Level Interrupt Controller  
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
-use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use super::{DeviceEmulateError, MmioDevice};
 use crate::h_extension::csrs::{VsInterruptKind, hvip};
 use crate::memmap::constant::MAX_HART_NUM;
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
-use fdt::Fdt;
+use alloc::vec::Vec;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 use riscv::register::sie;
 
 /// Max number of PLIC context.
@@ -44,10 +45,8 @@ impl ContextId {
 /// Interrupt controller for global interrupts.
 #[derive(Debug)]
 pub struct Plic {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory maps for memory mapped register.
+    register_map_regions: Vec<MemoryRegion>,
     /// Claim complete flags for external interrupts emulation.
     ///
     /// Each bit indicates whether interrupts are claimed in context.
@@ -55,10 +54,24 @@ pub struct Plic {
 }
 
 impl Plic {
+    /// Return base address.
+    /// This function assumes that memory mapped register region is first one.
+    fn base_addr(&self) -> HostPhysicalAddress {
+        HostPhysicalAddress(self.register_map_regions[0].starting_address as usize)
+    }
+
+    /// Return first region size
+    /// This function assumes that memory mapped register region is first one.
+    fn size(&self) -> usize {
+        self.register_map_regions[0]
+            .size
+            .expect("no size plic memory-mapped register region")
+    }
+
     /// Read plic claim/update register and reflect to `claim_complete`.
     pub fn update_claim_complete(&mut self, context_id: &ContextId) {
         let claim_complete_addr =
-            self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id.raw() + CONTEXT_CLAIM;
+            self.base_addr() + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id.raw() + CONTEXT_CLAIM;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
         self.claim_complete[context_id.raw()] = irq;
     }
@@ -90,11 +103,11 @@ impl Plic {
         &self,
         dst_addr: HostPhysicalAddress,
     ) -> Result<u32, DeviceEmulateError> {
-        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+        if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_load(offset),
             _ => Err(DeviceEmulateError::InvalidAddress),
@@ -110,7 +123,7 @@ impl Plic {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
         let offset_per_context = offset % CONTEXT_REGS_SIZE;
         match offset_per_context {
@@ -152,11 +165,11 @@ impl Plic {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
-        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+        if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_storing(dst_addr, value),
             _ => Err(DeviceEmulateError::InvalidAddress),
@@ -167,36 +180,23 @@ impl Plic {
 impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
+        let register_map_regions: Vec<MemoryRegion> = device_tree
             .find_compatible(compatibles)?
             .reg()
             .unwrap()
-            .next()
-            .unwrap();
+            .collect();
 
         Some(Plic {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            register_map_regions,
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
-    fn memmap(&self) -> MemoryMap {
-        // Pass through 0x0 - 0x20_0000.
-        // Disallow 0x20_0000 - for emulation.
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + CONTEXT_BASE,
-            self.paddr()..self.paddr() + CONTEXT_BASE,
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        self.register_map_regions
+            .clone()
+            .into_iter()
+            .map(MemoryMap::from)
+            .collect()
     }
 }

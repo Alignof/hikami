@@ -12,7 +12,7 @@ use config_register::{ConfigSpaceHeaderField, read_config_register};
 
 use alloc::vec::Vec;
 use core::ops::Range;
-use fdt::Fdt;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// Bus - Device - Function
 #[derive(Debug)]
@@ -255,10 +255,8 @@ impl PciAddressSpace {
 #[derive(Debug)]
 #[allow(clippy::struct_field_names)]
 pub struct Pci {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory maps for pci register.
+    register_map_regions: Vec<MemoryRegion>,
     /// PCI address space manager
     _pci_addr_space: PciAddressSpace,
     /// Memory maps for pci devices
@@ -279,22 +277,25 @@ impl Pci {
     /// Initialize PCI devices.
     pub fn init_pci_devices(&self) {
         if let Some(iommu) = &self.pci_devices.iommu {
-            iommu.init(self.base_addr);
+            iommu.init(HostPhysicalAddress(
+                self.register_map_regions[0].starting_address as usize,
+            ));
         }
     }
 }
 
 impl MmioDevice for Pci {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
+        let register_map_regions: Vec<MemoryRegion> = device_tree
             .find_compatible(compatibles)?
             .reg()
             .unwrap()
-            .next()
-            .unwrap();
+            .collect();
+
+        // assume that pci register contains first region.
+        let base_address = HostPhysicalAddress(register_map_regions[0].starting_address as usize);
 
         let mut memory_maps = Vec::new();
-        let base_address = HostPhysicalAddress(region.starting_address as usize);
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices = PciDevices::new(device_tree, base_address, &pci_addr_space);
 
@@ -315,29 +316,19 @@ impl MmioDevice for Pci {
         ));
 
         Some(Pci {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            register_map_regions,
             _pci_addr_space: pci_addr_space,
             memory_maps,
             pci_devices,
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
     /// mapping sata register region.
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        self.register_map_regions
+            .clone()
+            .into_iter()
+            .map(MemoryMap::from)
+            .collect()
     }
 }

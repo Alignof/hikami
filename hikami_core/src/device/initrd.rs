@@ -1,18 +1,19 @@
 //! initrd: INITial RamDisk
 #![allow(clippy::doc_markdown)]
 
-use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use fdt::Fdt;
+use super::MmioDevice;
+use crate::memmap::MemoryMap;
+
+use alloc::vec;
+use alloc::vec::Vec;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// A scheme for loading a temporary root file system into memory,
 /// to be used as part of the Linux startup process.
 #[derive(Debug)]
 pub struct Initrd {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory maps
+    memory_map: MemoryRegion,
 }
 
 impl Initrd {
@@ -32,8 +33,10 @@ impl Initrd {
                 let end = u32::from_be_bytes(end[4..].try_into().unwrap()) as usize;
 
                 Some(Initrd {
-                    base_addr: HostPhysicalAddress(start),
-                    size: end - start,
+                    memory_map: MemoryRegion {
+                        starting_address: start as *const u8,
+                        size: Some(end - start),
+                    },
                 })
             }
             None => None,
@@ -46,20 +49,7 @@ impl MmioDevice for Initrd {
         unreachable!("use Initrd::try_new_from_node_path instead")
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        vec![MemoryMap::from(self.memory_map)]
     }
 }

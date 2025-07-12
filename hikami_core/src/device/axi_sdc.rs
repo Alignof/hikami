@@ -4,27 +4,34 @@
 
 mod register;
 
-use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice};
 use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use register::SdcRegisters;
 
-use fdt::Fdt;
+use alloc::vec;
+use alloc::vec::Vec;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 #[allow(clippy::doc_markdown)]
 /// MMC: Multi Media Card
 #[derive(Debug)]
 pub struct Mmc {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory map for memory mapped register.
+    register_map_region: MemoryRegion,
     /// DMA address.
     dma_addr: GuestPhysicalAddress,
     /// DMA alternative buffer
     dma_alt_buffer: DmaHostBuffer,
     /// Is the mmc command being executed now.
     is_transferring: bool,
+}
+
+impl Mmc {
+    /// Return base address of memory mapped register region.
+    fn base_addr(&self) -> HostPhysicalAddress {
+        HostPhysicalAddress(self.register_map_region.starting_address as usize)
+    }
 }
 
 impl EmulateDevice for Mmc {
@@ -41,14 +48,14 @@ impl EmulateDevice for Mmc {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
             // Argument
             //
             // Start transfer when write command to `Argument`
             // See: https://github.com/eugene-tarassov/vivado-risc-v/blob/d72a439f786b455cc321e2e615d7954a75f9ebde/sdc/axi_sdc_controller.v#L392
             0 => {
-                let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
+                let registers_ptr = self.base_addr().raw() as *mut SdcRegisters;
                 let command = unsafe { ((*registers_ptr).command) as usize };
                 let dma_gpa = GuestPhysicalAddress(unsafe { (*registers_ptr).dma_addres } as usize);
 
@@ -86,7 +93,7 @@ impl EmulateDevice for Mmc {
             60 => {
                 // end transfer
                 if value == 0 && self.is_transferring {
-                    let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
+                    let registers_ptr = self.base_addr().raw() as *mut SdcRegisters;
                     // restore address
                     unsafe {
                         (*registers_ptr).dma_addres = self.dma_addr.raw() as u64;
@@ -117,35 +124,22 @@ impl EmulateDevice for Mmc {
 
 impl MmioDevice for Mmc {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
+        let register_map_region = device_tree
             .find_compatible(compatibles)?
             .reg()
             .unwrap()
-            .next()?;
+            .next()
+            .unwrap();
 
         Some(Mmc {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            register_map_region,
             dma_addr: GuestPhysicalAddress(0),
             dma_alt_buffer: DmaHostBuffer::new(PAGE_SIZE),
             is_transferring: false,
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        vec![MemoryMap::from(self.register_map_region)]
     }
 }
