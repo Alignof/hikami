@@ -1,40 +1,37 @@
 //! RTC: Real Time Clock.
 
-use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
-use fdt::Fdt;
+use super::MmioDevice;
+use crate::memmap::MemoryMap;
+
+use alloc::vec::Vec;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// RTC: Real Time Clock.
 /// An electronic device that measures the passage of time.
 #[derive(Debug)]
 pub struct Rtc {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory maps for memory mapped register.
+    register_map_regions: Vec<MemoryRegion>,
 }
 
 impl MmioDevice for Rtc {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
+        let register_map_regions: Vec<MemoryRegion> = device_tree
             .find_compatible(compatibles)?
             .reg()
             .unwrap()
-            .next()
-            .unwrap();
+            .collect();
 
         Some(Rtc {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            register_map_regions,
         })
     }
 
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        self.register_map_regions
+            .clone()
+            .into_iter()
+            .map(|region| MemoryMap::from(region))
+            .collect()
     }
 }

@@ -1,10 +1,11 @@
 //! A virtualization standard for network and disk device drivers.
 
-use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use super::MmioDevice;
+use crate::memmap::MemoryMap;
+
 use alloc::vec::Vec;
 use core::slice::Iter;
-use fdt::Fdt;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// A virtualization standard for network and disk device drivers.
 /// Since more than one may be found, we will temporarily use the first one.
@@ -18,11 +19,10 @@ impl VirtIoList {
             device_tree
                 .find_all_nodes(node_path)
                 .map(|node| {
-                    let region = node.reg().unwrap().next().unwrap();
+                    let register_map_regions: Vec<MemoryRegion> = node.reg().unwrap().collect();
                     let irq = node.property("interrupts").unwrap().value[0];
                     VirtIo {
-                        base_addr: HostPhysicalAddress(region.starting_address as usize),
-                        size: region.size.unwrap(),
+                        register_map_regions,
                         irq,
                     }
                 })
@@ -39,10 +39,8 @@ impl VirtIoList {
 /// Virtualization standard for IO device.
 #[derive(Debug)]
 pub struct VirtIo {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory maps for memory mapped register.
+    register_map_regions: Vec<MemoryRegion>,
     /// Interrupt Reqeust bit.
     irq: u8,
 }
@@ -57,22 +55,21 @@ impl VirtIo {
 impl MmioDevice for VirtIo {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let node = device_tree.find_compatible(compatibles)?;
-        let region = node.reg().unwrap().next().unwrap();
+        let register_map_regions: Vec<MemoryRegion> = node.reg().unwrap().collect();
+
         let irq = node.property("interrupts").unwrap().value[0];
 
         Some(VirtIo {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            register_map_regions,
             irq,
         })
     }
 
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        self.register_map_regions
+            .clone()
+            .into_iter()
+            .map(|region| MemoryMap::from(region))
+            .collect()
     }
 }

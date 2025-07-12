@@ -4,21 +4,21 @@
 
 mod register;
 
-use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice};
 use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 use register::SdcRegisters;
 
-use fdt::Fdt;
+use alloc::vec;
+use alloc::vec::Vec;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 #[allow(clippy::doc_markdown)]
 /// MMC: Multi Media Card
 #[derive(Debug)]
 pub struct Mmc {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory map for memory mapped register.
+    register_map_region: MemoryRegion,
     /// DMA address.
     dma_addr: GuestPhysicalAddress,
     /// DMA alternative buffer
@@ -117,27 +117,22 @@ impl EmulateDevice for Mmc {
 
 impl MmioDevice for Mmc {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
+        let register_map_region = device_tree
             .find_compatible(compatibles)?
             .reg()
             .unwrap()
-            .next()?;
+            .next()
+            .unwrap();
 
         Some(Mmc {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            register_map_region,
             dma_addr: GuestPhysicalAddress(0),
             dma_alt_buffer: DmaHostBuffer::new(PAGE_SIZE),
             is_transferring: false,
         })
     }
 
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        vec![MemoryMap::from(self.register_map_region)]
     }
 }

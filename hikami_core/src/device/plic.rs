@@ -1,12 +1,13 @@
 //! PLIC: Platform-Level Interrupt Controller  
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
-use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use super::{DeviceEmulateError, MmioDevice};
 use crate::h_extension::csrs::{VsInterruptKind, hvip};
 use crate::memmap::constant::MAX_HART_NUM;
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
-use fdt::Fdt;
+use alloc::vec::Vec;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 use riscv::register::sie;
 
 /// Max number of PLIC context.
@@ -44,10 +45,8 @@ impl ContextId {
 /// Interrupt controller for global interrupts.
 #[derive(Debug)]
 pub struct Plic {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Memory maps for memory mapped register.
+    register_map_regions: Vec<MemoryRegion>,
     /// Claim complete flags for external interrupts emulation.
     ///
     /// Each bit indicates whether interrupts are claimed in context.
@@ -167,28 +166,23 @@ impl Plic {
 impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
+        let register_map_regions: Vec<MemoryRegion> = device_tree
             .find_compatible(compatibles)?
             .reg()
             .unwrap()
-            .next()
-            .unwrap();
+            .collect();
 
         Some(Plic {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            register_map_regions,
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         })
     }
 
-    fn memmap(&self) -> MemoryMap {
-        // Pass through 0x0 - 0x20_0000.
-        // Disallow 0x20_0000 - for emulation.
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + CONTEXT_BASE,
-            self.paddr()..self.paddr() + CONTEXT_BASE,
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn memmap(&self) -> Vec<MemoryMap> {
+        self.register_map_regions
+            .clone()
+            .into_iter()
+            .map(|region| MemoryMap::from(region))
+            .collect()
     }
 }

@@ -12,7 +12,7 @@ use config_register::{ConfigSpaceHeaderField, read_config_register};
 
 use alloc::vec::Vec;
 use core::ops::Range;
-use fdt::Fdt;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// Bus - Device - Function
 #[derive(Debug)]
@@ -256,7 +256,7 @@ impl PciAddressSpace {
 #[allow(clippy::struct_field_names)]
 pub struct Pci {
     /// Memory maps for pci register.
-    register_maps: Vec<MemoryMap>,
+    register_map_regions: Vec<MemoryRegion>,
     /// PCI address space manager
     _pci_addr_space: PciAddressSpace,
     /// Memory maps for pci devices
@@ -277,31 +277,23 @@ impl Pci {
     /// Initialize PCI devices.
     pub fn init_pci_devices(&self) {
         if let Some(iommu) = &self.pci_devices.iommu {
-            iommu.init(self.register_maps[0].phys.start);
+            iommu.init(HostPhysicalAddress(
+                self.register_map_regions[0].starting_address as usize,
+            ));
         }
     }
 }
 
 impl MmioDevice for Pci {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let register_maps: Vec<MemoryMap> = device_tree
+        let register_map_regions: Vec<MemoryRegion> = device_tree
             .find_compatible(compatibles)?
             .reg()
             .unwrap()
-            .map(|region| {
-                let size = region.size.unwrap();
-                let virt_start = GuestPhysicalAddress(region.starting_address as usize);
-                let phys_start = HostPhysicalAddress(region.starting_address as usize);
-                MemoryMap::new(
-                    virt_start..virt_start + size,
-                    phys_start..phys_start + size,
-                    &PTE_FLAGS_FOR_DEVICE,
-                )
-            })
             .collect();
 
         // assume that pci register contains first region.
-        let base_address = register_maps[0].phys.start;
+        let base_address = HostPhysicalAddress(register_map_regions[0].starting_address as usize);
 
         let mut memory_maps = Vec::new();
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
@@ -324,7 +316,7 @@ impl MmioDevice for Pci {
         ));
 
         Some(Pci {
-            register_maps,
+            register_map_regions,
             _pci_addr_space: pci_addr_space,
             memory_maps,
             pci_devices,
@@ -332,7 +324,11 @@ impl MmioDevice for Pci {
     }
 
     /// mapping sata register region.
-    fn memmap(&self) -> &[MemoryMap] {
-        &self.register_maps
+    fn memmap(&self) -> Vec<MemoryMap> {
+        self.register_map_regions
+            .clone()
+            .into_iter()
+            .map(|region| MemoryMap::from(region))
+            .collect()
     }
 }
