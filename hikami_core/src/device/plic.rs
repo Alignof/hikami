@@ -54,10 +54,24 @@ pub struct Plic {
 }
 
 impl Plic {
+    /// Return base address.
+    /// This function assumes that memory mapped register region is first one.
+    fn base_addr(&self) -> HostPhysicalAddress {
+        HostPhysicalAddress(self.register_map_regions[0].starting_address as usize)
+    }
+
+    /// Return first region size
+    /// This function assumes that memory mapped register region is first one.
+    fn size(&self) -> usize {
+        self.register_map_regions[0]
+            .size
+            .expect("no size plic memory-mapped register region")
+    }
+
     /// Read plic claim/update register and reflect to `claim_complete`.
     pub fn update_claim_complete(&mut self, context_id: &ContextId) {
         let claim_complete_addr =
-            self.base_addr + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id.raw() + CONTEXT_CLAIM;
+            self.base_addr() + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id.raw() + CONTEXT_CLAIM;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
         self.claim_complete[context_id.raw()] = irq;
     }
@@ -89,11 +103,11 @@ impl Plic {
         &self,
         dst_addr: HostPhysicalAddress,
     ) -> Result<u32, DeviceEmulateError> {
-        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+        if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_load(offset),
             _ => Err(DeviceEmulateError::InvalidAddress),
@@ -109,7 +123,7 @@ impl Plic {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
         let offset_per_context = offset % CONTEXT_REGS_SIZE;
         match offset_per_context {
@@ -151,11 +165,11 @@ impl Plic {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
-        if !(self.base_addr..self.base_addr + self.size).contains(&dst_addr) {
+        if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
             return Err(DeviceEmulateError::InvalidAddress);
         }
 
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
             CONTEXT_BASE..=CONTEXT_END => self.context_storing(dst_addr, value),
             _ => Err(DeviceEmulateError::InvalidAddress),
