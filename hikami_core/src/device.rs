@@ -188,10 +188,6 @@ pub trait MmioDevice {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
     where
         Self: Sized;
-    /// Return size of memory region.
-    fn size(&self) -> usize;
-    /// Return address of physical memory
-    fn paddr(&self) -> HostPhysicalAddress;
     /// Return memory map between physical to physical (identity map) for crate page table.
     fn memmap(&self) -> MemoryMap;
 }

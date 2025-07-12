@@ -323,14 +323,6 @@ impl MmioDevice for Pci {
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
     /// mapping sata register region.
     fn memmap(&self) -> MemoryMap {
         let vaddr = GuestPhysicalAddress(self.paddr().raw());

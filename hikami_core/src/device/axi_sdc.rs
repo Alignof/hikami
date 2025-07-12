@@ -132,14 +132,6 @@ impl MmioDevice for Mmc {
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
     fn memmap(&self) -> MemoryMap {
         let vaddr = GuestPhysicalAddress(self.paddr().raw());
         MemoryMap::new(

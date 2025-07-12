@@ -181,14 +181,6 @@ impl MmioDevice for Plic {
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
     fn memmap(&self) -> MemoryMap {
         // Pass through 0x0 - 0x20_0000.
         // Disallow 0x20_0000 - for emulation.
