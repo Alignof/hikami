@@ -131,7 +131,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // initialize hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    hypervisor_data.get_or_init(|| HypervisorData::new(device_tree));
+    hypervisor_data.get_or_init(|| HypervisorData::new(hart_id, device_tree));
 
     // load guest elf `from GUEST_KERNEL`
     let guest_elf = unsafe {

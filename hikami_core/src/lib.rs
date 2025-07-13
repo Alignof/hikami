@@ -47,9 +47,9 @@ impl HypervisorData {
     /// # Panics
     /// It will be panic when parsing device tree failed.
     #[must_use]
-    pub fn new(device_tree: Fdt) -> Self {
+    pub fn new(hart_id: usize, device_tree: Fdt) -> Self {
         HypervisorData {
-            current_hart: 0,
+            current_hart: hart_id,
             guests: [const { None }; MAX_HART_NUM],
             devices: Devices::new(device_tree),
         }
