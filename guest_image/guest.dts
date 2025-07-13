@@ -1427,6 +1427,7 @@
 	};
 	chosen {
 		stdout-path = "serial0";
+ 		bootargs = "earlycon console=ttyS0,115200 rootwait rw locale.LANG=en_US.UTF-8";
 	};
 	memory@90000000 {
 		device_type = "memory";
