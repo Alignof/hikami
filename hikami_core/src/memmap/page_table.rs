@@ -2,6 +2,7 @@
 
 pub mod sv39;
 pub mod sv39x4;
+pub mod sv48;
 pub mod sv57;
 
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
@@ -191,8 +192,9 @@ pub fn vs_stage_trans_addr(
     match vsatp.mode() {
         vsatp::Mode::Bare => unreachable!("no trans addr"),
         vsatp::Mode::Sv39 => sv39::trans_addr(gva),
+        vsatp::Mode::Sv48 => sv48::trans_addr(gva),
         vsatp::Mode::Sv57 => sv57::trans_addr(gva),
-        vsatp::Mode::Sv48 | vsatp::Mode::Sv64 => unimplemented!(),
+        vsatp::Mode::Sv64 => unimplemented!(),
     }
 }
 
