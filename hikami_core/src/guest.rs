@@ -42,6 +42,7 @@ impl Guest {
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         guest_dtb: &'static [u8],
+        guest_initrd: &'static [u8],
     ) -> Self {
         // calculate guest memory region
         let guest_memory_begin: GuestPhysicalAddress =
@@ -58,6 +59,9 @@ impl Guest {
         // load guest dtb to memory
         let dtb_addr = Self::load_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
+        // laod guest initrd
+        Self::load_initrd(hart_id, guest_initrd);
+
         Guest {
             hart_id,
             page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
@@ -65,6 +69,45 @@ impl Guest {
             stack_top_addr,
             memory_region,
             context: Context::new(stack_top_addr - core::mem::size_of::<ContextData>()),
+        }
+    }
+
+    pub fn load_initrd(hart_id: usize, guest_initrd: &'static [u8]) {
+        if guest_initrd.is_empty() {
+            return;
+        }
+
+        let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
+        let guest_base =
+            guest_memory::DRAM_BASE + guest_memory::DRAM_SIZE_PER_GUEST * (hart_id + 1);
+        let initrd_start = guest_base + guest_memory::DRAM_SIZE_PER_GUEST - aligned_initrd_size;
+
+        crate::println!(
+            "initrd (GPA): {:#x}..{:#x}",
+            initrd_start.raw(),
+            initrd_start.raw() + guest_initrd.len()
+        );
+
+        for offset in (0..aligned_initrd_size).step_by(PAGE_SIZE) {
+            let guest_physical_addr = initrd_start + offset;
+
+            // get page host physical address
+            let aligned_page_size_block_addr: HostPhysicalAddress =
+                if cfg!(feature = "identity_map") {
+                    // identity map
+                    HostPhysicalAddress(guest_physical_addr.raw())
+                } else {
+                    // allocate memory from heap
+                    PageBlock::alloc()
+                };
+
+            unsafe {
+                core::ptr::copy(
+                    guest_initrd.as_ptr(),
+                    aligned_page_size_block_addr.raw() as *mut u8,
+                    PAGE_SIZE,
+                );
+            }
         }
     }
 

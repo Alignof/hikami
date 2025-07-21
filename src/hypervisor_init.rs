@@ -117,7 +117,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // create new guest data
-    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB);
+    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB, &GUEST_INITRD);
     let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
 
     // parse device tree
