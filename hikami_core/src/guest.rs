@@ -56,7 +56,7 @@ impl Guest {
         page_table::sv39x4::initialize_page_table(page_table_addr);
 
         // load guest dtb to memory
-        let dtb_addr = Self::map_guest_dtb(hart_id, page_table_addr, guest_dtb);
+        let dtb_addr = Self::load_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
         Guest {
             hart_id,
@@ -71,7 +71,7 @@ impl Guest {
     /// Load guest device tree and create corresponding page table
     ///
     /// Guest device tree will be placed start of guest memory region.
-    fn map_guest_dtb(
+    fn load_guest_dtb(
         hart_id: usize,
         page_table_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8],
