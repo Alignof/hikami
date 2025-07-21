@@ -172,7 +172,6 @@ impl Guest {
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
-        _guest_initrd: &'static [u8],
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid};
 

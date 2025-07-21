@@ -5,13 +5,12 @@ use crate::{ALLOCATOR, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL};
 use hikami_core::guest::Guest;
 use hikami_core::guest::context::ContextData;
 use hikami_core::h_extension::csrs::{
-    VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie,
-    hstatus, hvip, vsatp,
+    VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, hgatp, hideleg, hie, hstatus,
+    hvip, vsatp,
 };
 use hikami_core::h_extension::instruction::hfence_gvma_all;
 use hikami_core::memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, constant::guest_memory,
-    page_table::sv39x4::ROOT_PAGE_TABLE,
+    GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::ROOT_PAGE_TABLE,
 };
 use hikami_core::{_hv_heap_size, _start_heap};
 use hikami_core::{HYPERVISOR_DATA, HypervisorData};
@@ -149,8 +148,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     }
 
     // load guest image
-    let guest_entry_point =
-        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr(), &GUEST_INITRD);
+    let guest_entry_point = new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
 
     // set device memory map
     hypervisor_data
