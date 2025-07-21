@@ -128,13 +128,13 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         }
     };
 
-    // initialize hypervisor data
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    hypervisor_data.get_or_init(|| HypervisorData::new(hart_id, device_tree));
-
     // enable two-level address translation
     hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
     hfence_gvma_all();
+
+    // initialize hypervisor data
+    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    hypervisor_data.get_or_init(|| HypervisorData::new(hart_id, device_tree));
 
     // load guest elf `from GUEST_KERNEL`
     let guest_elf = unsafe {
@@ -144,10 +144,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         ))
         .unwrap()
     };
-
-    // allocate page tables to all remain guest memory region
-    let guest_memory_region = new_guest.memory_region().clone();
-    new_guest.allocate_memory_region(guest_memory_region);
 
     // load guest image
     let guest_entry_point = new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
