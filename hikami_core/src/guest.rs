@@ -109,6 +109,7 @@ impl Guest {
         }
     }
 
+    /// Load guest's initrd
     fn load_initrd(hart_id: usize, guest_initrd: &'static [u8]) {
         if guest_initrd.is_empty() {
             return;
@@ -133,8 +134,9 @@ impl Guest {
                 // identity map
                 HostPhysicalAddress(guest_physical_addr.raw())
             } else {
-                // allocate memory from heap
-                PageBlock::alloc()
+                // translate allocated address (GPA) -> HPA
+                page_table::sv39x4::trans_addr(guest_physical_addr)
+                    .expect("failed to translate guest memory address in mapping")
             };
 
             unsafe {

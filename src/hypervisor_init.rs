@@ -116,9 +116,13 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Parse DTB
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
+    // enable two-level address translation
+    let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
+    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hfence_gvma_all();
+
     // create new guest data
     let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB, &GUEST_INITRD);
-    let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
 
     // parse device tree
     let device_tree = unsafe {
@@ -127,10 +131,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
             Err(e) => panic!("{}", e),
         }
     };
-
-    // enable two-level address translation
-    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
-    hfence_gvma_all();
 
     // initialize hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
