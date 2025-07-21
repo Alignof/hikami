@@ -142,10 +142,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .unwrap()
     };
 
-    // load guest image
-    let (guest_entry_point, elf_end_addr) =
-        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr(), &GUEST_INITRD);
-
     if cfg!(feature = "identity_map") {
         let guest_memory_start =
             guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
@@ -155,9 +151,13 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         );
     } else {
         // allocate page tables to all remain guest memory region
-        let guest_memory_end = new_guest.memory_region().end;
-        new_guest.allocate_memory_region(elf_end_addr..guest_memory_end, &GUEST_INITRD);
+        let guest_memory_region = new_guest.memory_region().clone();
+        new_guest.allocate_memory_region(guest_memory_region, &GUEST_INITRD);
     }
+
+    // load guest image
+    let guest_entry_point =
+        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr(), &GUEST_INITRD);
 
     // set device memory map
     hypervisor_data

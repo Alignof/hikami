@@ -1,8 +1,8 @@
 //! Sv48: Page-Based 48-bit Virtual-Memory System
 
 use super::{
-    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
     PageTableAddress, PageTableEntry, PageTableLevel, TransAddrError,
+    constants::{PAGE_SIZE, PAGE_TABLE_LEN},
 };
 use crate::h_extension::csrs::vsatp;
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress};

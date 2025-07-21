@@ -198,7 +198,7 @@ impl Guest {
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
         guest_initrd: &'static [u8],
-    ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
+    ) -> GuestPhysicalAddress {
         /// Segment type `PT_LOAD`
         ///
         /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
@@ -264,7 +264,7 @@ impl Guest {
             }
         }
 
-        (self.dram_base(), elf_end)
+        self.dram_base()
     }
 
     /// Load an elf to new allocated guest memory page.
@@ -290,7 +290,7 @@ impl Guest {
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
         _guest_initrd: &'static [u8],
-    ) -> (GuestPhysicalAddress, GuestPhysicalAddress) {
+    ) -> GuestPhysicalAddress {
         /// Segment type `PT_LOAD`
         ///
         /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
@@ -374,7 +374,7 @@ impl Guest {
             }
         }
 
-        (self.dram_base(), elf_end)
+        self.dram_base()
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
@@ -386,7 +386,8 @@ impl Guest {
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
-        let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+        const all_pte_flags_are_set: &[PteFlag; 7] =
+            &[Dirty, Accessed, Exec, Write, Read, User, Valid];
 
         for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
@@ -412,7 +413,8 @@ impl Guest {
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
-        let all_pte_flags_are_set = &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+        const all_pte_flags_are_set: &[PteFlag; 7] =
+            &[Dirty, Accessed, Exec, Write, Read, User, Valid];
 
         let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
         let initrd_start = region.end - aligned_initrd_size;
