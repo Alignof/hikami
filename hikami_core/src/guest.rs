@@ -88,8 +88,15 @@ impl Guest {
         for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
             let guest_physical_addr = guest_dtb_addr + offset;
 
-            // allocate memory from heap
-            let aligned_page_size_block_addr = PageBlock::alloc();
+            // get page address
+            let aligned_page_size_block_addr: HostPhysicalAddress =
+                if cfg!(feature = "identity_map") {
+                    // identity map
+                    HostPhysicalAddress(guest_physical_addr.raw())
+                } else {
+                    // allocate memory from heap
+                    PageBlock::alloc()
+                };
 
             // copy elf segment to new heap block
             unsafe {
