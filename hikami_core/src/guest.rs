@@ -92,19 +92,18 @@ impl Guest {
             let guest_physical_addr = initrd_start + offset;
 
             // get page host physical address
-            let aligned_page_size_block_addr: HostPhysicalAddress =
-                if cfg!(feature = "identity_map") {
-                    // identity map
-                    HostPhysicalAddress(guest_physical_addr.raw())
-                } else {
-                    // allocate memory from heap
-                    PageBlock::alloc()
-                };
+            let page_size_block_addr: HostPhysicalAddress = if cfg!(feature = "identity_map") {
+                // identity map
+                HostPhysicalAddress(guest_physical_addr.raw())
+            } else {
+                // allocate memory from heap
+                PageBlock::alloc()
+            };
 
             unsafe {
                 core::ptr::copy(
                     guest_initrd.as_ptr(),
-                    aligned_page_size_block_addr.raw() as *mut u8,
+                    page_size_block_addr.raw() as *mut u8,
                     PAGE_SIZE,
                 );
             }

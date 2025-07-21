@@ -132,6 +132,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     hypervisor_data.get_or_init(|| HypervisorData::new(hart_id, device_tree));
 
+    // enable two-level address translation
+    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hfence_gvma_all();
+
     // load guest elf `from GUEST_KERNEL`
     let guest_elf = unsafe {
         ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
@@ -156,10 +160,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .unwrap()
         .devices()
         .device_mapping_g_stage(root_page_table_addr);
-
-    // enable two-level address translation
-    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
-    hfence_gvma_all();
 
     // initialize IOMMU
     hypervisor_data
