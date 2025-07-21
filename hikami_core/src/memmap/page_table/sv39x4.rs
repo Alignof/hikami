@@ -260,3 +260,68 @@ pub fn trans_addr(
         "[sv39x4] cannnot reach to leaf entry",
     ))
 }
+
+/// Updates the permission flags for a specific Guest Physical Address (GPA)
+/// in the G-stage page table.
+/// This function walks the page table to find the leaf PTE corresponding to the GPA
+/// and overwrites its flags.
+///
+/// # Arguments
+/// * `root_table_start_addr` - The Host Physical Address (HPA) of the root page table.
+/// * `gpa` - The Guest Physical Address (GPA) of the page whose flags need to be updated.
+/// * `new_flags` - The new set of permission flags to apply to the PTE.
+///
+/// # Errors
+/// Returns an error if the page table walk encounters an invalid entry or
+/// does not resolve to a leaf PTE for the given address.
+#[allow(clippy::cast_possible_truncation)]
+pub fn update_page_flags(
+    gpa: GuestPhysicalAddress,
+    new_flags: u8,
+) -> Result<(), (TransAddrError, &'static str)> {
+    let hgatp = hgatp::read();
+    let mut page_table_addr = PageTableAddress(hgatp.ppn() << 12);
+
+    // Iterate through the page table levels from top to bottom (L2 -> L1 -> L0).
+    for level in [
+        PageTableLevel::Lv1GB,
+        PageTableLevel::Lv2MB,
+        PageTableLevel::Lv4KB,
+    ] {
+        // Get the current level's page table. The root table has a different size.
+        let page_table = match level {
+            PageTableLevel::Lv1GB => unsafe {
+                from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
+            },
+            _ => unsafe { from_raw_parts_mut(page_table_addr.to_pte_ptr(), PAGE_TABLE_LEN) },
+        };
+
+        // Get the Page Table Entry (PTE) for the current level's VPN.
+        let vpn = gpa.vpn(level as usize);
+        let pte = &mut page_table[vpn];
+
+        if pte.is_invalid() {
+            return Err((
+                TransAddrError::InvalidEntry,
+                "Update failed: encountered an invalid PTE during page table walk",
+            ));
+        }
+
+        // If it's a leaf PTE (a superpage or a final 4KB page),
+        // update its flags and terminate the walk.
+        if pte.is_leaf() {
+            pte.set_flags(new_flags);
+            return Ok(());
+        }
+
+        // If not a leaf, it must point to the next level table.
+        // Calculate the address of the next level page table.
+        page_table_addr = PageTableAddress(pte.entire_ppn() as usize * PAGE_SIZE);
+    }
+
+    // If the loop completes without finding a leaf PTE, it's an error.
+    Err((
+        TransAddrError::NoLeafEntry,
+        "Update failed: page table walk did not end on a leaf PTE",
+    ))
+}
