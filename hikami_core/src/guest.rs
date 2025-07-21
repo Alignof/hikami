@@ -296,7 +296,7 @@ impl Guest {
         /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
         const PT_LOAD: u32 = 1;
 
-        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+        use PteFlag::{Accessed, Dirty, Read, User, Valid};
 
         let align_size =
             |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
@@ -320,7 +320,9 @@ impl Guest {
                     elf_end = core::cmp::max(elf_end, guest_physical_addr + PAGE_SIZE);
 
                     // allocate memory from heap
-                    let aligned_page_size_block_addr = PageBlock::alloc();
+                    let aligned_page_size_block_addr: HostPhysicalAddress =
+                        page_table::sv39x4::trans_addr(guest_physical_addr)
+                            .expect("failed to translate guest memory address in mapping");
 
                     // Determine the range of data to copy
                     let copy_start = segment_file_offset + offset;
@@ -350,26 +352,25 @@ impl Guest {
                         }
                     }
 
-                    // create memory mapping
-                    page_table::sv39x4::generate_page_table(
-                        self.page_table_addr,
-                        &[MemoryMap::new(
-                            guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                            aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                            match prog_header.p_flags & 0b111 {
-                                0b100 => &[Dirty, Accessed, Read, User, Valid],
-                                #[allow(clippy::match_same_arms)]
-                                // Add Write permission to RX for dynamic patch
-                                // ref: https://github.com/torvalds/linux/blob/67784a74e258a467225f0e68335df77acd67b7ab/arch/riscv/kernel/patch.c#L215C5-L215C21
-                                // TODO: switch enable/disable write permission corresponding to VS-stage page table.
-                                0b101 => &[Dirty, Accessed, Read, Write, Exec, User, Valid],
-                                // FIXME: Add Exec permission (RW -> RWX)
-                                0b110 => &[Dirty, Accessed, Read, Write, Exec, User, Valid],
-                                0b111 => &[Dirty, Accessed, Exec, Write, Read, User, Valid],
-                                _ => panic!("unsupported flags"),
-                            },
-                        )],
-                    );
+                    #[allow(clippy::match_same_arms)]
+                    match prog_header.p_flags & 0b111 {
+                        // update page flags to `[Dirty, Accessed, Read, User, Valid]`
+                        0b100 => page_table::sv39x4::update_page_flags(
+                            guest_physical_addr,
+                            [Dirty, Accessed, Read, User, Valid]
+                                .iter()
+                                .fold(0, |pte_f, f| (pte_f | *f as u8)),
+                        )
+                        .expect("failed to update page flags"),
+                        // Add Write permission to RX for dynamic patch
+                        // ref: https://github.com/torvalds/linux/blob/67784a74e258a467225f0e68335df77acd67b7ab/arch/riscv/kernel/patch.c#L215C5-L215C21
+                        // TODO: switch enable/disable write permission corresponding to VS-stage page table.
+                        0b101 => (), // no update
+                        // FIXME: Add Exec permission (RW -> RWX)
+                        0b110 => (), // no update
+                        0b111 => (), // no update
+                        _ => panic!("unsupported flags"),
+                    }
                 }
             }
         }
@@ -386,7 +387,7 @@ impl Guest {
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
-        const all_pte_flags_are_set: &[PteFlag; 7] =
+        const ALL_PTE_FLAGS_ARE_SET: &[PteFlag; 7] =
             &[Dirty, Accessed, Exec, Write, Read, User, Valid];
 
         for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
@@ -398,7 +399,7 @@ impl Guest {
                 &[MemoryMap::new(
                     guest_physical_addr..guest_physical_addr + PAGE_SIZE,
                     host_physical_addr..host_physical_addr + PAGE_SIZE,
-                    all_pte_flags_are_set,
+                    ALL_PTE_FLAGS_ARE_SET,
                 )],
             );
         }
@@ -413,7 +414,7 @@ impl Guest {
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
-        const all_pte_flags_are_set: &[PteFlag; 7] =
+        const ALL_PTE_FLAGS_ARE_SET: &[PteFlag; 7] =
             &[Dirty, Accessed, Exec, Write, Read, User, Valid];
 
         let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
@@ -450,7 +451,7 @@ impl Guest {
                 &[MemoryMap::new(
                     guest_physical_addr..guest_physical_addr + PAGE_SIZE,
                     aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                    all_pte_flags_are_set,
+                    ALL_PTE_FLAGS_ARE_SET,
                 )],
             );
         }
