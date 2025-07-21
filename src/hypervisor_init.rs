@@ -145,11 +145,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .unwrap()
     };
 
-    if cfg!(not(feature = "identity_map")) {
-        // allocate page tables to all remain guest memory region
-        let guest_memory_region = new_guest.memory_region().clone();
-        new_guest.allocate_memory_region(guest_memory_region);
-    }
+    // allocate page tables to all remain guest memory region
+    let guest_memory_region = new_guest.memory_region().clone();
+    new_guest.allocate_memory_region(guest_memory_region);
 
     // load guest image
     let guest_entry_point = new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());

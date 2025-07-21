@@ -317,7 +317,12 @@ impl Guest {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
 
             // allocate memory from heap
-            let aligned_page_size_block_addr = PageBlock::alloc();
+            let aligned_page_size_block_addr: HostPhysicalAddress =
+                if cfg!(feature = "identity_map") {
+                    HostPhysicalAddress(guest_physical_addr.raw())
+                } else {
+                    PageBlock::alloc()
+                };
 
             // create memory mapping
             page_table::sv39x4::generate_page_table(
