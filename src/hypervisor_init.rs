@@ -142,17 +142,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .unwrap()
     };
 
-    if cfg!(feature = "identity_map") {
-        let guest_memory_start =
-            guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
-        new_guest.allocate_memory_region(
-            guest_memory_start..guest_memory_start + guest_memory::DRAM_SIZE_PER_GUEST,
-            &GUEST_INITRD,
-        );
-    } else {
+    if cfg!(not(feature = "identity_map")) {
         // allocate page tables to all remain guest memory region
         let guest_memory_region = new_guest.memory_region().clone();
-        new_guest.allocate_memory_region(guest_memory_region, &GUEST_INITRD);
+        new_guest.allocate_memory_region(guest_memory_region);
     }
 
     // load guest image

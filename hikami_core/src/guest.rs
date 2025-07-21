@@ -255,25 +255,11 @@ impl Guest {
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
-    pub fn allocate_memory_region(
-        &self,
-        region: Range<GuestPhysicalAddress>,
-        guest_initrd: &'static [u8],
-    ) {
+    pub fn allocate_memory_region(&self, region: Range<GuestPhysicalAddress>) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
         const ALL_PTE_FLAGS_ARE_SET: &[PteFlag; 7] =
             &[Dirty, Accessed, Exec, Write, Read, User, Valid];
-
-        let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
-        let initrd_start = region.end - aligned_initrd_size;
-        if !guest_initrd.is_empty() {
-            crate::println!(
-                "initrd (GPA): {:#x}..{:#x}",
-                initrd_start.raw(),
-                initrd_start.raw() + guest_initrd.len()
-            );
-        }
 
         for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
