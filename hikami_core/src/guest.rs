@@ -167,16 +167,15 @@ impl Guest {
         elf_addr: *const u8,
         _guest_initrd: &'static [u8],
     ) -> GuestPhysicalAddress {
+        use PteFlag::{Accessed, Dirty, Read, User, Valid};
+
         /// Segment type `PT_LOAD`
         ///
         /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
         const PT_LOAD: u32 = 1;
 
-        use PteFlag::{Accessed, Dirty, Read, User, Valid};
-
         let align_size =
             |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
-        let mut elf_end: GuestPhysicalAddress = GuestPhysicalAddress::default();
 
         for prog_header in guest_elf
             .segments()
@@ -193,12 +192,16 @@ impl Guest {
                 for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
                     let guest_physical_addr =
                         self.dram_base() + prog_header.p_paddr.try_into().unwrap() + offset;
-                    elf_end = core::cmp::max(elf_end, guest_physical_addr + PAGE_SIZE);
 
-                    // allocate memory from heap
+                    // determine page address
                     let aligned_page_size_block_addr: HostPhysicalAddress =
-                        page_table::sv39x4::trans_addr(guest_physical_addr)
-                            .expect("failed to translate guest memory address in mapping");
+                        if cfg!(feature = "identity_map") {
+                            HostPhysicalAddress(guest_physical_addr.raw())
+                        } else {
+                            // translate allocated address (GPA) -> HPA
+                            page_table::sv39x4::trans_addr(guest_physical_addr)
+                                .expect("failed to translate guest memory address in mapping")
+                        };
 
                     // Determine the range of data to copy
                     let copy_start = segment_file_offset + offset;
@@ -209,8 +212,8 @@ impl Guest {
                     };
 
                     unsafe {
+                        // Copy ELF segment data from file
                         if copy_size > 0 {
-                            // Copy ELF segment data from file
                             core::ptr::copy(
                                 elf_addr.wrapping_add(copy_start),
                                 aligned_page_size_block_addr.raw() as *mut u8,
@@ -218,8 +221,8 @@ impl Guest {
                             );
                         }
 
+                        // Zero-initialize the remaining part of the page
                         if copy_size < PAGE_SIZE {
-                            // Zero-initialize the remaining part of the page
                             core::ptr::write_bytes(
                                 (aligned_page_size_block_addr.raw() as *mut u8).add(copy_size),
                                 0,
@@ -228,6 +231,7 @@ impl Guest {
                         }
                     }
 
+                    // update page flags
                     #[allow(clippy::match_same_arms)]
                     match prog_header.p_flags & 0b111 {
                         // update page flags to `[Dirty, Accessed, Read, User, Valid]`
