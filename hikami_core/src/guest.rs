@@ -155,8 +155,6 @@ impl Guest {
     }
 
     /// Load guest device tree and create corresponding page table
-    ///
-    /// Guest device tree will be placed start of guest memory region.
     fn load_guest_dtb(
         hart_id: usize,
         page_table_addr: HostPhysicalAddress,
@@ -166,7 +164,7 @@ impl Guest {
 
         assert!(guest_dtb.len() < guest_memory::GUEST_DTB_REGION_SIZE);
 
-        // guest device tree is loaded at end of guest memory region.
+        // Guest device tree is loaded at a fixed offset from DRAM_BASE.
         let guest_dtb_addr =
             guest_memory::DRAM_BASE + hart_id * guest_memory::GUEST_DTB_REGION_SIZE;
         let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
@@ -174,23 +172,16 @@ impl Guest {
         for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
             let guest_physical_addr = guest_dtb_addr + offset;
 
-            // get page address
-            let aligned_page_size_block_addr: HostPhysicalAddress =
-                if cfg!(feature = "identity_map") {
-                    // identity map
-                    HostPhysicalAddress(guest_physical_addr.raw())
-                } else {
-                    // allocate memory from heap
-                    PageBlock::alloc()
-                };
-
-            // copy elf segment to new heap block
-            unsafe {
-                core::ptr::copy(
-                    guest_dtb.as_ptr().byte_add(offset),
-                    aligned_page_size_block_addr.raw() as *mut u8,
-                    PAGE_SIZE,
-                );
+            let aligned_page_size_block_addr: HostPhysicalAddress = PageBlock::alloc();
+            let copy_size = (guest_dtb.len() - offset).min(PAGE_SIZE);
+            if copy_size > 0 {
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        guest_dtb.as_ptr().add(offset),
+                        aligned_page_size_block_addr.raw() as *mut u8,
+                        copy_size,
+                    );
+                }
             }
 
             // create memory mapping
