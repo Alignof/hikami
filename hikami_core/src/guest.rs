@@ -2,18 +2,18 @@
 
 pub mod context;
 
-use crate::PageBlock;
 use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
 use crate::memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
     constant::guest_memory,
     page_table,
-    page_table::{PageTableEntry, PteFlag, constants::PAGE_SIZE},
+    page_table::{constants::PAGE_SIZE, PageTableEntry, PteFlag},
+    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
 };
+use crate::PageBlock;
 use context::{Context, ContextData};
 
 use core::ops::Range;
-use elf::{ElfBytes, endian::AnyEndian};
+use elf::{endian::AnyEndian, ElfBytes};
 
 /// Guest Information
 #[derive(Debug)]
@@ -266,6 +266,11 @@ impl Guest {
             .iter()
         {
             if prog_header.p_type == PT_LOAD {
+                // Skip segments that have no memory footprint.
+                if prog_header.p_memsz == 0 {
+                    continue;
+                }
+
                 assert!(prog_header.p_align >= PAGE_SIZE as u64);
 
                 let aligned_segment_size = align_size(prog_header.p_memsz, prog_header.p_align);
@@ -273,38 +278,51 @@ impl Guest {
                 let segment_file_size = usize::try_from(prog_header.p_filesz).unwrap();
 
                 for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
+                    // Calculate the target GPA: Kernel's physical base + segment's physical offset + page offset
                     let guest_physical_addr =
-                        self.dram_base() + prog_header.p_paddr.try_into().unwrap() + offset;
+                        self.dram_base() + prog_header.p_paddr as usize + offset;
 
-                    // determine page address
-                    let aligned_page_size_block_addr: HostPhysicalAddress =
-                        if cfg!(feature = "identity_map") {
-                            HostPhysicalAddress(guest_physical_addr.raw())
-                        } else {
-                            // translate allocated address (GPA) -> HPA
-                            page_table::sv39x4::trans_addr(guest_physical_addr)
-                                .expect("failed to translate guest memory address in mapping")
-                        };
+                    // Check if the target address is within the pre-allocated guest memory region
+                    if !self.memory_region.contains(&guest_physical_addr) {
+                        panic!(
+                            "ELF segment paddr {:#x} out of guest memory region {:#x?}",
+                            guest_physical_addr.raw(),
+                            self.memory_region
+                        );
+                    }
 
-                    // Determine the range of data to copy
-                    let copy_start = segment_file_offset + offset;
-                    let copy_size = if offset + PAGE_SIZE <= segment_file_size {
-                        PAGE_SIZE
+                    // Translate the GPA to the HPA that was mapped in allocate_memory_region
+                    let aligned_page_size_block_addr: HostPhysicalAddress = if cfg!(
+                        feature = "identity_map"
+                    ) {
+                        HostPhysicalAddress(guest_physical_addr.raw())
                     } else {
-                        segment_file_size.saturating_sub(offset)
+                        page_table::sv39x4::trans_addr(guest_physical_addr).unwrap_or_else(|e| {
+                                panic!(
+                                    "failed to translate guest memory address {:#x} for ELF loading: {:?}",
+                                    guest_physical_addr.raw(), e
+                                )
+                            })
                     };
 
+                    // This logic calculates how many bytes to copy from the ELF file into the current page.
+                    // It handles cases where a page is only partially covered by file data.
+                    let copy_size = (segment_file_size
+                        .saturating_sub(offset.min(segment_file_size)))
+                    .min(PAGE_SIZE);
+                    let copy_start = segment_file_offset + offset;
+
                     unsafe {
-                        // Copy ELF segment data from file
+                        // Copy ELF segment data from the embedded binary
                         if copy_size > 0 {
-                            core::ptr::copy(
-                                elf_addr.wrapping_add(copy_start),
+                            core::ptr::copy_nonoverlapping(
+                                elf_addr.add(copy_start),
                                 aligned_page_size_block_addr.raw() as *mut u8,
                                 copy_size,
                             );
                         }
 
-                        // Zero-initialize the remaining part of the page
+                        // Zero-initialize the remaining part of the page if p_memsz > p_filesz
                         if copy_size < PAGE_SIZE {
                             core::ptr::write_bytes(
                                 (aligned_page_size_block_addr.raw() as *mut u8).add(copy_size),
@@ -314,13 +332,13 @@ impl Guest {
                         }
                     }
 
-                    // update page flags
+                    // update page flags based on segment permissions
                     #[allow(clippy::match_same_arms)]
                     match prog_header.p_flags & 0b111 {
-                        // update page flags to `[Dirty, Accessed, Read, User, Valid]`
+                        // R--
                         0b100 => page_table::sv39x4::update_page_flags(
                             guest_physical_addr,
-                            [Dirty, Accessed, Read, User, Valid]
+                            [Dirty, Accessed, Read, User, Valid] // No Exec, No Write
                                 .iter()
                                 .fold(0, |pte_f, f| (pte_f | *f as u8)),
                         )
@@ -332,12 +350,25 @@ impl Guest {
                         // FIXME: Add Exec permission (RW -> RWX)
                         0b110 => (), // no update
                         0b111 => (), // no update
-                        _ => panic!("unsupported flags"),
+                        _ => panic!("unsupported ELF segment flags"),
                     }
                 }
             }
         }
 
-        self.dram_base()
+        // The virtual entry point.
+        let virt_entry = guest_elf.ehdr.e_entry;
+        // The virtual address of the first loadable segment is the virtual base.
+        let virt_base = guest_elf
+            .segments()
+            .unwrap()
+            .iter()
+            .find(|p| p.p_type == PT_LOAD && p.p_memsz > 0)
+            .map(|p| p.p_vaddr)
+            .expect("No loadable segment found in ELF");
+
+        // Calculate the physical entry point: physical_base + (virtual_entry - virtual_base)
+        let phys_entry = self.dram_base().raw() as u64 + (virt_entry - virt_base);
+        GuestPhysicalAddress(phys_entry as usize)
     }
 }
