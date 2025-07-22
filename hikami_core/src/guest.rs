@@ -45,9 +45,10 @@ impl Guest {
         guest_dtb: &'static [u8],
         guest_initrd: &'static [u8],
     ) -> Self {
-        // calculate guest memory region
+        // Calculate guest memory region.
         let guest_memory_begin: GuestPhysicalAddress =
             guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
+
         let memory_region =
             guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST;
 
@@ -64,7 +65,7 @@ impl Guest {
         let dtb_addr = Self::load_guest_dtb(hart_id, page_table_addr, guest_dtb);
 
         // laod guest initrd
-        Self::load_initrd(hart_id, guest_initrd);
+        Self::load_initrd(hart_id, guest_initrd, &memory_region);
 
         Guest {
             hart_id,
@@ -109,40 +110,45 @@ impl Guest {
     }
 
     /// Load guest's initrd
-    fn load_initrd(hart_id: usize, guest_initrd: &'static [u8]) {
+    fn load_initrd(
+        hart_id: usize,
+        guest_initrd: &'static [u8],
+        memory_region: &Range<GuestPhysicalAddress>,
+    ) {
         if guest_initrd.is_empty() {
             return;
         }
 
         let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
-        let guest_base =
-            guest_memory::DRAM_BASE + guest_memory::DRAM_SIZE_PER_GUEST * (hart_id + 1);
-        let initrd_start = guest_base + guest_memory::DRAM_SIZE_PER_GUEST - aligned_initrd_size;
+        let initrd_start = memory_region.end - aligned_initrd_size;
 
         crate::println!(
-            "initrd (GPA): {:#x}..{:#x}",
+            "initrd (hart {}): Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
+            hart_id,
+            guest_initrd.len(),
             initrd_start.raw(),
-            initrd_start.raw() + guest_initrd.len()
+            initrd_start.raw() + guest_initrd.len(),
         );
 
-        for offset in (0..aligned_initrd_size).step_by(PAGE_SIZE) {
+        for offset in (0..guest_initrd.len()).step_by(PAGE_SIZE) {
             let guest_physical_addr = initrd_start + offset;
 
-            // get page host physical address
             let page_size_block_addr: HostPhysicalAddress = if cfg!(feature = "identity_map") {
                 // identity map
                 HostPhysicalAddress(guest_physical_addr.raw())
             } else {
                 // translate allocated address (GPA) -> HPA
                 page_table::sv39x4::trans_addr(guest_physical_addr)
-                    .expect("failed to translate guest memory address in mapping")
+                    .expect("failed to translate guest memory address for initrd")
             };
 
+            let copy_size = (guest_initrd.len() - offset).min(PAGE_SIZE);
+
             unsafe {
-                core::ptr::copy(
-                    guest_initrd.as_ptr(),
+                core::ptr::copy_nonoverlapping(
+                    guest_initrd.as_ptr().add(offset),
                     page_size_block_addr.raw() as *mut u8,
-                    PAGE_SIZE,
+                    copy_size,
                 );
             }
         }
