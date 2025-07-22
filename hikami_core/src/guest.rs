@@ -83,8 +83,7 @@ impl Guest {
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
-        const ALL_PTE_FLAGS_ARE_SET: &[PteFlag; 7] =
-            &[Dirty, Accessed, Exec, Write, Read, User, Valid];
+        const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
 
         for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
@@ -103,7 +102,7 @@ impl Guest {
                 &[MemoryMap::new(
                     guest_physical_addr..guest_physical_addr + PAGE_SIZE,
                     aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                    ALL_PTE_FLAGS_ARE_SET,
+                    G_STAGE_PTE_FLAGS,
                 )],
             );
         }
