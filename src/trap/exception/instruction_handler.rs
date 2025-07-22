@@ -17,7 +17,15 @@ extension_manager::import_global_variables!();
 pub fn illegal_instruction() {
     let fault_inst_value = stval::read();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}", sepc::read());
+        use hikami_core::memmap::GuestVirtualAddress;
+        let gva = GuestVirtualAddress(sepc::read());
+        let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
+        let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
+
+        panic!(
+            "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
+            sepc::read(), gpa.raw(), hpa.raw()
+        );
     });
 
     // emulate the instruction
@@ -29,7 +37,15 @@ pub fn illegal_instruction() {
 pub fn virtual_instruction() {
     let fault_inst_value = stval::read();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        panic!("decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}", sepc::read());
+        use hikami_core::memmap::GuestVirtualAddress;
+        let gva = GuestVirtualAddress(sepc::read());
+        let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
+        let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
+
+        panic!(
+            "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
+            sepc::read(), gpa.raw(), hpa.raw()
+        );
     });
 
     // emulate CSR set
