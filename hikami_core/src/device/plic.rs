@@ -1,13 +1,13 @@
 //! PLIC: Platform-Level Interrupt Controller  
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
-use super::{DeviceEmulateError, MmioDevice};
-use crate::h_extension::csrs::{VsInterruptKind, hvip};
+use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use crate::h_extension::csrs::{hvip, VsInterruptKind};
 use crate::memmap::constant::MAX_HART_NUM;
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use alloc::vec::Vec;
-use fdt::{Fdt, standard_nodes::MemoryRegion};
+use fdt::{standard_nodes::MemoryRegion, Fdt};
 use riscv::register::sie;
 
 /// Max number of PLIC context.
@@ -193,10 +193,20 @@ impl MmioDevice for Plic {
     }
 
     fn memmap(&self) -> Vec<MemoryMap> {
+        // Pass through 0x0 - 0x20_0000.
+        // Disallow 0x20_0000 - for emulation.
         self.register_map_regions
             .clone()
             .into_iter()
-            .map(MemoryMap::from)
+            .map(|region| {
+                let virt_start = GuestPhysicalAddress(region.starting_address as usize);
+                let phys_start = HostPhysicalAddress(region.starting_address as usize);
+                MemoryMap::new(
+                    virt_start..virt_start + CONTEXT_BASE,
+                    phys_start..phys_start + CONTEXT_BASE,
+                    &PTE_FLAGS_FOR_DEVICE,
+                )
+            })
             .collect()
     }
 }
