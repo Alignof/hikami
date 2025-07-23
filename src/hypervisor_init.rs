@@ -5,13 +5,12 @@ use crate::{ALLOCATOR, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL};
 use hikami_core::guest::Guest;
 use hikami_core::guest::context::ContextData;
 use hikami_core::h_extension::csrs::{
-    VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, henvcfg, hgatp, hideleg, hie,
-    hstatus, hvip, vsatp,
+    VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, hgatp, hideleg, hie, hstatus,
+    hvip, vsatp,
 };
 use hikami_core::h_extension::instruction::hfence_gvma_all;
 use hikami_core::memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, constant::guest_memory,
-    page_table::sv39x4::ROOT_PAGE_TABLE,
+    GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::ROOT_PAGE_TABLE,
 };
 use hikami_core::{_hv_heap_size, _start_heap};
 use hikami_core::{HYPERVISOR_DATA, HypervisorData};
@@ -117,9 +116,13 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Parse DTB
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
-    // create new guest data
-    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB);
+    // enable two-level address translation
     let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
+    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hfence_gvma_all();
+
+    // create new guest data
+    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB, &GUEST_INITRD);
 
     // parse device tree
     let device_tree = unsafe {
@@ -143,21 +146,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     };
 
     // load guest image
-    let (guest_entry_point, elf_end_addr) =
-        new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr(), &GUEST_INITRD);
-
-    if cfg!(feature = "identity_map") {
-        let guest_memory_start =
-            guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
-        new_guest.allocate_memory_region(
-            guest_memory_start..guest_memory_start + guest_memory::DRAM_SIZE_PER_GUEST,
-            &GUEST_INITRD,
-        );
-    } else {
-        // allocate page tables to all remain guest memory region
-        let guest_memory_end = new_guest.memory_region().end;
-        new_guest.allocate_memory_region(elf_end_addr..guest_memory_end, &GUEST_INITRD);
-    }
+    let guest_entry_point = unsafe { new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr()) };
 
     // set device memory map
     hypervisor_data
@@ -165,10 +154,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         .unwrap()
         .devices()
         .device_mapping_g_stage(root_page_table_addr);
-
-    // enable two-level address translation
-    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
-    hfence_gvma_all();
 
     // initialize IOMMU
     hypervisor_data

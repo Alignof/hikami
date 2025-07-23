@@ -95,6 +95,12 @@ impl PageTableEntry {
         Self((ppn << 10) | u64::from(flags))
     }
 
+    /// Set PTE flag.
+    fn set_flags(&mut self, flags: u8) {
+        let ppn_mask = 0xFFF_FFFF_FFFF_FC00; // 10 bit
+        self.0 = (self.0 & ppn_mask) | u64::from(flags);
+    }
+
     /// Is leaf page table entry
     fn is_leaf(self) -> bool {
         let pte_r = (self.0 >> 1) & 0x1;
