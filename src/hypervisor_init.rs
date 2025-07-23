@@ -146,7 +146,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     };
 
     // load guest image
-    let guest_entry_point = new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr());
+    let guest_entry_point = unsafe { new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr()) };
 
     // set device memory map
     hypervisor_data
