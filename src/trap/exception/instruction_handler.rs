@@ -14,6 +14,7 @@ extension_manager::import_global_variables!();
 
 /// Trap `Illegal instruction` exception.
 #[inline]
+#[allow(clippy::similar_names)]
 pub fn illegal_instruction() {
     let fault_inst_value = stval::read();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
@@ -34,6 +35,7 @@ pub fn illegal_instruction() {
 
 /// Trap `Virtual instruction` exception.
 #[inline]
+#[allow(clippy::similar_names)]
 pub fn virtual_instruction() {
     let fault_inst_value = stval::read();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
