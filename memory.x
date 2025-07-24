@@ -23,7 +23,7 @@ REGION_ALIAS("REGION_HEAP", RAM_HEAP);
 REGION_ALIAS("REGION_STACK", L2_LIM);
 
 _stack_start = ORIGIN(L2_LIM) + LENGTH(L2_LIM);
-_hv_heap_size = 0x18000000;
+_hv_heap_size = 0x40000000;
 _b_stack_size = 0x200000;
 
 /* defined section in hikami */
