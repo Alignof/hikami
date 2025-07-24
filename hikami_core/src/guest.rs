@@ -20,6 +20,8 @@ use elf::{ElfBytes, endian::AnyEndian};
 pub struct Guest {
     /// HART ID
     hart_id: usize,
+    /// Guest ID (min: 0)
+    guest_hart_id: usize,
     /// Page table that is passed to guest address
     #[allow(dead_code)]
     page_table_addr: HostPhysicalAddress,
@@ -41,13 +43,14 @@ impl Guest {
     #[must_use]
     pub fn new(
         hart_id: usize,
+        guest_hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         guest_dtb: &'static [u8],
         guest_initrd: &'static [u8],
     ) -> Self {
         // Calculate guest memory region.
         let guest_memory_begin: GuestPhysicalAddress =
-            guest_memory::DRAM_BASE + (hart_id + 1) * guest_memory::DRAM_SIZE_PER_GUEST;
+            guest_memory::DRAM_BASE + guest_hart_id * guest_memory::DRAM_SIZE_PER_GUEST;
 
         let memory_region =
             guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST;
@@ -62,13 +65,14 @@ impl Guest {
         Self::allocate_memory_region(page_table_addr, &memory_region);
 
         // load guest dtb to memory
-        let dtb_addr = Self::load_guest_dtb(hart_id, page_table_addr, guest_dtb);
+        let dtb_addr = Self::load_guest_dtb(guest_hart_id, page_table_addr, guest_dtb);
 
         // laod guest initrd
-        Self::load_initrd(hart_id, guest_initrd, &memory_region);
+        Self::load_initrd(guest_hart_id, guest_initrd, &memory_region);
 
         Guest {
             hart_id,
+            guest_hart_id,
             page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
             dtb_addr,
             stack_top_addr,
@@ -111,7 +115,7 @@ impl Guest {
 
     /// Load guest's initrd
     fn load_initrd(
-        hart_id: usize,
+        guest_hart_id: usize,
         guest_initrd: &'static [u8],
         memory_region: &Range<GuestPhysicalAddress>,
     ) {
@@ -123,8 +127,8 @@ impl Guest {
         let initrd_start = memory_region.end - aligned_initrd_size;
 
         crate::println!(
-            "initrd (hart {}): Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
-            hart_id,
+            "initrd (guest id:{}): Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
+            guest_hart_id,
             guest_initrd.len(),
             initrd_start.raw(),
             initrd_start.raw() + guest_initrd.len(),
@@ -156,7 +160,7 @@ impl Guest {
 
     /// Load guest device tree and create corresponding page table
     fn load_guest_dtb(
-        hart_id: usize,
+        guest_hart_id: usize,
         page_table_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8],
     ) -> GuestPhysicalAddress {
@@ -165,8 +169,9 @@ impl Guest {
         assert!(guest_dtb.len() < guest_memory::GUEST_DTB_REGION_SIZE);
 
         // Guest device tree is loaded at a fixed offset from DRAM_BASE.
-        let guest_dtb_addr =
-            guest_memory::DRAM_BASE + hart_id * guest_memory::GUEST_DTB_REGION_SIZE;
+        let host_dram_base = crate::memmap::constant::DRAM_BASE;
+        let guest_dtb_addr = GuestPhysicalAddress(host_dram_base)
+            + guest_hart_id * guest_memory::GUEST_DTB_REGION_SIZE;
         let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
 
         for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
