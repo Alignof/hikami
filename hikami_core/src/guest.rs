@@ -210,6 +210,12 @@ impl Guest {
         self.hart_id
     }
 
+    /// Return guest id.
+    #[must_use]
+    pub fn guest_hart_id(&self) -> usize {
+        self.guest_hart_id
+    }
+
     /// Return Stack top (end of memory region)
     #[must_use]
     pub fn stack_top(&self) -> HostPhysicalAddress {
