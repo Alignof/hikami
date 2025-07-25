@@ -122,10 +122,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hfence_gvma_all();
 
     // create new guest data
-    const DEFAULT_GUEST_ID: usize = 0;
+    let guest_hart_id = 0;
     let new_guest = Guest::new(
         hart_id,
-        DEFAULT_GUEST_ID,
+        guest_hart_id,
         &ROOT_PAGE_TABLE,
         &GUEST_DTB,
         &GUEST_INITRD,
@@ -141,7 +141,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
     // initialize hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    hypervisor_data.get_or_init(|| HypervisorData::new(hart_id, device_tree));
+    hypervisor_data.get_or_init(|| HypervisorData::new(device_tree));
 
     // load guest elf `from GUEST_KERNEL`
     let guest_elf = unsafe {
