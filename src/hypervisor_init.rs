@@ -213,12 +213,12 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);
 
-    hart_entry(hart_id, guest_dtb_addr);
+    hart_entry(guest_hart_id, guest_dtb_addr);
 }
 
 /// Entry for guest (VS-mode).
 #[inline(never)]
-fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
+fn hart_entry(guest_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // aquire hypervisor data
     let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
@@ -228,7 +228,7 @@ fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // init guest stack pointer is don't care
     sscratch::write(0);
 
-    crate::println!("Guest start (hart: {})", hart_id);
+    crate::println!("Guest start (guest hart: {})", guest_hart_id);
     unsafe {
         // enter VS-mode
         asm!(
@@ -286,7 +286,7 @@ fn hart_entry(hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
             sret
             ",
             HS_CONTEXT_SIZE = const size_of::<ContextData>(),
-            in("a0") hart_id,
+            in("a0") guest_hart_id,
             in("a1") dtb_addr.raw(),
             stack_top = in(reg) stack_top.raw(),
             options(noreturn)
