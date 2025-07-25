@@ -33,8 +33,8 @@ pub static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(Onc
 /// FIXME: Rename me!
 #[derive(Debug)]
 pub struct HypervisorData {
-    /// Current hart id (zero indexed).
-    current_hart: usize,
+    /// Current guest hart id (zero indexed).
+    current_guest_hart: usize,
     /// Guests data
     guests: [Option<guest::Guest>; MAX_HART_NUM],
     /// Devices data.
@@ -49,7 +49,7 @@ impl HypervisorData {
     #[must_use]
     pub fn new(device_tree: Fdt) -> Self {
         HypervisorData {
-            current_hart: 0,
+            current_guest_hart: 0,
             guests: [const { None }; MAX_HART_NUM],
             devices: Devices::new(device_tree),
         }
@@ -70,7 +70,7 @@ impl HypervisorData {
     /// It will be panic if current HART's guest data is empty.
     #[must_use]
     pub fn guest(&self) -> &Guest {
-        self.guests[self.current_hart]
+        self.guests[self.current_guest_hart]
             .as_ref()
             .expect("guest data not found")
     }
@@ -80,9 +80,9 @@ impl HypervisorData {
     /// # Panics
     /// It will be panic if `hart_id` is greater than `MAX_HART_NUM`.
     pub fn register_guest(&mut self, new_guest: Guest) {
-        let hart_id = new_guest.hart_id();
-        assert!(hart_id < MAX_HART_NUM);
-        self.guests[hart_id] = Some(new_guest);
+        let guest_hart_id = new_guest.guest_hart_id();
+        assert!(guest_hart_id < MAX_HART_NUM);
+        self.guests[guest_hart_id] = Some(new_guest);
     }
 }
 
