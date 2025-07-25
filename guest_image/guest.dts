@@ -453,7 +453,8 @@
 		mswi@02000000 {
 			status = "okay";
 			compatible = "thead,c900-aclint-mswi";
-			interrupts-extended = <0x0000000a 0x00000003 0x0000000b 0x00000003 0x0000000c 0x00000003 0x0000000d 0x00000003>;
+			//interrupts-extended = <0x0000000a 0x00000003 0x0000000b 0x00000003 0x0000000c 0x00000003 0x0000000d 0x00000003>;
+            interrupts-extended = <0x0000000a 0x00000003>;
 			reg = <0x00000000 0x02000000 0x00000000 0x00004000>;
 			phandle = <0x00000045>;
 		};
@@ -467,7 +468,8 @@
 		mtimer@02004000 {
 			status = "okay";
 			compatible = "thead,c900-aclint-mtimer";
-			interrupts-extended = <0x0000000a 0x00000007 0x0000000b 0x00000007 0x0000000c 0x00000007 0x0000000d 0x00000007>;
+			//interrupts-extended = <0x0000000a 0x00000007 0x0000000b 0x00000007 0x0000000c 0x00000007 0x0000000d 0x00000007>;
+            interrupts-extended = <0x0000000a 0x00000007>;
 			reg = <
                 0x00000000 0x0200bff8 0x00000000 0x00000008
                 0x00000000 0x02004000 0x00000000 0x00007ff8
@@ -488,7 +490,8 @@
 			reg = <0x00000000 0x0c000000 0x00000000 0x04000000>;
 			compatible = "sifive,plic-1.0.0", "riscv,plic0";
 			interrupt-controller;
-			interrupts-extended = <0x0000000a 0xffffffff 0x0000000a 0x00000009 0x0000000b 0xffffffff 0x0000000b 0x00000009 0x0000000c 0xffffffff 0x0000000c 0x00000009 0x0000000d 0xffffffff 0x0000000d 0x00000009>;
+			// interrupts-extended = <0x0000000a 0xffffffff 0x0000000a 0x00000009 0x0000000b 0xffffffff 0x0000000b 0x00000009 0x0000000c 0xffffffff 0x0000000c 0x00000009 0x0000000d 0xffffffff 0x0000000d 0x00000009>;
+            interrupts-extended = <0x0000000a 0xffffffff 0x0000000a 0x00000009>;
 			reg-names = "control";
 			riscv,max-priority = <0x00000007>;
 			riscv,ndev = <0x000001ff>;
@@ -1163,6 +1166,7 @@
 				phandle = <0x0000000a>;
 			};
 		};
+        /*
 		cpu@1 {
 			clock-frequency = <0x00000000>;
 			compatible = "eic7700", "riscv";
@@ -1352,6 +1356,7 @@
 				phandle = <0x00000011>;
 			};
 		};
+        */
 	};
 	display-subsystem {
 		u-boot,dm-pre-proper;
