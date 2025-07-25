@@ -122,7 +122,14 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hfence_gvma_all();
 
     // create new guest data
-    let new_guest = Guest::new(hart_id, &ROOT_PAGE_TABLE, &GUEST_DTB, &GUEST_INITRD);
+    const DEFAULT_GUEST_ID: usize = 0;
+    let new_guest = Guest::new(
+        hart_id,
+        DEFAULT_GUEST_ID,
+        &ROOT_PAGE_TABLE,
+        &GUEST_DTB,
+        &GUEST_INITRD,
+    );
 
     // parse device tree
     let device_tree = unsafe {
