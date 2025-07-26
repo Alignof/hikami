@@ -189,6 +189,8 @@ pub trait MmioDevice {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
     where
         Self: Sized;
+    /// Create page table
+    fn create_page_table(&self, root_page_table_addr: HostPhysicalAddress);
     /// Return memory maps between physical to physical (identity map) for crate page table.
     fn memmap(&self) -> Vec<MemoryMap>;
 }
