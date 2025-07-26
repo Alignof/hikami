@@ -12,8 +12,8 @@ use fdt::{Fdt, standard_nodes::MemoryRegion};
 /// to be used as part of the Linux startup process.
 #[derive(Debug)]
 pub struct Initrd {
-    /// Memory maps
-    memory_map: MemoryRegion,
+    /// Memory mapped register region
+    memory_region: MemoryRegion,
 }
 
 impl Initrd {
