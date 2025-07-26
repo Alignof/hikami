@@ -285,12 +285,13 @@ impl Pci {
 }
 
 impl MmioDevice for Pci {
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let register_map_regions: Vec<MemoryRegion> = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .collect();
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let pci_node = device_tree.find_compatible(compatibles)?;
+        let register_map_regions: Vec<MemoryRegion> = pci_node.reg().unwrap().collect();
 
         // assume that pci register contains first region.
         let base_address = HostPhysicalAddress(register_map_regions[0].starting_address as usize);
@@ -314,6 +315,8 @@ impl MmioDevice for Pci {
             pci_addr_space.bit64_memory_space.clone(),
             &PTE_FLAGS_FOR_DEVICE,
         ));
+
+        Self::create_page_table(root_page_table_addr, &register_map_regions, pci_node.name);
 
         Some(Pci {
             register_map_regions,

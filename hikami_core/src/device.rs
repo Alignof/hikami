@@ -265,21 +265,46 @@ impl Devices {
     #[must_use]
     pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
         Devices {
-            uart: uart::Uart::try_new(&device_tree, &["ns16550a", "synopsys,uart0"])
-                .expect("uart is not found in fdt"),
-            virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
-            initrd: initrd::Initrd::try_new_from_node_path(&device_tree, "/chosen"),
-            plic: plic::Plic::try_new(&device_tree, &["riscv,plic0"])
+            uart: uart::Uart::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["ns16550a", "synopsys,uart0"],
+            )
+            .expect("uart is not found in fdt"),
+            virtio_list: virtio::VirtIoList::new(
+                root_page_table_addr,
+                &device_tree,
+                "/soc/virtio_mmio",
+            ),
+            initrd: initrd::Initrd::try_new_from_node_path(
+                root_page_table_addr,
+                &device_tree,
+                "/chosen",
+            ),
+            plic: plic::Plic::try_new(root_page_table_addr, &device_tree, &["riscv,plic0"])
                 .expect("plic is not found in fdt"),
             clint: clint::Clint::try_new(
+                root_page_table_addr,
                 &device_tree,
                 &["sifive,clint0", "riscv,clint0", "thead,c900-aclint-mtimer"],
             )
             .expect("clint is not found in fdt"),
-            rtc: rtc::Rtc::try_new(&device_tree, &["google,goldfish-rtc"]),
-            pci: pci::Pci::try_new(&device_tree, &["pci-host-ecam-generic"]),
-            axi_sdc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
-            sdhci: sdhci::Mmc::try_new(&device_tree, &["eswin,emmc-sdhci-5.1"]),
+            rtc: rtc::Rtc::try_new(root_page_table_addr, &device_tree, &["google,goldfish-rtc"]),
+            pci: pci::Pci::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["pci-host-ecam-generic"],
+            ),
+            axi_sdc: axi_sdc::Mmc::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["riscv,axi-sd-card-1.0"],
+            ),
+            sdhci: sdhci::Mmc::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["eswin,emmc-sdhci-5.1"],
+            ),
         }
     }
 

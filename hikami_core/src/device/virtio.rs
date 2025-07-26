@@ -1,7 +1,7 @@
 //! A virtualization standard for network and disk device drivers.
 
 use super::MmioDevice;
-use crate::memmap::MemoryMap;
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 use alloc::vec::Vec;
 use core::slice::Iter;
@@ -14,18 +14,15 @@ pub struct VirtIoList(Vec<VirtIo>);
 
 impl VirtIoList {
     /// Create each Virt IO data when device has multiple IOs.
-    pub fn new(device_tree: &Fdt, node_path: &str) -> Self {
+    pub fn new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        node_path: &str,
+    ) -> Self {
         VirtIoList(
             device_tree
                 .find_all_nodes(node_path)
-                .map(|node| {
-                    let register_map_regions: Vec<MemoryRegion> = node.reg().unwrap().collect();
-                    let irq = node.property("interrupts").unwrap().value[0];
-                    VirtIo {
-                        register_map_regions,
-                        irq,
-                    }
-                })
+                .map(|virtio_node| VirtIo::new_with_node(root_page_table_addr, &virtio_node))
                 .collect(),
         )
     }

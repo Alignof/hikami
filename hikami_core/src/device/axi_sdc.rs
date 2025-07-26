@@ -123,13 +123,21 @@ impl EmulateDevice for Mmc {
 }
 
 impl MmioDevice for Mmc {
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let register_map_region = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .next()
-            .unwrap();
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let mmc_node = device_tree.find_compatible(compatibles)?;
+        let register_map_region = mmc_node.reg().unwrap().next().unwrap();
+
+        if cfg!(feature = "identity_map") {
+            Self::create_page_table(
+                root_page_table_addr,
+                &[register_map_region.into()],
+                mmc_node.name,
+            );
+        }
 
         Some(Mmc {
             register_map_region,

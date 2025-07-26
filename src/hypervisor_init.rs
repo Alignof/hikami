@@ -143,8 +143,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     hypervisor_data.get_or_init(|| {
         HypervisorData::new(
-            device_tree,
             HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize),
+            device_tree,
         )
     });
 

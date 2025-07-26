@@ -1,7 +1,7 @@
 //! RTC: Real Time Clock.
 
 use super::MmioDevice;
-use crate::memmap::MemoryMap;
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
@@ -15,12 +15,15 @@ pub struct Rtc {
 }
 
 impl MmioDevice for Rtc {
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let register_map_regions: Vec<MemoryRegion> = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .collect();
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let rtc_node = device_tree.find_compatible(compatibles)?;
+        let register_map_regions: Vec<MemoryRegion> = rtc_node.reg().unwrap().collect();
+
+        Self::create_page_table(root_page_table_addr, &register_map_regions, rtc_node.name);
 
         Some(Rtc {
             register_map_regions,
