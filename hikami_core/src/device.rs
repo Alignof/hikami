@@ -6,6 +6,7 @@ mod initrd;
 pub mod pci;
 pub mod plic;
 mod rtc;
+mod sdhci;
 pub mod uart;
 mod virtio;
 
@@ -220,8 +221,11 @@ pub struct Devices {
     /// PCI: Peripheral Component Interconnect
     pub pci: Option<pci::Pci>,
 
-    /// MMC:
-    pub mmc: Option<axi_sdc::Mmc>,
+    /// Axi SD card
+    pub axi_sdc: Option<axi_sdc::Mmc>,
+
+    /// SDHCI: SD Host Controller Interface
+    pub sdhci: Option<sdhci::Mmc>,
 }
 
 impl Devices {
@@ -245,7 +249,8 @@ impl Devices {
             .expect("clint is not found in fdt"),
             rtc: rtc::Rtc::try_new(&device_tree, &["google,goldfish-rtc"]),
             pci: pci::Pci::try_new(&device_tree, &["pci-host-ecam-generic"]),
-            mmc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
+            axi_sdc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
+            sdhci: sdhci::Mmc::try_new(&device_tree, &["eswin,emmc-sdhci-5.1"]),
         }
     }
 
@@ -268,6 +273,9 @@ impl Devices {
         device_mapping.extend_from_slice(&self.plic.memmap());
         device_mapping.extend_from_slice(&self.clint.memmap());
 
+        if let Some(sdhci) = &self.sdhci {
+            device_mapping.extend_from_slice(&sdhci.memmap());
+        }
         if let Some(rtc) = &self.rtc {
             device_mapping.extend_from_slice(&rtc.memmap());
         }
@@ -284,7 +292,7 @@ impl Devices {
             }
         }
         if cfg!(feature = "identity_map") {
-            if let Some(mmc) = &self.mmc {
+            if let Some(mmc) = &self.axi_sdc {
                 device_mapping.extend_from_slice(&mmc.memmap());
             }
         }
