@@ -12,8 +12,10 @@ mod virtio;
 
 use crate::memmap::page_table::{PteFlag, constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
+
 use alloc::vec::Vec;
 use fdt::Fdt;
+use fdt::standard_nodes::MemoryRegion;
 
 /// Page table for device
 const PTE_FLAGS_FOR_DEVICE: [PteFlag; 6] = [
@@ -184,13 +186,38 @@ impl DmaHostBuffer {
 #[allow(clippy::module_name_repetitions)]
 pub trait MmioDevice {
     /// Create self instance.
+    /// * `root_page_table_addr` - root page table address
     /// * `device_tree` - struct Fdt
     /// * `compatibles` - compatible name list
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self>
     where
         Self: Sized;
     /// Create page table
-    fn create_page_table(&self, root_page_table_addr: HostPhysicalAddress);
+    fn create_page_table(
+        root_page_table_addr: HostPhysicalAddress,
+        memory_regions: &[MemoryRegion],
+        node_name: &str,
+    ) {
+        for (i, map) in memory_regions.iter().enumerate() {
+            crate::println!(
+                "[Device Map] {}{} {:#x}..{:#x}",
+                node_name,
+                i,
+                map.starting_address as usize,
+                map.starting_address as usize + map.size.unwrap(),
+            )
+        }
+        let memory_maps: Vec<MemoryMap> = memory_regions
+            .iter()
+            .cloned()
+            .map(MemoryMap::from)
+            .collect();
+        page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+    }
     /// Return memory maps between physical to physical (identity map) for crate page table.
     fn memmap(&self) -> Vec<MemoryMap>;
 }
@@ -236,7 +263,7 @@ impl Devices {
     /// # Panics
     /// Panics if UART or PLIC or CLINT are not found in device tree.
     #[must_use]
-    pub fn new(device_tree: Fdt) -> Self {
+    pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
         Devices {
             uart: uart::Uart::try_new(&device_tree, &["ns16550a", "synopsys,uart0"])
                 .expect("uart is not found in fdt"),
