@@ -7,7 +7,7 @@ mod sata;
 pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 use config_register::{ConfigSpaceHeaderField, read_config_register};
 
 use alloc::vec::Vec;
@@ -296,9 +296,13 @@ impl MmioDevice for Pci {
         // assume that pci register contains first region.
         let base_address = HostPhysicalAddress(register_map_regions[0].starting_address as usize);
 
-        let mut memory_maps = Vec::new();
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices = PciDevices::new(device_tree, base_address, &pci_addr_space);
+
+        // map Pci's register map
+        Self::create_page_table(root_page_table_addr, &register_map_regions, pci_node.name);
+
+        let mut memory_maps = Vec::new();
 
         // 32 bit reserved memory map
         memory_maps.push(MemoryMap::new(
@@ -316,7 +320,10 @@ impl MmioDevice for Pci {
             &PTE_FLAGS_FOR_DEVICE,
         ));
 
-        Self::create_page_table(root_page_table_addr, &register_map_regions, pci_node.name);
+        // map PCI device's register map field
+        if cfg!(feature = "identity_map") {
+            page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+        }
 
         Some(Pci {
             register_map_regions,
