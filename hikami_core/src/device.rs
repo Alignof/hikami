@@ -220,8 +220,8 @@ pub struct Devices {
     /// PCI: Peripheral Component Interconnect
     pub pci: Option<pci::Pci>,
 
-    /// MMC:
-    pub mmc: Option<axi_sdc::Mmc>,
+    /// Axi SD card
+    pub axi_sdc: Option<axi_sdc::Mmc>,
 }
 
 impl Devices {
@@ -245,7 +245,7 @@ impl Devices {
             .expect("clint is not found in fdt"),
             rtc: rtc::Rtc::try_new(&device_tree, &["google,goldfish-rtc"]),
             pci: pci::Pci::try_new(&device_tree, &["pci-host-ecam-generic"]),
-            mmc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
+            axi_sdc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
         }
     }
 
@@ -284,7 +284,7 @@ impl Devices {
             }
         }
         if cfg!(feature = "identity_map") {
-            if let Some(mmc) = &self.mmc {
+            if let Some(mmc) = &self.axi_sdc {
                 device_mapping.extend_from_slice(&mmc.memmap());
             }
         }

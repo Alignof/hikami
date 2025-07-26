@@ -79,7 +79,7 @@ pub fn load_guest_page_fault() {
         }
     }
 
-    if let Some(mmc) = &mut hypervisor_data.get_mut().unwrap().devices().mmc {
+    if let Some(mmc) = &mut hypervisor_data.get_mut().unwrap().devices().axi_sdc {
         if let Ok(value) = mmc.emulate_loading(HostPhysicalAddress(fault_addr.raw())) {
             let mut context = hypervisor_data.get().unwrap().guest().context;
             context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
@@ -154,7 +154,7 @@ pub fn store_guest_page_fault() {
         }
     }
 
-    if let Some(mmc) = &mut hypervisor_data.get_mut().unwrap().devices().mmc {
+    if let Some(mmc) = &mut hypervisor_data.get_mut().unwrap().devices().axi_sdc {
         if let Ok(()) =
             mmc.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
         {
