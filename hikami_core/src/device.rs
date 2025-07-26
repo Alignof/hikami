@@ -6,6 +6,7 @@ mod initrd;
 pub mod pci;
 pub mod plic;
 mod rtc;
+mod sdhci;
 pub mod uart;
 mod virtio;
 
@@ -222,6 +223,9 @@ pub struct Devices {
 
     /// Axi SD card
     pub axi_sdc: Option<axi_sdc::Mmc>,
+
+    /// SDHCI: SD Host Controller Interface
+    pub sdhci: Option<sdhci::Mmc>,
 }
 
 impl Devices {
@@ -246,6 +250,7 @@ impl Devices {
             rtc: rtc::Rtc::try_new(&device_tree, &["google,goldfish-rtc"]),
             pci: pci::Pci::try_new(&device_tree, &["pci-host-ecam-generic"]),
             axi_sdc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
+            sdhci: sdhci::Mmc::try_new(&device_tree, &["eswin,emmc-sdhci-5.1"]),
         }
     }
 
@@ -268,6 +273,9 @@ impl Devices {
         device_mapping.extend_from_slice(&self.plic.memmap());
         device_mapping.extend_from_slice(&self.clint.memmap());
 
+        if let Some(sdhci) = &self.sdhci {
+            device_mapping.extend_from_slice(&sdhci.memmap());
+        }
         if let Some(rtc) = &self.rtc {
             device_mapping.extend_from_slice(&rtc.memmap());
         }
