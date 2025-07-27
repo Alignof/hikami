@@ -132,11 +132,7 @@ impl MmioDevice for Mmc {
         let register_map_region = mmc_node.reg().unwrap().next().unwrap();
 
         if cfg!(feature = "identity_map") {
-            Self::create_page_table(
-                root_page_table_addr,
-                &[register_map_region.into()],
-                mmc_node.name,
-            );
+            Self::create_page_table(root_page_table_addr, &[register_map_region], mmc_node.name);
         }
 
         Some(Mmc {

@@ -10,6 +10,7 @@ use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 use config_register::{ConfigSpaceHeaderField, read_config_register};
 
+use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::Range;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
@@ -293,23 +294,22 @@ impl MmioDevice for Pci {
         // map Pci's register map
         Self::create_page_table(root_page_table_addr, &register_map_regions, pci_node.name);
 
-        let mut memory_maps = Vec::new();
-
-        // 32 bit reserved memory map
-        memory_maps.push(MemoryMap::new(
-            GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
-                ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
-            pci_addr_space.bit32_memory_space.clone(),
-            &PTE_FLAGS_FOR_DEVICE,
-        ));
-
-        // 64 bit reserved memory map
-        memory_maps.push(MemoryMap::new(
-            GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
-                ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
-            pci_addr_space.bit64_memory_space.clone(),
-            &PTE_FLAGS_FOR_DEVICE,
-        ));
+        let memory_maps = vec![
+            // 32 bit reserved memory map
+            MemoryMap::new(
+                GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
+                    ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
+                pci_addr_space.bit32_memory_space.clone(),
+                &PTE_FLAGS_FOR_DEVICE,
+            ),
+            // 64 bit reserved memory map
+            MemoryMap::new(
+                GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
+                    ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
+                pci_addr_space.bit64_memory_space.clone(),
+                &PTE_FLAGS_FOR_DEVICE,
+            ),
+        ];
 
         // map PCI device's register map field
         if cfg!(feature = "identity_map") {
