@@ -47,11 +47,11 @@ impl HypervisorData {
     /// # Panics
     /// It will be panic when parsing device tree failed.
     #[must_use]
-    pub fn new(device_tree: Fdt) -> Self {
+    pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
         HypervisorData {
             current_guest_hart: 0,
             guests: [const { None }; MAX_HART_NUM],
-            devices: Devices::new(device_tree),
+            devices: Devices::new(root_page_table_addr, device_tree),
         }
     }
 

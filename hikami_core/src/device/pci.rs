@@ -7,9 +7,10 @@ mod sata;
 pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 use config_register::{ConfigSpaceHeaderField, read_config_register};
 
+use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::Range;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
@@ -273,47 +274,57 @@ impl Pci {
     pub fn pci_memory_maps(&self) -> &[MemoryMap] {
         &self.memory_maps
     }
-
-    /// Initialize PCI devices.
-    pub fn init_pci_devices(&self) {
-        if let Some(iommu) = &self.pci_devices.iommu {
-            iommu.init(HostPhysicalAddress(
-                self.register_map_regions[0].starting_address as usize,
-            ));
-        }
-    }
 }
 
 impl MmioDevice for Pci {
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let register_map_regions: Vec<MemoryRegion> = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .collect();
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let pci_node = device_tree.find_compatible(compatibles)?;
+        let register_map_regions: Vec<MemoryRegion> = pci_node.reg().unwrap().collect();
 
         // assume that pci register contains first region.
         let base_address = HostPhysicalAddress(register_map_regions[0].starting_address as usize);
 
-        let mut memory_maps = Vec::new();
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices = PciDevices::new(device_tree, base_address, &pci_addr_space);
 
-        // 32 bit reserved memory map
-        memory_maps.push(MemoryMap::new(
-            GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
-                ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
-            pci_addr_space.bit32_memory_space.clone(),
-            &PTE_FLAGS_FOR_DEVICE,
-        ));
+        // map Pci's register map
+        Self::create_page_table(root_page_table_addr, &register_map_regions, pci_node.name);
 
-        // 64 bit reserved memory map
-        memory_maps.push(MemoryMap::new(
-            GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
-                ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
-            pci_addr_space.bit64_memory_space.clone(),
-            &PTE_FLAGS_FOR_DEVICE,
-        ));
+        let memory_maps = vec![
+            // 32 bit reserved memory map
+            MemoryMap::new(
+                GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
+                    ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
+                pci_addr_space.bit32_memory_space.clone(),
+                &PTE_FLAGS_FOR_DEVICE,
+            ),
+            // 64 bit reserved memory map
+            MemoryMap::new(
+                GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
+                    ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
+                pci_addr_space.bit64_memory_space.clone(),
+                &PTE_FLAGS_FOR_DEVICE,
+            ),
+        ];
+
+        // map PCI device's register map field
+        if cfg!(feature = "identity_map") {
+            // mapping whole memory mapped register region of block divices.
+            page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+        }
+
+        // Initialize IOMMU
+        if cfg!(not(feature = "identity_map")) {
+            if let Some(ref iommu) = pci_devices.iommu {
+                iommu.init(HostPhysicalAddress(
+                    register_map_regions[0].starting_address as usize,
+                ));
+            }
+        }
 
         Some(Pci {
             register_map_regions,

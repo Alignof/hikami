@@ -35,12 +35,15 @@ impl Uart {
 }
 
 impl MmioDevice for Uart {
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let register_map_regions: Vec<MemoryRegion> = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .collect();
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let uart_node = device_tree.find_compatible(compatibles)?;
+        let register_map_regions: Vec<MemoryRegion> = uart_node.reg().unwrap().collect();
+
+        Self::create_page_table(root_page_table_addr, &register_map_regions, uart_node.name);
 
         UART_ADDR
             .lock()

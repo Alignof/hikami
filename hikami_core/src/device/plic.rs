@@ -4,7 +4,7 @@
 use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::h_extension::csrs::{VsInterruptKind, hvip};
 use crate::memmap::constant::MAX_HART_NUM;
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 
 use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
@@ -179,17 +179,50 @@ impl Plic {
 
 impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let register_map_regions: Vec<MemoryRegion> = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .collect();
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let plic_node = device_tree.find_compatible(compatibles)?;
+        let register_map_regions: Vec<MemoryRegion> = plic_node.reg().unwrap().collect();
+
+        Self::create_page_table(root_page_table_addr, &register_map_regions, plic_node.name);
 
         Some(Plic {
             register_map_regions,
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         })
+    }
+
+    fn create_page_table(
+        root_page_table_addr: HostPhysicalAddress,
+        memory_regions: &[MemoryRegion],
+        node_name: &str,
+    ) {
+        for (i, map) in memory_regions.iter().enumerate() {
+            crate::println!(
+                "[Device Map] {}{} {:#x}..{:#x}",
+                node_name,
+                i,
+                map.starting_address as usize,
+                map.starting_address as usize + map.size.unwrap(),
+            )
+        }
+        let memory_maps: Vec<MemoryMap> = memory_regions
+            .iter()
+            .cloned()
+            .map(|region| {
+                let virt_start = GuestPhysicalAddress(region.starting_address as usize);
+                let phys_start = HostPhysicalAddress(region.starting_address as usize);
+                MemoryMap::new(
+                    virt_start..virt_start + CONTEXT_BASE,
+                    phys_start..phys_start + CONTEXT_BASE,
+                    &PTE_FLAGS_FOR_DEVICE,
+                )
+            })
+            .collect();
+        page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
     }
 
     fn memmap(&self) -> Vec<MemoryMap> {

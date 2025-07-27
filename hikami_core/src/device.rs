@@ -12,8 +12,10 @@ mod virtio;
 
 use crate::memmap::page_table::{PteFlag, constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
+
 use alloc::vec::Vec;
 use fdt::Fdt;
+use fdt::standard_nodes::MemoryRegion;
 
 /// Page table for device
 const PTE_FLAGS_FOR_DEVICE: [PteFlag; 6] = [
@@ -184,11 +186,38 @@ impl DmaHostBuffer {
 #[allow(clippy::module_name_repetitions)]
 pub trait MmioDevice {
     /// Create self instance.
+    /// * `root_page_table_addr` - root page table address
     /// * `device_tree` - struct Fdt
     /// * `compatibles` - compatible name list
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
+    fn try_new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self>
     where
         Self: Sized;
+    /// Create page table
+    fn create_page_table(
+        root_page_table_addr: HostPhysicalAddress,
+        memory_regions: &[MemoryRegion],
+        node_name: &str,
+    ) {
+        for (i, map) in memory_regions.iter().enumerate() {
+            crate::println!(
+                "[Device Map] {}{} {:#x}..{:#x}",
+                node_name,
+                i,
+                map.starting_address as usize,
+                map.starting_address as usize + map.size.unwrap(),
+            )
+        }
+        let memory_maps: Vec<MemoryMap> = memory_regions
+            .iter()
+            .cloned()
+            .map(MemoryMap::from)
+            .collect();
+        page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+    }
     /// Return memory maps between physical to physical (identity map) for crate page table.
     fn memmap(&self) -> Vec<MemoryMap>;
 }
@@ -234,69 +263,48 @@ impl Devices {
     /// # Panics
     /// Panics if UART or PLIC or CLINT are not found in device tree.
     #[must_use]
-    pub fn new(device_tree: Fdt) -> Self {
+    pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
         Devices {
-            uart: uart::Uart::try_new(&device_tree, &["ns16550a", "synopsys,uart0"])
-                .expect("uart is not found in fdt"),
-            virtio_list: virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio"),
-            initrd: initrd::Initrd::try_new_from_node_path(&device_tree, "/chosen"),
-            plic: plic::Plic::try_new(&device_tree, &["riscv,plic0"])
+            uart: uart::Uart::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["ns16550a", "synopsys,uart0"],
+            )
+            .expect("uart is not found in fdt"),
+            virtio_list: virtio::VirtIoList::new(
+                root_page_table_addr,
+                &device_tree,
+                "/soc/virtio_mmio",
+            ),
+            initrd: initrd::Initrd::try_new_from_node_path(
+                root_page_table_addr,
+                &device_tree,
+                "/chosen",
+            ),
+            plic: plic::Plic::try_new(root_page_table_addr, &device_tree, &["riscv,plic0"])
                 .expect("plic is not found in fdt"),
             clint: clint::Clint::try_new(
+                root_page_table_addr,
                 &device_tree,
                 &["sifive,clint0", "riscv,clint0", "thead,c900-aclint-mtimer"],
             )
             .expect("clint is not found in fdt"),
-            rtc: rtc::Rtc::try_new(&device_tree, &["google,goldfish-rtc"]),
-            pci: pci::Pci::try_new(&device_tree, &["pci-host-ecam-generic"]),
-            axi_sdc: axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]),
-            sdhci: sdhci::Mmc::try_new(&device_tree, &["eswin,emmc-sdhci-5.1"]),
+            rtc: rtc::Rtc::try_new(root_page_table_addr, &device_tree, &["google,goldfish-rtc"]),
+            pci: pci::Pci::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["pci-host-ecam-generic"],
+            ),
+            axi_sdc: axi_sdc::Mmc::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["riscv,axi-sd-card-1.0"],
+            ),
+            sdhci: sdhci::Mmc::try_new(
+                root_page_table_addr,
+                &device_tree,
+                &["eswin,emmc-sdhci-5.1"],
+            ),
         }
-    }
-
-    /// Identity map for devices.
-    pub fn device_mapping_g_stage(&self, page_table_start: HostPhysicalAddress) {
-        let memory_map = self.create_device_map();
-        page_table::sv39x4::generate_page_table(page_table_start, &memory_map);
-    }
-
-    /// Return devices range to crate identity map.  
-    /// It does not return `Plic` address to emulate it.
-    fn create_device_map(&self) -> Vec<MemoryMap> {
-        let mut device_mapping: Vec<MemoryMap> = self
-            .virtio_list
-            .iter()
-            .flat_map(|virt| virt.memmap())
-            .collect();
-
-        device_mapping.extend_from_slice(&self.uart.memmap());
-        device_mapping.extend_from_slice(&self.plic.memmap());
-        device_mapping.extend_from_slice(&self.clint.memmap());
-
-        if let Some(sdhci) = &self.sdhci {
-            device_mapping.extend_from_slice(&sdhci.memmap());
-        }
-        if let Some(rtc) = &self.rtc {
-            device_mapping.extend_from_slice(&rtc.memmap());
-        }
-        if let Some(initrd) = &self.initrd {
-            device_mapping.extend_from_slice(&initrd.memmap());
-        }
-
-        if let Some(pci) = &self.pci {
-            device_mapping.extend_from_slice(&pci.memmap());
-
-            if cfg!(feature = "identity_map") {
-                // mapping whole memory mapped register region of block divices.
-                device_mapping.extend_from_slice(pci.pci_memory_maps());
-            }
-        }
-        if cfg!(feature = "identity_map") {
-            if let Some(mmc) = &self.axi_sdc {
-                device_mapping.extend_from_slice(&mmc.memmap());
-            }
-        }
-
-        device_mapping
     }
 }

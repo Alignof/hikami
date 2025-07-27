@@ -2,7 +2,7 @@
 #![allow(clippy::doc_markdown)]
 
 use super::MmioDevice;
-use crate::memmap::MemoryMap;
+use crate::memmap::{HostPhysicalAddress, MemoryMap};
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -12,13 +12,17 @@ use fdt::{Fdt, standard_nodes::MemoryRegion};
 /// to be used as part of the Linux startup process.
 #[derive(Debug)]
 pub struct Initrd {
-    /// Memory maps
-    memory_map: MemoryRegion,
+    /// Memory mapped register region
+    memory_region: MemoryRegion,
 }
 
 impl Initrd {
     /// Try to get Initrd data and return the `Initrd`.
-    pub fn try_new_from_node_path(device_tree: &Fdt, node_path: &str) -> Option<Self> {
+    pub fn try_new_from_node_path(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        node_path: &str,
+    ) -> Option<Self> {
         let start_prop = "linux,initrd-start";
         let end_prop = "linux,initrd-end";
         let node = device_tree.find_node(node_path).unwrap();
@@ -31,13 +35,14 @@ impl Initrd {
                 let start = u32::from_be_bytes(start[4..].try_into().unwrap()) as usize;
                 let end = node.property(end_prop).unwrap().value;
                 let end = u32::from_be_bytes(end[4..].try_into().unwrap()) as usize;
+                let memory_region = MemoryRegion {
+                    starting_address: start as *const u8,
+                    size: Some(end - start),
+                };
 
-                Some(Initrd {
-                    memory_map: MemoryRegion {
-                        starting_address: start as *const u8,
-                        size: Some(end - start),
-                    },
-                })
+                Self::create_page_table(root_page_table_addr, &[memory_region], node.name);
+
+                Some(Initrd { memory_region })
             }
             None => None,
         }
@@ -45,11 +50,15 @@ impl Initrd {
 }
 
 impl MmioDevice for Initrd {
-    fn try_new(_device_tree: &Fdt, _compatibles: &[&str]) -> Option<Self> {
+    fn try_new(
+        _root_page_table_addr: HostPhysicalAddress,
+        _device_tree: &Fdt,
+        _compatibles: &[&str],
+    ) -> Option<Self> {
         unreachable!("use Initrd::try_new_from_node_path instead")
     }
 
     fn memmap(&self) -> Vec<MemoryMap> {
-        vec![MemoryMap::from(self.memory_map)]
+        vec![MemoryMap::from(self.memory_region)]
     }
 }
