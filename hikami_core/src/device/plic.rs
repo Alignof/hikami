@@ -200,13 +200,12 @@ impl MmioDevice for Plic {
         memory_regions: &[MemoryRegion],
         node_name: &str,
     ) {
-        for (i, map) in memory_regions.iter().enumerate() {
+        for map in memory_regions {
             crate::println!(
-                "[Device Map] {}{} {:#x}..{:#x}",
+                "[Device Map] {} {:#x}..{:#x}",
                 node_name,
-                i,
                 map.starting_address as usize,
-                map.starting_address as usize + map.size.unwrap(),
+                map.starting_address as usize + CONTEXT_BASE,
             )
         }
         let memory_maps: Vec<MemoryMap> = memory_regions
