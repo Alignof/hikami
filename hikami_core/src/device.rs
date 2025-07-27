@@ -307,44 +307,4 @@ impl Devices {
             ),
         }
     }
-
-    /// Return devices range to crate identity map.  
-    /// It does not return `Plic` address to emulate it.
-    fn create_device_map(&self) -> Vec<MemoryMap> {
-        let mut device_mapping: Vec<MemoryMap> = self
-            .virtio_list
-            .iter()
-            .flat_map(|virt| virt.memmap())
-            .collect();
-
-        device_mapping.extend_from_slice(&self.uart.memmap());
-        device_mapping.extend_from_slice(&self.plic.memmap());
-        device_mapping.extend_from_slice(&self.clint.memmap());
-
-        if let Some(sdhci) = &self.sdhci {
-            device_mapping.extend_from_slice(&sdhci.memmap());
-        }
-        if let Some(rtc) = &self.rtc {
-            device_mapping.extend_from_slice(&rtc.memmap());
-        }
-        if let Some(initrd) = &self.initrd {
-            device_mapping.extend_from_slice(&initrd.memmap());
-        }
-
-        if let Some(pci) = &self.pci {
-            device_mapping.extend_from_slice(&pci.memmap());
-
-            if cfg!(feature = "identity_map") {
-                // mapping whole memory mapped register region of block divices.
-                device_mapping.extend_from_slice(pci.pci_memory_maps());
-            }
-        }
-        if cfg!(feature = "identity_map") {
-            if let Some(mmc) = &self.axi_sdc {
-                device_mapping.extend_from_slice(&mmc.memmap());
-            }
-        }
-
-        device_mapping
-    }
 }
