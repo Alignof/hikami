@@ -204,7 +204,7 @@ pub trait MmioDevice {
     ) {
         for (i, map) in memory_regions.iter().enumerate() {
             crate::println!(
-                "[Device Map] {}{} {:#x}..{:#x}",
+                "[Device Map] {} <{}> {:#x}..{:#x}",
                 node_name,
                 i,
                 map.starting_address as usize,
@@ -214,7 +214,15 @@ pub trait MmioDevice {
         let memory_maps: Vec<MemoryMap> = memory_regions
             .iter()
             .cloned()
-            .map(MemoryMap::from)
+            .map(|mut region| {
+                if region.starting_address as usize % PAGE_SIZE == 0 {
+                    MemoryMap::from(region)
+                } else {
+                    region.starting_address =
+                        ((region.starting_address as usize) & !(PAGE_SIZE - 1)) as *const u8;
+                    MemoryMap::from(region)
+                }
+            })
             .collect();
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
     }
