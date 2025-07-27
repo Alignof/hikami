@@ -160,15 +160,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     // load guest image
     let guest_entry_point = unsafe { new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr()) };
 
-    // initialize IOMMU
-    hypervisor_data
-        .get_mut()
-        .unwrap()
-        .devices()
-        .pci
-        .as_ref()
-        .map(hikami_core::device::pci::Pci::init_pci_devices);
-
     // set new guest data
     hypervisor_data.get_mut().unwrap().register_guest(new_guest);
 

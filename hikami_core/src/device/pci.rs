@@ -273,15 +273,6 @@ impl Pci {
     pub fn pci_memory_maps(&self) -> &[MemoryMap] {
         &self.memory_maps
     }
-
-    /// Initialize PCI devices.
-    pub fn init_pci_devices(&self) {
-        if let Some(iommu) = &self.pci_devices.iommu {
-            iommu.init(HostPhysicalAddress(
-                self.register_map_regions[0].starting_address as usize,
-            ));
-        }
-    }
 }
 
 impl MmioDevice for Pci {
@@ -322,7 +313,17 @@ impl MmioDevice for Pci {
 
         // map PCI device's register map field
         if cfg!(feature = "identity_map") {
+            // mapping whole memory mapped register region of block divices.
             page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+        }
+
+        // Initialize IOMMU
+        if cfg!(not(feature = "identity_map")) {
+            if let Some(ref iommu) = pci_devices.iommu {
+                iommu.init(HostPhysicalAddress(
+                    register_map_regions[0].starting_address as usize,
+                ));
+            }
         }
 
         Some(Pci {
