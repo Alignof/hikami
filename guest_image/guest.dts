@@ -1432,7 +1432,7 @@
 	};
 	chosen {
 		stdout-path = "serial0";
- 		bootargs = "earlycon console=ttyS0,115200 rootwait rw locale.LANG=en_US.UTF-8";
+        bootargs = "console=ttyS0,115200 root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon initcall_debug loglevel=8 debug earlyprintk=sbi selinux=0 LANG=en_US.UTF-8 single ";
  		linux,initrd-start = <0x0 0xafae2000>;
  		linux,initrd-end = <0x0 0xaffffe22>;
 	};
