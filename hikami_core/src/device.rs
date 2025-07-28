@@ -249,7 +249,7 @@ pub struct Devices {
     pub plic: plic::Plic,
 
     /// clint: Core Local INTerrupt
-    pub clint: clint::Clint,
+    pub clint: Option<clint::Clint>,
 
     /// RTC: Real Time Clock.
     pub rtc: Option<rtc::Rtc>,
@@ -294,8 +294,7 @@ impl Devices {
                 root_page_table_addr,
                 &device_tree,
                 &["sifive,clint0", "riscv,clint0", "thead,c900-aclint-mtimer"],
-            )
-            .expect("clint is not found in fdt"),
+            ),
             rtc: rtc::Rtc::try_new(root_page_table_addr, &device_tree, &["google,goldfish-rtc"]),
             pci: pci::Pci::try_new(
                 root_page_table_addr,
