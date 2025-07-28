@@ -1,5 +1,6 @@
 //! Devices data
 
+pub mod aclint;
 mod axi_sdc;
 pub mod clint;
 mod initrd;
@@ -251,6 +252,9 @@ pub struct Devices {
     /// clint: Core Local INTerrupt
     pub clint: Option<clint::Clint>,
 
+    /// aclint: Advanced Core Local INTerrupt
+    pub aclint: Option<aclint::Aclint>,
+
     /// RTC: Real Time Clock.
     pub rtc: Option<rtc::Rtc>,
 
@@ -293,7 +297,13 @@ impl Devices {
             clint: clint::Clint::try_new(
                 root_page_table_addr,
                 &device_tree,
-                &["sifive,clint0", "riscv,clint0", "thead,c900-aclint-mtimer"],
+                &["sifive,clint0", "riscv,clint0"],
+            ),
+            aclint: aclint::Aclint::try_new_aclint(
+                root_page_table_addr,
+                &device_tree,
+                &["thead,c900-aclint-mswi"],
+                &["thead,c900-aclint-mtimer"],
             ),
             rtc: rtc::Rtc::try_new(root_page_table_addr, &device_tree, &["google,goldfish-rtc"]),
             pci: pci::Pci::try_new(
