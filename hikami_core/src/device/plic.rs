@@ -26,7 +26,7 @@ const THRESHOLD_CLAIM_SIZE_PER_CONTEXT: usize = 0x1000;
 const CLAIM_OFFSET: usize = 0x4;
 /// End of context registers region.
 const THRESHOLD_CLAIM_END: usize =
-    THRESHOLD_CLAIM_BASE * THRESHOLD_CLAIM_SIZE_PER_CONTEXT * MAX_CONTEXT_NUM;
+    THRESHOLD_CLAIM_BASE + THRESHOLD_CLAIM_SIZE_PER_CONTEXT * MAX_CONTEXT_NUM;
 
 /// PLIC context ID.
 pub struct ContextId(usize);
