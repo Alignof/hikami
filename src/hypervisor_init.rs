@@ -2,7 +2,6 @@
 
 use crate::trap::hstrap_vector;
 use crate::{ALLOCATOR, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL};
-use hikami_core::guest::Guest;
 use hikami_core::guest::context::ContextData;
 use hikami_core::h_extension::csrs::{
     VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, hgatp, hideleg, hie, hstatus,
@@ -17,7 +16,6 @@ use hikami_core::{HYPERVISOR_DATA, HypervisorData};
 
 use core::arch::asm;
 
-use elf::{ElfBytes, endian::AnyEndian};
 use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 
 /// Entry point to HS-mode.
@@ -121,16 +119,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
     hfence_gvma_all();
 
-    // create new guest data
-    let guest_hart_id = 0;
-    let new_guest = Guest::new(
-        hart_id,
-        guest_hart_id,
-        &ROOT_PAGE_TABLE,
-        &GUEST_DTB,
-        &GUEST_INITRD,
-    );
-
     // parse device tree
     let device_tree = unsafe {
         match fdt::Fdt::from_ptr(dtb_addr.raw() as *const u8) {
@@ -148,20 +136,14 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         )
     });
 
-    // load guest elf `from GUEST_KERNEL`
-    let guest_elf = unsafe {
-        ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-            GUEST_KERNEL.as_ptr(),
-            GUEST_KERNEL.len(),
-        ))
-        .unwrap()
-    };
-
-    // load guest image
-    let guest_entry_point = unsafe { new_guest.load_guest_elf(&guest_elf, GUEST_KERNEL.as_ptr()) };
-
-    // set new guest data
-    hypervisor_data.get_mut().unwrap().register_guest(new_guest);
+    // create and register a new guest
+    let (guest_hart_id, guest_entry_point) = hypervisor_data.get_mut().unwrap().register_new_guest(
+        hart_id,
+        &ROOT_PAGE_TABLE,
+        &GUEST_KERNEL,
+        &GUEST_DTB,
+        &GUEST_INITRD,
+    );
 
     // initialize emulate_extension data
     extension_manager::initialize!();
