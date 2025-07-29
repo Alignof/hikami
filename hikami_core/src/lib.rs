@@ -107,9 +107,9 @@ impl HypervisorData {
         let new_guest = Guest::new(
             hart_id,
             guest_hart_id,
-            &root_page_table,
-            &guest_dtb,
-            &guest_initrd,
+            root_page_table,
+            guest_dtb,
+            guest_initrd,
         );
 
         // load guest elf `from GUEST_KERNEL`
