@@ -25,7 +25,7 @@ use device::Devices;
 use guest::Guest;
 use memmap::constant::MAX_HART_NUM;
 use memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
-use memmap::{GuestPhysicalAddress, HostPhysicalAddress, page_table::PageTableEntry};
+use memmap::{GuestPhysicalAddress, HostPhysicalAddress, page_table, page_table::PageTableEntry};
 
 /// Singleton for this hypervisor.
 pub static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
@@ -50,6 +50,9 @@ impl HypervisorData {
     /// It will be panic when parsing device tree failed.
     #[must_use]
     pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
+        // init page table
+        page_table::sv39x4::initialize_page_table(root_page_table_addr);
+
         HypervisorData {
             // fix to zero for now
             //

@@ -58,9 +58,6 @@ impl Guest {
         let stack_top_addr = HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
-        // init page table
-        page_table::sv39x4::initialize_page_table(page_table_addr);
-
         // map guest memory space
         Self::allocate_memory_region(page_table_addr, &memory_region);
 
