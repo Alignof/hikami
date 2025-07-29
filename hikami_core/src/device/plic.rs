@@ -14,13 +14,20 @@ use riscv::register::sie;
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
 
 /// Base offset of context.
-const CONTEXT_BASE: usize = 0x20_0000;
+const ENABLE_BASE: usize = 0x2000;
 /// Context registers region size.
-const CONTEXT_REGS_SIZE: usize = 0x1000;
-/// Claim/complete register offset from `CONTEXT_BASE` + `CONTEXT_REGS_SIZE` * `CONTEXT_REGS_SIZE`.
-const CONTEXT_CLAIM: usize = 0x4;
+const ENABLE_SIZE_PER_CONTEXT: usize = 0x80;
+const ENABLE_END: usize = ENABLE_BASE + ENABLE_SIZE_PER_CONTEXT * MAX_CONTEXT_NUM;
+
+/// Base offset of context.
+const THRESHOLD_CLAIM_BASE: usize = 0x20_0000;
+/// Context registers region size.
+const THRESHOLD_CLAIM_SIZE_PER_CONTEXT: usize = 0x1000;
+/// Claim/complete register offset from `THRESHOLD_CLAIM_BASE` + `THRESHOLD_CLAIM_SIZE_PER_CONTEXT` * `THRESHOLD_CLAIM_SIZE_PER_CONTEXT`.
+const CLAIM_OFFSET: usize = 0x4;
 /// End of context registers region.
-const CONTEXT_END: usize = CONTEXT_BASE * CONTEXT_REGS_SIZE * MAX_CONTEXT_NUM;
+const THRESHOLD_CLAIM_END: usize =
+    THRESHOLD_CLAIM_BASE + THRESHOLD_CLAIM_SIZE_PER_CONTEXT * MAX_CONTEXT_NUM;
 
 /// PLIC context ID.
 pub struct ContextId(usize);
@@ -70,16 +77,36 @@ impl Plic {
 
     /// Read plic claim/update register and reflect to `claim_complete`.
     pub fn update_claim_complete(&mut self, context_id: &ContextId) {
-        let claim_complete_addr =
-            self.base_addr() + CONTEXT_BASE + CONTEXT_REGS_SIZE * context_id.raw() + CONTEXT_CLAIM;
+        let claim_complete_addr = self.base_addr()
+            + THRESHOLD_CLAIM_BASE
+            + THRESHOLD_CLAIM_SIZE_PER_CONTEXT * context_id.raw()
+            + CLAIM_OFFSET;
         let irq = unsafe { core::ptr::read_volatile(claim_complete_addr.raw() as *const u32) };
         self.claim_complete[context_id.raw()] = irq;
     }
 
+    /// Emulate loading plic enable register.
+    ///
+    /// Guest OS attempts load enable bits based on virtual hart id.
+    /// Thus we need to convert a loading address.
+    fn enable_load(&self, hart_id: usize, offset: usize) -> Result<u32, DeviceEmulateError> {
+        let guest_context_id = (offset - ENABLE_BASE) / ENABLE_SIZE_PER_CONTEXT;
+        let context_id = hart_id * 2 + guest_context_id % 2;
+        let offset_per_context = offset % ENABLE_SIZE_PER_CONTEXT;
+        let phys_hart_addr = self.base_addr()
+            + ENABLE_BASE
+            + context_id * ENABLE_SIZE_PER_CONTEXT
+            + offset_per_context;
+        let phys_hart_ptr = phys_hart_addr.raw() as *mut u32;
+
+        unsafe { Ok(phys_hart_ptr.read_volatile()) }
+    }
+
     /// Emulate reading plic context register
-    fn context_load(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
-        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
-        let offset_per_context = offset % CONTEXT_REGS_SIZE;
+    fn context_load(&self, hart_id: usize, offset: usize) -> Result<u32, DeviceEmulateError> {
+        let guest_context_id = (offset - THRESHOLD_CLAIM_BASE) / THRESHOLD_CLAIM_SIZE_PER_CONTEXT;
+        let context_id = hart_id * 2 + guest_context_id % 2;
+        let offset_per_context = offset % THRESHOLD_CLAIM_SIZE_PER_CONTEXT;
         match offset_per_context {
             // threshold
             0 => unreachable!("[may be unreachable] plic threshold read"),
@@ -101,6 +128,7 @@ impl Plic {
     /// It will return an error if `dst_addr` is out of range.
     pub fn emulate_loading(
         &self,
+        hart_id: usize,
         dst_addr: HostPhysicalAddress,
     ) -> Result<u32, DeviceEmulateError> {
         if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
@@ -109,9 +137,41 @@ impl Plic {
 
         let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_load(offset),
+            ENABLE_BASE..ENABLE_END => self.enable_load(hart_id, offset),
+            THRESHOLD_CLAIM_BASE..=THRESHOLD_CLAIM_END => self.context_load(hart_id, offset),
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
+    }
+
+    /// Emulate storing plic enable register.
+    ///
+    /// # Errors
+    /// It will return an error if `dst_addr` is out of range.
+    fn enable_storing(
+        &mut self,
+        hart_id: usize,
+        guest_hart_id: usize,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) -> Result<(), DeviceEmulateError> {
+        let offset = dst_addr.raw() - self.base_addr().raw();
+        let guest_context_id = (offset - ENABLE_BASE) / ENABLE_SIZE_PER_CONTEXT;
+        let context_id = hart_id * 2 + guest_context_id % 2;
+
+        assert_eq!(guest_hart_id, guest_context_id / 2);
+
+        let offset_per_context = offset % ENABLE_SIZE_PER_CONTEXT;
+        let phys_hart_addr = self.base_addr()
+            + ENABLE_BASE
+            + context_id * ENABLE_SIZE_PER_CONTEXT
+            + offset_per_context;
+        let phys_hart_ptr = phys_hart_addr.raw() as *mut u32;
+
+        unsafe {
+            phys_hart_ptr.write_volatile(value);
+        }
+
+        Ok(())
     }
 
     /// Emulate storing plic context register.
@@ -120,16 +180,26 @@ impl Plic {
     /// It will return an error if `dst_addr` is out of range.
     fn context_storing(
         &mut self,
+        hart_id: usize,
+        guest_hart_id: usize,
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
         let offset = dst_addr.raw() - self.base_addr().raw();
-        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
-        let offset_per_context = offset % CONTEXT_REGS_SIZE;
+        let guest_context_id = (offset - THRESHOLD_CLAIM_BASE) / THRESHOLD_CLAIM_SIZE_PER_CONTEXT;
+        let context_id = hart_id * 2 + guest_context_id % 2;
+
+        assert_eq!(guest_hart_id, guest_context_id / 2);
+
+        let offset_per_context = offset % THRESHOLD_CLAIM_SIZE_PER_CONTEXT;
+        let phys_hart_ptr = self.base_addr()
+            + THRESHOLD_CLAIM_BASE
+            + context_id * THRESHOLD_CLAIM_SIZE_PER_CONTEXT
+            + offset_per_context;
         match offset_per_context {
             // threshold
             0 => {
-                let dst_ptr = dst_addr.raw() as *mut u32;
+                let dst_ptr = phys_hart_ptr.raw() as *mut u32;
                 unsafe {
                     dst_ptr.write_volatile(value);
                 }
@@ -138,7 +208,7 @@ impl Plic {
             }
             // claim/complete
             4 => {
-                let dst_ptr = dst_addr.raw() as *mut u32;
+                let dst_ptr = phys_hart_ptr.raw() as *mut u32;
                 unsafe {
                     if self.claim_complete[context_id] == value {
                         self.claim_complete[context_id] = 0;
@@ -162,6 +232,8 @@ impl Plic {
     /// It will return an error if `dst_addr` is out of range.
     pub fn emulate_storing(
         &mut self,
+        hart_id: usize,
+        guest_hart_id: usize,
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
@@ -171,7 +243,12 @@ impl Plic {
 
         let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_storing(dst_addr, value),
+            ENABLE_BASE..=ENABLE_END => {
+                self.enable_storing(hart_id, guest_hart_id, dst_addr, value)
+            }
+            THRESHOLD_CLAIM_BASE..=THRESHOLD_CLAIM_END => {
+                self.context_storing(hart_id, guest_hart_id, dst_addr, value)
+            }
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
@@ -205,7 +282,7 @@ impl MmioDevice for Plic {
                 "[Device Map] {} {:#x}..{:#x}",
                 node_name,
                 map.starting_address as usize,
-                map.starting_address as usize + CONTEXT_BASE,
+                map.starting_address as usize + THRESHOLD_CLAIM_BASE,
             )
         }
         let memory_maps: Vec<MemoryMap> = memory_regions
@@ -215,8 +292,8 @@ impl MmioDevice for Plic {
                 let virt_start = GuestPhysicalAddress(region.starting_address as usize);
                 let phys_start = HostPhysicalAddress(region.starting_address as usize);
                 MemoryMap::new(
-                    virt_start..virt_start + CONTEXT_BASE,
-                    phys_start..phys_start + CONTEXT_BASE,
+                    virt_start..virt_start + ENABLE_BASE,
+                    phys_start..phys_start + ENABLE_BASE,
                     &PTE_FLAGS_FOR_DEVICE,
                 )
             })
@@ -234,8 +311,8 @@ impl MmioDevice for Plic {
                 let virt_start = GuestPhysicalAddress(region.starting_address as usize);
                 let phys_start = HostPhysicalAddress(region.starting_address as usize);
                 MemoryMap::new(
-                    virt_start..virt_start + CONTEXT_BASE,
-                    phys_start..phys_start + CONTEXT_BASE,
+                    virt_start..virt_start + ENABLE_BASE,
+                    phys_start..phys_start + ENABLE_BASE,
                     &PTE_FLAGS_FOR_DEVICE,
                 )
             })
