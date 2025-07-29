@@ -55,12 +55,13 @@ pub fn load_guest_page_fault() {
     };
 
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
     if let Ok(value) = hypervisor_data
         .get_mut()
         .unwrap()
         .devices()
         .plic
-        .emulate_loading(HostPhysicalAddress(fault_addr.raw()))
+        .emulate_loading(hart_id, HostPhysicalAddress(fault_addr.raw()))
     {
         let mut context = hypervisor_data.get().unwrap().guest().context;
         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
@@ -126,7 +127,10 @@ pub fn store_guest_page_fault() {
     };
 
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    let mut context = hypervisor_data.get().unwrap().guest().context;
+    let guest = hypervisor_data.get().unwrap().guest();
+    let hart_id = guest.hart_id();
+    let guest_hart_id = guest.guest_hart_id();
+    let mut context = guest.context;
     let store_value = context.xreg(match fault_inst.rs2 {
         Some(x) => x,
         None => panic!("rs2 is not found: {fault_inst:#?} (inst_value: {fault_inst_value})"),
@@ -137,7 +141,12 @@ pub fn store_guest_page_fault() {
         .unwrap()
         .devices()
         .plic
-        .emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
+        .emulate_storing(
+            hart_id,
+            guest_hart_id,
+            HostPhysicalAddress(fault_addr.raw()),
+            store_value as u32,
+        )
     {
         update_sepc_by_inst_type(is_compressed, &mut context);
         return;

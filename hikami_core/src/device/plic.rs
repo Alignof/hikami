@@ -77,8 +77,9 @@ impl Plic {
     }
 
     /// Emulate reading plic context register
-    fn context_load(&self, offset: usize) -> Result<u32, DeviceEmulateError> {
-        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
+    fn context_load(&self, hart_id: usize, offset: usize) -> Result<u32, DeviceEmulateError> {
+        let guest_context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
+        let context_id = hart_id * 2 + guest_context_id % 2;
         let offset_per_context = offset % CONTEXT_REGS_SIZE;
         match offset_per_context {
             // threshold
@@ -101,6 +102,7 @@ impl Plic {
     /// It will return an error if `dst_addr` is out of range.
     pub fn emulate_loading(
         &self,
+        hart_id: usize,
         dst_addr: HostPhysicalAddress,
     ) -> Result<u32, DeviceEmulateError> {
         if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
@@ -109,7 +111,7 @@ impl Plic {
 
         let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_load(offset),
+            CONTEXT_BASE..=CONTEXT_END => self.context_load(hart_id, offset),
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
@@ -120,16 +122,24 @@ impl Plic {
     /// It will return an error if `dst_addr` is out of range.
     fn context_storing(
         &mut self,
+        hart_id: usize,
+        guest_hart_id: usize,
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
         let offset = dst_addr.raw() - self.base_addr().raw();
-        let context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
+        let guest_context_id = (offset - CONTEXT_BASE) / CONTEXT_REGS_SIZE;
+        let context_id = hart_id * 2 + guest_context_id % 2;
+
+        assert_eq!(guest_hart_id, guest_context_id / 2);
+
         let offset_per_context = offset % CONTEXT_REGS_SIZE;
+        let phys_hart_ptr =
+            self.base_addr() + CONTEXT_BASE + context_id * CONTEXT_REGS_SIZE + offset_per_context;
         match offset_per_context {
             // threshold
             0 => {
-                let dst_ptr = dst_addr.raw() as *mut u32;
+                let dst_ptr = phys_hart_ptr.raw() as *mut u32;
                 unsafe {
                     dst_ptr.write_volatile(value);
                 }
@@ -138,7 +148,7 @@ impl Plic {
             }
             // claim/complete
             4 => {
-                let dst_ptr = dst_addr.raw() as *mut u32;
+                let dst_ptr = phys_hart_ptr.raw() as *mut u32;
                 unsafe {
                     if self.claim_complete[context_id] == value {
                         self.claim_complete[context_id] = 0;
@@ -162,6 +172,8 @@ impl Plic {
     /// It will return an error if `dst_addr` is out of range.
     pub fn emulate_storing(
         &mut self,
+        hart_id: usize,
+        guest_hart_id: usize,
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
@@ -171,7 +183,9 @@ impl Plic {
 
         let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
-            CONTEXT_BASE..=CONTEXT_END => self.context_storing(dst_addr, value),
+            CONTEXT_BASE..=CONTEXT_END => {
+                self.context_storing(hart_id, guest_hart_id, dst_addr, value)
+            }
             _ => Err(DeviceEmulateError::InvalidAddress),
         }
     }
