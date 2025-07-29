@@ -14,8 +14,10 @@ use riscv::register::sie;
 pub const MAX_CONTEXT_NUM: usize = MAX_HART_NUM * 2;
 
 /// Base offset of context.
-const CONTEXT_BASE: usize = 0x20_0000;
+const ENABLE_BASE: usize = 0x2000;
 /// Context registers region size.
+const ENABLE_SIZE_PER_CONTEXT: usize = 0x80;
+
 /// Base offset of context.
 const THRESHOLD_CLAIM_BASE: usize = 0x20_0000;
 /// Context registers region size.
