@@ -55,6 +55,15 @@ impl Guest {
         let memory_region =
             guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST;
 
+        crate::println!(
+            "guest memory region (hart {}, guest id {}): Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
+            hart_id,
+            guest_hart_id,
+            guest_memory::DRAM_SIZE_PER_GUEST,
+            memory_region.start.raw(),
+            memory_region.end.raw(),
+        );
+
         let stack_top_addr = HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
