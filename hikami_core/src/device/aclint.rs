@@ -15,7 +15,7 @@ use fdt::{Fdt, standard_nodes::MemoryRegion};
 #[derive(Debug)]
 pub struct Aclint {
     /// MSWI
-    mswi: mswi::Mswi,
+    pub mswi: mswi::Mswi,
     /// MTIMER
     mtimer: mtimer::Mtimer,
 }
