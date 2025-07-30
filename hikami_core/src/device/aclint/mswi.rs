@@ -88,14 +88,12 @@ impl Mswi {
 
 impl MmioDevice for Mswi {
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
         let clint_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
-
-        Self::create_page_table(root_page_table_addr, &register_map_regions, clint_node.name);
 
         Some(Mswi {
             register_map_regions,

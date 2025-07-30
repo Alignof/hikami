@@ -27,16 +27,6 @@ impl Aclint {
         mswi_compatibles: &[&str],
         mtimer_compatibles: &[&str],
     ) -> Option<Self> {
-        let mtimer_node = device_tree.find_compatible(mtimer_compatibles)?;
-        let register_map_regions: Vec<MemoryRegion> = mtimer_node.reg().unwrap().collect();
-
-        // mswi region won't be mapped.
-        Self::create_page_table(
-            root_page_table_addr,
-            &register_map_regions,
-            mtimer_node.name,
-        );
-
         Some(Aclint {
             mswi: mswi::Mswi::try_new(root_page_table_addr, device_tree, mswi_compatibles)?,
             mtimer: mtimer::Mtimer::try_new(root_page_table_addr, device_tree, mtimer_compatibles)?,
