@@ -16,7 +16,7 @@ pub struct Aclint {
     /// MSWI
     pub mswi: mswi::Mswi,
     /// MTIMER
-    mtimer: mtimer::Mtimer,
+    pub mtimer: mtimer::Mtimer,
 }
 
 impl Aclint {
