@@ -3,7 +3,6 @@
 pub mod aclint;
 mod axi_sdc;
 pub mod clint;
-mod initrd;
 pub mod pci;
 pub mod plic;
 pub mod uart;
@@ -285,9 +284,6 @@ pub struct Devices {
     /// Lists of Virtio.
     pub virtio_list: virtio::VirtIoList,
 
-    /// initrd: INITial RamDisk
-    pub initrd: Option<initrd::Initrd>,
-
     /// PLIC: Platform-Level Interrupt Controller  
     pub plic: plic::Plic,
 
@@ -322,8 +318,6 @@ impl Devices {
         .expect("uart is not found in fdt");
         let virtio_list =
             virtio::VirtIoList::new(root_page_table_addr, &device_tree, "/soc/virtio_mmio");
-        let initrd =
-            initrd::Initrd::try_new_from_node_path(root_page_table_addr, &device_tree, "/chosen");
         let plic = plic::Plic::try_new(
             root_page_table_addr,
             &device_tree,
@@ -356,7 +350,6 @@ impl Devices {
         let mut exclude_list: Vec<_> = virtio_list.iter().map(|x| x.name()).collect();
         exclude_list.extend(&[
             uart.name(),
-            initrd.as_ref().map(|x| x.name()).unwrap_or(""),
             plic.name(),
             clint.as_ref().map(|x| x.name()).unwrap_or(""),
             aclint.as_ref().map(|x| x.mswi.name()).unwrap_or(""),
@@ -370,7 +363,6 @@ impl Devices {
         Devices {
             uart,
             virtio_list,
-            initrd,
             plic,
             clint,
             aclint,
