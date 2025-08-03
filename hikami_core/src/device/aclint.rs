@@ -3,11 +3,10 @@
 mod mswi;
 mod mtimer;
 
-use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use super::MmioDevice;
+use crate::memmap::HostPhysicalAddress;
 
-use alloc::vec::Vec;
-use fdt::{Fdt, standard_nodes::MemoryRegion};
+use fdt::Fdt;
 
 #[allow(clippy::doc_markdown)]
 /// ACLINT: Advanced Core Local INTerrupt
@@ -41,12 +40,5 @@ impl MmioDevice for Aclint {
         _compatibles: &[&str],
     ) -> Option<Self> {
         unreachable!("Use `Aclint::try_new_aclint` instead");
-    }
-
-    fn memmap(&self) -> Vec<MemoryMap> {
-        let mut memory_maps = self.mswi.memmap();
-        memory_maps.append(&mut self.mtimer.memmap());
-
-        memory_maps
     }
 }

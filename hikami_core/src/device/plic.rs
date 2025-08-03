@@ -300,22 +300,4 @@ impl MmioDevice for Plic {
             .collect();
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
     }
-
-    fn memmap(&self) -> Vec<MemoryMap> {
-        // Pass through 0x0 - 0x20_0000.
-        // Disallow 0x20_0000 - for emulation.
-        self.register_map_regions
-            .clone()
-            .into_iter()
-            .map(|region| {
-                let virt_start = GuestPhysicalAddress(region.starting_address as usize);
-                let phys_start = HostPhysicalAddress(region.starting_address as usize);
-                MemoryMap::new(
-                    virt_start..virt_start + ENABLE_BASE,
-                    phys_start..phys_start + ENABLE_BASE,
-                    &PTE_FLAGS_FOR_DEVICE,
-                )
-            })
-            .collect()
-    }
 }

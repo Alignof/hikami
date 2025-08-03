@@ -2,10 +2,8 @@
 #![allow(clippy::doc_markdown)]
 
 use super::MmioDevice;
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use crate::memmap::HostPhysicalAddress;
 
-use alloc::vec;
-use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// A scheme for loading a temporary root file system into memory,
@@ -56,9 +54,5 @@ impl MmioDevice for Initrd {
         _compatibles: &[&str],
     ) -> Option<Self> {
         unreachable!("use Initrd::try_new_from_node_path instead")
-    }
-
-    fn memmap(&self) -> Vec<MemoryMap> {
-        vec![MemoryMap::from(self.memory_region)]
     }
 }

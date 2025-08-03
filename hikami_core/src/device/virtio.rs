@@ -1,7 +1,7 @@
 //! A virtualization standard for network and disk device drivers.
 
 use super::MmioDevice;
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use crate::memmap::HostPhysicalAddress;
 
 use alloc::vec::Vec;
 use core::slice::Iter;
@@ -72,13 +72,5 @@ impl MmioDevice for VirtIo {
         _compatibles: &[&str],
     ) -> Option<Self> {
         unreachable!("use `VirtIo::new_with_node` instead.")
-    }
-
-    fn memmap(&self) -> Vec<MemoryMap> {
-        self.register_map_regions
-            .clone()
-            .into_iter()
-            .map(MemoryMap::from)
-            .collect()
     }
 }

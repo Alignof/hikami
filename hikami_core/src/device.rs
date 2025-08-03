@@ -224,8 +224,6 @@ pub trait MmioDevice {
             .collect();
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
     }
-    /// Return memory maps between physical to physical (identity map) for crate page table.
-    fn memmap(&self) -> Vec<MemoryMap>;
 }
 
 /// Manage devices sush as uart, plic, etc...

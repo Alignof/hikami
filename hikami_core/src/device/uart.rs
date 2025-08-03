@@ -1,7 +1,7 @@
 //! UART: Universal Asynchronous Receiver-Transmitter
 
 use super::MmioDevice;
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use crate::memmap::HostPhysicalAddress;
 
 use alloc::vec::Vec;
 use core::cell::OnceCell;
@@ -56,13 +56,5 @@ impl MmioDevice for Uart {
         Some(Uart {
             register_map_regions,
         })
-    }
-
-    fn memmap(&self) -> Vec<MemoryMap> {
-        self.register_map_regions
-            .clone()
-            .into_iter()
-            .map(MemoryMap::from)
-            .collect()
     }
 }

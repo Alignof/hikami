@@ -333,13 +333,4 @@ impl MmioDevice for Pci {
             pci_devices,
         })
     }
-
-    /// mapping sata register region.
-    fn memmap(&self) -> Vec<MemoryMap> {
-        self.register_map_regions
-            .clone()
-            .into_iter()
-            .map(MemoryMap::from)
-            .collect()
-    }
 }

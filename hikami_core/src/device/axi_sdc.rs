@@ -6,11 +6,9 @@ mod register;
 
 use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice};
 use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 use register::SdcRegisters;
 
-use alloc::vec;
-use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 #[allow(clippy::doc_markdown)]
@@ -141,9 +139,5 @@ impl MmioDevice for Mmc {
             dma_alt_buffer: DmaHostBuffer::new(PAGE_SIZE),
             is_transferring: false,
         })
-    }
-
-    fn memmap(&self) -> Vec<MemoryMap> {
-        vec![MemoryMap::from(self.register_map_region)]
     }
 }

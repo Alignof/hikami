@@ -4,10 +4,8 @@
 //! It has a single fixed-frequency monotonic time counter (MTIME) register and a time compare register (MTIMECMP) for each HART connected to the MTIMER device.
 //! A MTIMER device not connected to any HART should only have a MTIME register and no MTIMECMP registers.
 
-use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table::constants::PAGE_SIZE,
-};
+use super::MmioDevice;
+use crate::memmap::HostPhysicalAddress;
 
 use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
@@ -32,30 +30,5 @@ impl MmioDevice for Mtimer {
         Some(Mtimer {
             register_map_regions,
         })
-    }
-
-    fn memmap(&self) -> Vec<MemoryMap> {
-        self.register_map_regions
-            .clone()
-            .into_iter()
-            .map(|region| {
-                let mut size = region.size.unwrap();
-                let mut virt_start = GuestPhysicalAddress(region.starting_address as usize);
-                let mut phys_start = HostPhysicalAddress(region.starting_address as usize);
-
-                // change memory map region if region size is less than the page size.
-                if phys_start % PAGE_SIZE != 0 && size < PAGE_SIZE {
-                    size = PAGE_SIZE;
-                    virt_start = virt_start - (virt_start % PAGE_SIZE);
-                    phys_start = phys_start - (phys_start % PAGE_SIZE);
-                }
-
-                MemoryMap::new(
-                    virt_start..virt_start + size,
-                    phys_start..phys_start + size,
-                    &PTE_FLAGS_FOR_DEVICE,
-                )
-            })
-            .collect()
     }
 }
