@@ -230,6 +230,17 @@ pub trait MmioDevice {
     fn name(&self) -> &str;
 }
 
+/// Other memory mapped divice
+///
+/// The all devices which aren't managed by the hypervisor is mapped identically.
+#[derive(Debug)]
+pub struct OtherMmioDevice {
+    /// Device tree name
+    pub name: String,
+    /// Memory maps for memory mapped register.
+    pub register_map_regions: Vec<MemoryRegion>,
+}
+
 /// Manage devices sush as uart, plic, etc...
 ///
 /// `memory_map` has memory region data of each devices.  
