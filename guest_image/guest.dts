@@ -851,7 +851,7 @@
 			reg-shift = <0x02>;
 			reg-io-width = <0x04>;
 			numa-node-id = <0x00>;
-			status = "okay";
+			status = "disabled";
 		};
 
 		serial@0x50920000 {
@@ -863,7 +863,7 @@
 			reg-shift = <0x02>;
 			reg-io-width = <0x04>;
 			numa-node-id = <0x00>;
-			status = "okay";
+			status = "disabled";
 		};
 
 		serial@0x50930000 {

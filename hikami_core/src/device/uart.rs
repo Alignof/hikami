@@ -40,7 +40,11 @@ impl MmioDevice for Uart {
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
-        let uart_node = device_tree.find_compatible(compatibles)?;
+        let uart_node = device_tree.find_compatible(compatibles).unwrap_or_else(|| {
+            device_tree
+                .find_node("/soc/serial")
+                .expect("uart is not found in fdt")
+        });
         let register_map_regions: Vec<MemoryRegion> = uart_node.reg().unwrap().collect();
 
         Self::create_page_table(root_page_table_addr, &register_map_regions, uart_node.name);

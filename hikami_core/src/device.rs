@@ -279,7 +279,7 @@ impl Devices {
             uart: uart::Uart::try_new(
                 root_page_table_addr,
                 &device_tree,
-                &["ns16550a", "synopsys,uart0"],
+                &["ns16550a", "snps,dw-apb-uart"],
             )
             .expect("uart is not found in fdt"),
             virtio_list: virtio::VirtIoList::new(
