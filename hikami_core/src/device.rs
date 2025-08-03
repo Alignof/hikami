@@ -6,7 +6,6 @@ pub mod clint;
 mod initrd;
 pub mod pci;
 pub mod plic;
-mod rtc;
 mod sdhci;
 pub mod uart;
 mod virtio;
@@ -255,9 +254,6 @@ pub struct Devices {
     /// aclint: Advanced Core Local INTerrupt
     pub aclint: Option<aclint::Aclint>,
 
-    /// RTC: Real Time Clock.
-    pub rtc: Option<rtc::Rtc>,
-
     /// PCI: Peripheral Component Interconnect
     pub pci: Option<pci::Pci>,
 
@@ -305,7 +301,6 @@ impl Devices {
                 &["thead,c900-aclint-mswi"],
                 &["thead,c900-aclint-mtimer"],
             ),
-            rtc: rtc::Rtc::try_new(root_page_table_addr, &device_tree, &["google,goldfish-rtc"]),
             pci: pci::Pci::try_new(
                 root_page_table_addr,
                 &device_tree,
