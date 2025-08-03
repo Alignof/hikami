@@ -6,7 +6,6 @@ pub mod clint;
 mod initrd;
 pub mod pci;
 pub mod plic;
-mod sdhci;
 pub mod uart;
 mod virtio;
 
@@ -259,9 +258,6 @@ pub struct Devices {
 
     /// Axi SD card
     pub axi_sdc: Option<axi_sdc::Mmc>,
-
-    /// SDHCI: SD Host Controller Interface
-    pub sdhci: Option<sdhci::Mmc>,
 }
 
 impl Devices {
@@ -310,11 +306,6 @@ impl Devices {
                 root_page_table_addr,
                 &device_tree,
                 &["riscv,axi-sd-card-1.0"],
-            ),
-            sdhci: sdhci::Mmc::try_new(
-                root_page_table_addr,
-                &device_tree,
-                &["eswin,emmc-sdhci-5.1"],
             ),
         }
     }
