@@ -6,6 +6,7 @@ use crate::h_extension::csrs::{VsInterruptKind, hvip};
 use crate::memmap::constant::MAX_HART_NUM;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
 use riscv::register::sie;
@@ -52,6 +53,8 @@ impl ContextId {
 /// Interrupt controller for global interrupts.
 #[derive(Debug)]
 pub struct Plic {
+    /// Device tree name
+    name: String,
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
     /// Claim complete flags for external interrupts emulation.
@@ -267,6 +270,7 @@ impl MmioDevice for Plic {
         Self::create_page_table(root_page_table_addr, &register_map_regions, plic_node.name);
 
         Some(Plic {
+            name: plic_node.name.to_string(),
             register_map_regions,
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         })
@@ -299,5 +303,9 @@ impl MmioDevice for Plic {
             })
             .collect();
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }

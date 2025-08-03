@@ -3,6 +3,7 @@
 use super::MmioDevice;
 use crate::memmap::HostPhysicalAddress;
 
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::slice::Iter;
 use fdt::{Fdt, node::FdtNode, standard_nodes::MemoryRegion};
@@ -36,6 +37,8 @@ impl VirtIoList {
 /// Virtualization standard for IO device.
 #[derive(Debug)]
 pub struct VirtIo {
+    /// Device tree name
+    name: String,
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
     /// Interrupt Reqeust bit.
@@ -54,6 +57,7 @@ impl VirtIo {
         );
 
         VirtIo {
+            name: virtio_node.name.to_string(),
             register_map_regions,
             irq: virtio_node.property("interrupts").unwrap().value[0],
         }
@@ -72,5 +76,9 @@ impl MmioDevice for VirtIo {
         _compatibles: &[&str],
     ) -> Option<Self> {
         unreachable!("use `VirtIo::new_with_node` instead.")
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }

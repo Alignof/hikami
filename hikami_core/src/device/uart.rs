@@ -3,6 +3,7 @@
 use super::MmioDevice;
 use crate::memmap::HostPhysicalAddress;
 
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cell::OnceCell;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
@@ -21,6 +22,8 @@ static UART_ADDR: Mutex<OnceCell<HostPhysicalAddress>> = Mutex::new(OnceCell::ne
 /// UART: Universal asynchronous receiver-transmitter
 #[derive(Debug)]
 pub struct Uart {
+    /// Device tree name
+    name: String,
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
 }
@@ -54,7 +57,12 @@ impl MmioDevice for Uart {
             .get_or_init(|| HostPhysicalAddress(register_map_regions[0].starting_address as usize));
 
         Some(Uart {
+            name: uart_node.name.to_string(),
             register_map_regions,
         })
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }

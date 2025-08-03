@@ -9,12 +9,15 @@ use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 use register::SdcRegisters;
 
+use alloc::string::{String, ToString};
 use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 #[allow(clippy::doc_markdown)]
 /// MMC: Multi Media Card
 #[derive(Debug)]
 pub struct Mmc {
+    /// Device tree name
+    name: String,
     /// Memory map for memory mapped register.
     register_map_region: MemoryRegion,
     /// DMA address.
@@ -134,10 +137,15 @@ impl MmioDevice for Mmc {
         }
 
         Some(Mmc {
+            name: mmc_node.name.to_string(),
             register_map_region,
             dma_addr: GuestPhysicalAddress(0),
             dma_alt_buffer: DmaHostBuffer::new(PAGE_SIZE),
             is_transferring: false,
         })
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }

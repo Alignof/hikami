@@ -195,6 +195,7 @@ pub trait MmioDevice {
     ) -> Option<Self>
     where
         Self: Sized;
+
     /// Create page table
     fn create_page_table(
         root_page_table_addr: HostPhysicalAddress,
@@ -224,6 +225,9 @@ pub trait MmioDevice {
             .collect();
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
     }
+
+    /// Return device tree node name
+    fn name(&self) -> &str;
 }
 
 /// Manage devices sush as uart, plic, etc...

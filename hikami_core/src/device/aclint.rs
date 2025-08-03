@@ -41,4 +41,8 @@ impl MmioDevice for Aclint {
     ) -> Option<Self> {
         unreachable!("Use `Aclint::try_new_aclint` instead");
     }
+
+    fn name(&self) -> &str {
+        unreachable!("call `Mswi::name` and `Mtimer::name` directly")
+    }
 }

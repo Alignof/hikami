@@ -4,12 +4,15 @@
 use super::MmioDevice;
 use crate::memmap::HostPhysicalAddress;
 
+use alloc::string::{String, ToString};
 use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// A scheme for loading a temporary root file system into memory,
 /// to be used as part of the Linux startup process.
 #[derive(Debug)]
 pub struct Initrd {
+    /// Device tree name
+    name: String,
     /// Memory mapped register region
     memory_region: MemoryRegion,
 }
@@ -40,7 +43,10 @@ impl Initrd {
 
                 Self::create_page_table(root_page_table_addr, &[memory_region], node.name);
 
-                Some(Initrd { memory_region })
+                Some(Initrd {
+                    name: "linux,initrd".to_string(),
+                    memory_region,
+                })
             }
             None => None,
         }
@@ -54,5 +60,9 @@ impl MmioDevice for Initrd {
         _compatibles: &[&str],
     ) -> Option<Self> {
         unreachable!("use Initrd::try_new_from_node_path instead")
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }
