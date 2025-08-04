@@ -11,6 +11,7 @@ use crate::h_extension::csrs::hgatp;
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::slice::from_raw_parts_mut;
 
 /// First page table size
@@ -72,6 +73,75 @@ pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
     first_lv_page_table.fill(PageTableEntry(0));
 }
 
+/// Splits a single MemoryMap into multiple MemoryMaps to satisfy superpage alignment requirements.
+///
+/// This function takes a slice of MemoryMaps and returns a new Vec of MemoryMaps
+/// where each one is properly aligned for the largest possible page size.
+/// For example, a single large, unaligned region will be broken down into:
+/// 1. A section mapped with 4KB pages to reach the first 2MB alignment boundary.
+/// 2. A central section mapped with 2MB pages (or 1GB pages if possible).
+/// 3. A final section mapped with 4KB pages for the remaining part.
+fn split_memory_maps(memmaps: &[MemoryMap]) -> Vec<MemoryMap> {
+    let mut split_maps = Vec::new();
+
+    for memmap in memmaps {
+        let mut current_virt = memmap.virt.start;
+        let mut current_phys = memmap.phys.start;
+
+        while current_virt < memmap.virt.end {
+            let remaining_len = memmap.virt.end.raw() - current_virt.raw();
+
+            // Determine the largest possible page size for the current address
+            let (page_level, page_size) = if remaining_len >= PageTableLevel::Lv1GB.size()
+                && current_virt % PageTableLevel::Lv1GB.size() == 0
+                && current_phys % PageTableLevel::Lv1GB.size() == 0
+            {
+                (PageTableLevel::Lv1GB, PageTableLevel::Lv1GB.size())
+            } else if remaining_len >= PageTableLevel::Lv2MB.size()
+                && current_virt % PageTableLevel::Lv2MB.size() == 0
+                && current_phys % PageTableLevel::Lv2MB.size() == 0
+            {
+                (PageTableLevel::Lv2MB, PageTableLevel::Lv2MB.size())
+            } else {
+                (PageTableLevel::Lv4KB, PageTableLevel::Lv4KB.size())
+            };
+
+            // Calculate the next alignment boundary for the chosen page size
+            let next_align_boundary = (current_virt.raw() + page_size) & !(page_size - 1);
+
+            // Determine the size of the current chunk to map
+            let chunk_end_virt =
+                core::cmp::min(memmap.virt.end, GuestPhysicalAddress(next_align_boundary));
+            let chunk_size = chunk_end_virt.raw() - current_virt.raw();
+
+            let map_size = if page_level != PageTableLevel::Lv4KB {
+                // For superpages, find the largest aligned chunk possible
+                let end_of_aligned_chunk = memmap.virt.end.raw() & !(page_size - 1);
+                if current_virt.raw() < end_of_aligned_chunk {
+                    end_of_aligned_chunk - current_virt.raw()
+                } else {
+                    page_size
+                }
+            } else {
+                // For 4KB pages, just align to the next superpage boundary
+                chunk_size
+            };
+
+            let final_chunk_size = core::cmp::min(map_size, remaining_len);
+
+            split_maps.push(MemoryMap::new(
+                current_virt..current_virt + final_chunk_size,
+                current_phys..current_phys + final_chunk_size,
+                &memmap.flags_as_array(),
+            ));
+
+            current_virt = current_virt + final_chunk_size;
+            current_phys = current_phys + final_chunk_size;
+        }
+    }
+    split_maps
+}
+
 /// Generate third-level page table. (Sv39x4)
 ///
 /// The number of address translation stages is determined by the size of the range.
@@ -91,7 +161,10 @@ pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: 
         )
     };
 
-    for memmap in memmaps {
+    // Split memory maps to ensure proper alignment for superpages.
+    let aligned_memmaps = split_memory_maps(memmaps);
+
+    for memmap in &aligned_memmaps {
         assert!(memmap.virt.len() == memmap.phys.len());
 
         // decide page level from memory range
