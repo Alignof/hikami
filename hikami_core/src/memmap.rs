@@ -121,6 +121,10 @@ impl MemoryMap {
             flags: flags.iter().fold(0, |pte_f, f| (pte_f | *f as u8)),
         }
     }
+    /// Return flags as raw u8.
+    pub fn flags(&self) -> u8 {
+        self.flags
+    }
 }
 
 impl From<fdt::standard_nodes::MemoryRegion> for MemoryMap {
