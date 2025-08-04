@@ -10,6 +10,7 @@ use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 use config_register::{ConfigSpaceHeaderField, read_config_register};
 
+use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -256,6 +257,8 @@ impl PciAddressSpace {
 #[derive(Debug)]
 #[allow(clippy::struct_field_names)]
 pub struct Pci {
+    /// Device tree name
+    name: String,
     /// Memory maps for pci register.
     register_map_regions: Vec<MemoryRegion>,
     /// PCI address space manager
@@ -327,6 +330,7 @@ impl MmioDevice for Pci {
         }
 
         Some(Pci {
+            name: pci_node.name.to_string(),
             register_map_regions,
             _pci_addr_space: pci_addr_space,
             memory_maps,
@@ -334,12 +338,7 @@ impl MmioDevice for Pci {
         })
     }
 
-    /// mapping sata register region.
-    fn memmap(&self) -> Vec<MemoryMap> {
-        self.register_map_regions
-            .clone()
-            .into_iter()
-            .map(MemoryMap::from)
-            .collect()
+    fn name(&self) -> &str {
+        &self.name
     }
 }

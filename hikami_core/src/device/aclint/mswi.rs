@@ -4,8 +4,9 @@
 //! It has an IPI register (MSIP) for each HART connected to the MSWI device.
 
 use super::super::{DeviceEmulateError, MmioDevice};
-use crate::memmap::{HostPhysicalAddress, MemoryMap};
+use crate::memmap::HostPhysicalAddress;
 
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
 
@@ -15,6 +16,8 @@ const MSWI_REG_SIZE: usize = 0x4;
 /// MSWI: Machine level SoftWare Interrupt device
 #[derive(Debug)]
 pub struct Mswi {
+    /// Device tree name
+    name: String,
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
 }
@@ -96,15 +99,12 @@ impl MmioDevice for Mswi {
         let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
 
         Some(Mswi {
+            name: clint_node.name.to_string(),
             register_map_regions,
         })
     }
 
-    fn memmap(&self) -> Vec<MemoryMap> {
-        self.register_map_regions
-            .clone()
-            .into_iter()
-            .map(MemoryMap::from)
-            .collect()
+    fn name(&self) -> &str {
+        &self.name
     }
 }

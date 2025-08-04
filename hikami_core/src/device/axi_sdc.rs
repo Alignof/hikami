@@ -6,17 +6,18 @@ mod register;
 
 use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice};
 use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 use register::SdcRegisters;
 
-use alloc::vec;
-use alloc::vec::Vec;
+use alloc::string::{String, ToString};
 use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 #[allow(clippy::doc_markdown)]
 /// MMC: Multi Media Card
 #[derive(Debug)]
 pub struct Mmc {
+    /// Device tree name
+    name: String,
     /// Memory map for memory mapped register.
     register_map_region: MemoryRegion,
     /// DMA address.
@@ -136,6 +137,7 @@ impl MmioDevice for Mmc {
         }
 
         Some(Mmc {
+            name: mmc_node.name.to_string(),
             register_map_region,
             dma_addr: GuestPhysicalAddress(0),
             dma_alt_buffer: DmaHostBuffer::new(PAGE_SIZE),
@@ -143,7 +145,7 @@ impl MmioDevice for Mmc {
         })
     }
 
-    fn memmap(&self) -> Vec<MemoryMap> {
-        vec![MemoryMap::from(self.register_map_region)]
+    fn name(&self) -> &str {
+        &self.name
     }
 }
