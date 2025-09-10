@@ -241,36 +241,6 @@ pub struct OtherMmioDevice {
     pub register_map_regions: Vec<MemoryRegion>,
 }
 
-/// Create page table for `OtherMmioDevice`
-fn create_page_table_for_other_devices(
-    root_page_table_addr: HostPhysicalAddress,
-    memory_regions: &[MemoryRegion],
-    node_name: &str,
-) {
-    for map in memory_regions {
-        crate::println!(
-            "[Other MMIO Device Map] {}: {:#x}..{:#x}",
-            node_name,
-            map.starting_address as usize,
-            map.starting_address as usize + map.size.unwrap(),
-        )
-    }
-    let memory_maps: Vec<MemoryMap> = memory_regions
-        .iter()
-        .cloned()
-        .map(|mut region| {
-            if region.starting_address as usize % PAGE_SIZE == 0 {
-                MemoryMap::from(region)
-            } else {
-                region.starting_address =
-                    ((region.starting_address as usize) & !(PAGE_SIZE - 1)) as *const u8;
-                MemoryMap::from(region)
-            }
-        })
-        .collect();
-    page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
-}
-
 /// Manage devices sush as uart, plic, etc...
 ///
 /// `memory_map` has memory region data of each devices.  
@@ -398,12 +368,6 @@ impl Devices {
                 }
 
                 let register_map_regions: Vec<MemoryRegion> = node.reg().unwrap().collect();
-
-                create_page_table_for_other_devices(
-                    root_page_table_addr,
-                    &register_map_regions,
-                    node.name,
-                );
 
                 other_devices.push(OtherMmioDevice {
                     name: node.name.to_string(),
