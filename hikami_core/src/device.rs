@@ -226,6 +226,13 @@ pub trait MmioDevice {
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
     }
 
+    /// Invalidate page table
+    ///
+    /// This method is disabled by default (only use for emulation).
+    fn invalidate_page_table(_memory_regions: &[MemoryRegion], node_name: &str) {
+        unreachable!("unreachable code: {}::invalidate_page_table", node_name);
+    }
+
     /// Return device tree node name
     fn name(&self) -> &str;
 }
