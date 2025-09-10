@@ -28,8 +28,6 @@ impl MmioDevice for Mtimer {
         let clint_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
 
-        Self::create_page_table(root_page_table_addr, &register_map_regions, clint_node.name);
-
         Some(Mtimer {
             name: clint_node.name.to_string(),
             register_map_regions,

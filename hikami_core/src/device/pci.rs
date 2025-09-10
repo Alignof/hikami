@@ -294,9 +294,6 @@ impl MmioDevice for Pci {
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices = PciDevices::new(device_tree, base_address, &pci_addr_space);
 
-        // map Pci's register map
-        Self::create_page_table(root_page_table_addr, &register_map_regions, pci_node.name);
-
         let memory_maps = vec![
             // 32 bit reserved memory map
             MemoryMap::new(

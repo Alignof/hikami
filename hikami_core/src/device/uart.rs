@@ -50,8 +50,6 @@ impl MmioDevice for Uart {
         });
         let register_map_regions: Vec<MemoryRegion> = uart_node.reg().unwrap().collect();
 
-        Self::create_page_table(root_page_table_addr, &register_map_regions, uart_node.name);
-
         UART_ADDR
             .lock()
             .get_or_init(|| HostPhysicalAddress(register_map_regions[0].starting_address as usize));

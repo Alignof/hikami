@@ -132,8 +132,8 @@ impl MmioDevice for Mmc {
         let mmc_node = device_tree.find_compatible(compatibles)?;
         let register_map_region = mmc_node.reg().unwrap().next().unwrap();
 
-        if cfg!(feature = "identity_map") {
-            Self::create_page_table(root_page_table_addr, &[register_map_region], mmc_node.name);
+        if cfg!(not(feature = "identity_map")) {
+            // TODO: unmap
         }
 
         Some(Mmc {

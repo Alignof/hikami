@@ -27,8 +27,6 @@ impl MmioDevice for Clint {
         let clint_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
 
-        Self::create_page_table(root_page_table_addr, &register_map_regions, clint_node.name);
-
         Some(Clint {
             name: clint_node.name.to_string(),
             register_map_regions,

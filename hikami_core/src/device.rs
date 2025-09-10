@@ -327,8 +327,7 @@ impl Devices {
             pci.as_ref().map(|x| x.name()).unwrap_or(""),
             axi_sdc.as_ref().map(|x| x.name()).unwrap_or(""),
         ]);
-        let other_mmio_devices =
-            Self::get_other_mmio_devices(root_page_table_addr, &device_tree, &exclude_list);
+        let other_mmio_devices = Self::get_other_mmio_devices(&device_tree, &exclude_list);
 
         Devices {
             uart,
@@ -342,11 +341,7 @@ impl Devices {
         }
     }
 
-    fn get_other_mmio_devices(
-        root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        exclude_list: &[&str],
-    ) -> Vec<OtherMmioDevice> {
+    fn get_other_mmio_devices(device_tree: &Fdt, exclude_list: &[&str]) -> Vec<OtherMmioDevice> {
         let mut other_devices = Vec::new();
         if let Some(soc) = device_tree.find_node("/soc") {
             for node in soc.children() {

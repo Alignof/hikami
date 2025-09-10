@@ -50,12 +50,6 @@ impl VirtIo {
     pub fn new_with_node(root_page_table_addr: HostPhysicalAddress, virtio_node: &FdtNode) -> Self {
         let register_map_regions: Vec<MemoryRegion> = virtio_node.reg().unwrap().collect();
 
-        Self::create_page_table(
-            root_page_table_addr,
-            &register_map_regions,
-            virtio_node.name,
-        );
-
         VirtIo {
             name: virtio_node.name.to_string(),
             register_map_regions,

@@ -98,6 +98,8 @@ impl MmioDevice for Mswi {
         let clint_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
 
+        // TODO: unmap
+
         Some(Mswi {
             name: clint_node.name.to_string(),
             register_map_regions,
