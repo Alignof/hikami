@@ -1,4 +1,4 @@
-//! Sv39x4: Page-Based 39-bit Virtual-Memory System **in G-stage**.  
+//! Sv39x4: Page-Based 39-bit Virtual-Memory System **in G-stage**.
 //! For guest physical address translation.
 //!
 //! [The RISC-V Instruction Set Manual: Volume II Version 20240411](https://github.com/riscv/riscv-isa-manual/releases/download/20240411/priv-isa-asciidoc.pdf) p.151
@@ -12,6 +12,7 @@ use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::ops::Range;
 use core::slice::from_raw_parts_mut;
 
 /// First page table size
@@ -397,4 +398,178 @@ pub fn update_page_flags(
         TransAddrError::NoLeafEntry,
         "Update failed: page table walk did not end on a leaf PTE",
     ))
+}
+
+/// Splits a superpage leaf PTE into a table of smaller pages.
+///
+/// This function is called when a part of a large page (1GB or 2MB) needs to be
+/// unmapped. It replaces the single large leaf PTE with a pointer to a new,
+/// next-level page table. This new table is then populated with leaf PTEs for
+/// smaller pages that collectively map the same physical address range as the
+/// original superpage.
+///
+/// # Arguments
+/// * `pte` - A mutable reference to the superpage leaf PTE to be split.
+/// * `level` - The page table level of the superpage PTE (e.g., Lv1GB, Lv2MB).
+///
+/// # Returns
+/// * `Ok(())` on success.
+/// * `Err` if memory for the new page table cannot be allocated or if an attempt
+///   is made to split an unsplittable page (e.g., 4KB).
+fn split_superpage(
+    pte: &mut PageTableEntry,
+    level: PageTableLevel,
+) -> Result<(), (TransAddrError, &'static str)> {
+    if !matches!(level, PageTableLevel::Lv1GB | PageTableLevel::Lv2MB) {
+        // Only 1GB and 2MB pages can be split.
+        return Err((
+            TransAddrError::UnsupportedPageSize,
+            "Attempted to split an unsplittable page level",
+        ));
+    }
+
+    // Get original mapping info from the superpage PTE.
+    let original_flags = (pte.0 & 0x3ff) as u8;
+    let original_hpa_base = HostPhysicalAddress(pte.entire_ppn() as usize * PAGE_SIZE);
+
+    // Allocate a new, zeroed page table for the next level down.
+    let next_level_table = Box::new(PageTableMemory([PageTableEntry::default(); PAGE_TABLE_LEN]));
+    let next_level_table_addr: PageTableAddress = Box::into_raw(next_level_table).into();
+
+    // Get a mutable slice to the new table to populate it.
+    let next_level_page_table: &mut [PageTableEntry] =
+        unsafe { from_raw_parts_mut(next_level_table_addr.to_pte_ptr(), PAGE_TABLE_LEN) };
+
+    // Determine the size of the smaller pages we are creating.
+    let next_level_page_size = match level {
+        PageTableLevel::Lv1GB => PageTableLevel::Lv2MB.size(),
+        PageTableLevel::Lv2MB => PageTableLevel::Lv4KB.size(),
+        _ => unreachable!(),
+    };
+
+    // Populate the new page table with leaf entries that map the original region.
+    for i in 0..PAGE_TABLE_LEN {
+        let hpa_offset = i * next_level_page_size;
+        let next_hpa = original_hpa_base + hpa_offset;
+
+        // Create a new leaf PTE with the original permissions.
+        next_level_page_table[i] = PageTableEntry::new(next_hpa.page_number(), original_flags);
+    }
+
+    // Atomically update the original PTE to be a pointer to the new table.
+    // The flags are now just 'Valid' because it's an intermediate PTE.
+    *pte = PageTableEntry::new(next_level_table_addr.page_number(), PteFlag::Valid as u8);
+
+    Ok(())
+}
+
+/// Invalidates the G-stage page table entries for a given range of Guest Physical Addresses.
+///
+/// This function walks the page table for each part of the specified range
+/// and sets the corresponding leaf PTE to 0, effectively unmapping it.
+/// If a superpage (1GB or 2MB) covering part of the range is encountered, and the
+/// invalidation range is smaller than the superpage, the superpage is split into
+/// smaller pages. The process is then restarted for the same address to traverse
+/// down the newly created page table structure.
+///
+/// # Arguments
+/// * `gpa_range` - A `core::ops::Range<GuestPhysicalAddress>` to be invalidated.
+///
+/// # Returns
+/// * `Ok(())` on success.
+/// * An `Err` with `TransAddrError` and a descriptive message if the page table
+///   structure is invalid (e.g., a walk completes without finding a leaf PTE).
+///
+/// # Panics
+/// This function will panic if the current `hgatp` register's mode is not `Sv39x4`.
+#[allow(clippy::cast_possible_truncation)]
+pub fn invalidate_address_range(
+    gpa_range: Range<GuestPhysicalAddress>,
+) -> Result<(), (TransAddrError, &'static str)> {
+    let hgatp = hgatp::read();
+    assert!(matches!(hgatp.mode(), hgatp::Mode::Sv39x4));
+    let root_page_table_addr = PageTableAddress(hgatp.ppn() << 12);
+
+    let mut current_gpa = gpa_range.start;
+
+    // Loop until we have processed the entire invalidation range.
+    'main: while current_gpa < gpa_range.end {
+        let mut page_table_addr = root_page_table_addr;
+
+        // Walk the page table for the current address.
+        for level in [
+            PageTableLevel::Lv1GB,
+            PageTableLevel::Lv2MB,
+            PageTableLevel::Lv4KB,
+        ] {
+            let page_table = match level {
+                PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
+                PageTableLevel::Lv1GB => unsafe {
+                    from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
+                },
+                _ => unsafe { from_raw_parts_mut(page_table_addr.to_pte_ptr(), PAGE_TABLE_LEN) },
+            };
+
+            let vpn = current_gpa.vpn(level as usize);
+
+            // Handle out-of-bounds addresses for the current table level.
+            if vpn >= page_table.len() {
+                let page_size = level.size();
+                current_gpa =
+                    GuestPhysicalAddress((current_gpa.raw() & !(page_size - 1)) + page_size);
+                continue 'main;
+            }
+
+            let pte = &mut page_table[vpn];
+
+            if pte.is_invalid() {
+                // This region is already unmapped. Skip past the area this PTE would cover.
+                let page_size = level.size();
+                current_gpa =
+                    GuestPhysicalAddress((current_gpa.raw() & !(page_size - 1)) + page_size);
+                continue 'main;
+            }
+
+            if pte.is_leaf() {
+                let page_size = level.size();
+                let page_start_gpa = GuestPhysicalAddress(current_gpa.raw() & !(page_size - 1));
+
+                // Case 1: The entire page is fully contained within the invalidation range.
+                // We can invalidate the whole PTE and advance past it.
+                if gpa_range.start <= page_start_gpa
+                    && (page_start_gpa + page_size) <= gpa_range.end
+                {
+                    *pte = PageTableEntry(0);
+                    current_gpa = page_start_gpa + page_size;
+                    continue 'main;
+                }
+
+                // Case 2: The invalidation range partially overlaps or is smaller than the page.
+                if level == PageTableLevel::Lv4KB {
+                    // Smallest unit. Since current_gpa is in the invalidation range,
+                    // we invalidate this page.
+                    *pte = PageTableEntry(0);
+                    current_gpa = page_start_gpa + page_size;
+                    continue 'main;
+                }
+
+                // It's a superpage that needs to be split.
+                split_superpage(pte, level)?;
+                // After splitting, do not advance current_gpa. Restart the walk from the root
+                // for the same address, which will now descend into the newly created table.
+                continue 'main;
+            }
+
+            // Not a leaf, so descend to the next level table.
+            page_table_addr = PageTableAddress(pte.entire_ppn() as usize * PAGE_SIZE);
+        }
+
+        // If the for loop completes without finding a leaf or breaking, it's an error.
+        return Err((
+            TransAddrError::NoLeafEntry,
+            "Invalid page table structure: walk did not resolve to a leaf",
+        ));
+    }
+
+    Ok(())
 }
