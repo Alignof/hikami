@@ -268,6 +268,7 @@ impl MmioDevice for Plic {
         let register_map_regions: Vec<MemoryRegion> = plic_node.reg().unwrap().collect();
 
         // TODO: unmap
+        Self::invalidate_page_table(&register_map_regions, plic_node.name);
 
         Some(Plic {
             name: plic_node.name.to_string(),
@@ -303,6 +304,25 @@ impl MmioDevice for Plic {
             })
             .collect();
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+    }
+
+    /// Invalidate page table
+    fn invalidate_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
+        for map in memory_regions {
+            // invalidate memory map to emulate plic registers.
+            let invalidate_range = GuestPhysicalAddress(map.starting_address as usize + ENABLE_BASE)
+                ..GuestPhysicalAddress(map.starting_address as usize + map.size.unwrap());
+
+            crate::println!(
+                "[Device Unmap] {}: {:#x}..{:#x}",
+                node_name,
+                invalidate_range.start.raw(),
+                invalidate_range.end.raw()
+            );
+
+            page_table::sv39x4::invalidate_address_range(invalidate_range)
+                .expect("failed to invalidate plic registers range");
+        }
     }
 
     fn name(&self) -> &str {

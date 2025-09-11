@@ -5,7 +5,7 @@
 mod register;
 
 use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice};
-use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
+use crate::memmap::page_table::{self, constants::PAGE_SIZE, g_stage_trans_addr};
 use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 use register::SdcRegisters;
 
@@ -134,6 +134,7 @@ impl MmioDevice for Mmc {
 
         if cfg!(not(feature = "identity_map")) {
             // TODO: unmap
+            Self::invalidate_page_table(&[register_map_region], mmc_node.name);
         }
 
         Some(Mmc {
@@ -143,6 +144,25 @@ impl MmioDevice for Mmc {
             dma_alt_buffer: DmaHostBuffer::new(PAGE_SIZE),
             is_transferring: false,
         })
+    }
+
+    /// Invalidate page table
+    fn invalidate_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
+        for map in memory_regions {
+            // invalidate memory map to emulate plic registers.
+            let invalidate_range = GuestPhysicalAddress(map.starting_address as usize)
+                ..GuestPhysicalAddress(map.starting_address as usize + map.size.unwrap());
+
+            crate::println!(
+                "[Device Unmap] {}: {:#x}..{:#x}",
+                node_name,
+                invalidate_range.start.raw(),
+                invalidate_range.end.raw()
+            );
+
+            page_table::sv39x4::invalidate_address_range(invalidate_range)
+                .expect("failed to invalidate plic registers range");
+        }
     }
 
     fn name(&self) -> &str {

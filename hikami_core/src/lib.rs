@@ -81,6 +81,14 @@ impl HypervisorData {
             .next()
             .expect("couldn't get memory region")
             .starting_address as usize;
+
+        crate::println!(
+            "map memory mapped device region Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
+            dram_start,
+            0,
+            dram_start
+        );
+
         let all_memory_map = [MemoryMap::new(
             GuestPhysicalAddress(0x0)..GuestPhysicalAddress(dram_start),
             HostPhysicalAddress(0x0)..HostPhysicalAddress(dram_start),
