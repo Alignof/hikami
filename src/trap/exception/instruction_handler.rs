@@ -52,59 +52,50 @@ pub fn virtual_instruction() {
     });
 
     // emulate CSR set
-    match fault_inst.rs2.unwrap() {
-        // senvcfg
-        0x10a => {
-            let mut context = unsafe { HYPERVISOR_DATA.lock() }
-                .get()
-                .unwrap()
-                .guest()
-                .context;
+    if fault_inst.rs2.unwrap() == 0x10a {
+        let mut context = unsafe { HYPERVISOR_DATA.lock() }
+            .get()
+            .unwrap()
+            .guest()
+            .context;
 
-            let mut csr: u64;
-            unsafe {
-                asm!("csrr {0}, senvcfg", out(reg) csr);
-            }
-
-            let new_csr = match fault_inst.opc {
-                OpcodeKind::Zicsr(ZicsrOpcode::CSRRW) => {
-                    let rs1 = context.xreg(fault_inst.rs1.unwrap());
-                    rs1
-                }
-                OpcodeKind::Zicsr(ZicsrOpcode::CSRRS) => {
-                    let rs1 = context.xreg(fault_inst.rs1.unwrap());
-                    csr | rs1
-                }
-                OpcodeKind::Zicsr(ZicsrOpcode::CSRRC) => {
-                    let rs1 = context.xreg(fault_inst.rs1.unwrap());
-                    csr & !rs1
-                }
-                OpcodeKind::Zicsr(ZicsrOpcode::CSRRWI) => {
-                    let imm = fault_inst.imm.unwrap() as u64;
-                    imm
-                }
-                OpcodeKind::Zicsr(ZicsrOpcode::CSRRSI) => {
-                    let imm = fault_inst.imm.unwrap() as u64;
-                    csr | imm
-                }
-                OpcodeKind::Zicsr(ZicsrOpcode::CSRRCI) => {
-                    let imm = fault_inst.imm.unwrap() as u64;
-                    csr & !imm
-                }
-                _ => unreachable!(),
-            };
-
-            // commit result
-            unsafe {
-                asm!("csrw senvcfg, {0}", in(reg) new_csr);
-            }
-            context.set_xreg(fault_inst.rd.unwrap(), csr);
-
-            context.update_sepc_by_inst(&fault_inst);
-
-            return;
+        let mut csr: u64;
+        unsafe {
+            asm!("csrr {0}, senvcfg", out(reg) csr);
         }
-        _ => (),
+
+        #[allow(clippy::cast_sign_loss)]
+        let new_csr = match fault_inst.opc {
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRW) => context.xreg(fault_inst.rs1.unwrap()),
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRS) => {
+                let rs1 = context.xreg(fault_inst.rs1.unwrap());
+                csr | rs1
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRC) => {
+                let rs1 = context.xreg(fault_inst.rs1.unwrap());
+                csr & !rs1
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRWI) => fault_inst.imm.unwrap() as u64,
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRSI) => {
+                let imm = fault_inst.imm.unwrap() as u64;
+                csr | imm
+            }
+            OpcodeKind::Zicsr(ZicsrOpcode::CSRRCI) => {
+                let imm = fault_inst.imm.unwrap() as u64;
+                csr & !imm
+            }
+            _ => unreachable!(),
+        };
+
+        // commit result
+        unsafe {
+            asm!("csrw senvcfg, {0}", in(reg) new_csr);
+        }
+        context.set_xreg(fault_inst.rd.unwrap(), csr);
+
+        context.update_sepc_by_inst(&fault_inst);
+
+        return;
     }
 
     // emulate CSR set
