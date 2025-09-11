@@ -7,7 +7,8 @@ use super::hs_forward_exception;
 use hikami_core::HYPERVISOR_DATA;
 use hikami_core::emulate_extension::EmulateExtension;
 
-use raki::{Instruction, OpcodeKind};
+use core::arch::asm;
+use raki::{Instruction, OpcodeKind, ZicsrOpcode};
 use riscv::register::{sepc, stval};
 
 extension_manager::import_global_variables!();
@@ -49,6 +50,62 @@ pub fn virtual_instruction() {
             sepc::read(), gpa.raw(), hpa.raw()
         );
     });
+
+    // emulate CSR set
+    match fault_inst.rs2.unwrap() {
+        // senvcfg
+        0x10a => {
+            let mut context = unsafe { HYPERVISOR_DATA.lock() }
+                .get()
+                .unwrap()
+                .guest()
+                .context;
+
+            let mut csr: u64;
+            unsafe {
+                asm!("csrr {0}, senvcfg", out(reg) csr);
+            }
+
+            let new_csr = match fault_inst.opc {
+                OpcodeKind::Zicsr(ZicsrOpcode::CSRRW) => {
+                    let rs1 = context.xreg(fault_inst.rs1.unwrap());
+                    rs1
+                }
+                OpcodeKind::Zicsr(ZicsrOpcode::CSRRS) => {
+                    let rs1 = context.xreg(fault_inst.rs1.unwrap());
+                    csr | rs1
+                }
+                OpcodeKind::Zicsr(ZicsrOpcode::CSRRC) => {
+                    let rs1 = context.xreg(fault_inst.rs1.unwrap());
+                    csr & !rs1
+                }
+                OpcodeKind::Zicsr(ZicsrOpcode::CSRRWI) => {
+                    let imm = fault_inst.imm.unwrap() as u64;
+                    imm
+                }
+                OpcodeKind::Zicsr(ZicsrOpcode::CSRRSI) => {
+                    let imm = fault_inst.imm.unwrap() as u64;
+                    csr | imm
+                }
+                OpcodeKind::Zicsr(ZicsrOpcode::CSRRCI) => {
+                    let imm = fault_inst.imm.unwrap() as u64;
+                    csr & !imm
+                }
+                _ => unreachable!(),
+            };
+
+            // commit result
+            unsafe {
+                asm!("csrw senvcfg, {0}", in(reg) new_csr);
+            }
+            context.set_xreg(fault_inst.rd.unwrap(), csr);
+
+            context.update_sepc_by_inst(&fault_inst);
+
+            return;
+        }
+        _ => (),
+    }
 
     // emulate CSR set
     extension_manager::handle_virtual_inst!();
