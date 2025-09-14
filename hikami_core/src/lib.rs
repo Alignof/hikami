@@ -89,11 +89,22 @@ impl HypervisorData {
             dram_start
         );
 
-        let all_memory_map = [MemoryMap::new(
-            GuestPhysicalAddress(0x0)..GuestPhysicalAddress(dram_start),
-            HostPhysicalAddress(0x0)..HostPhysicalAddress(dram_start),
-            G_STAGE_PTE_FLAGS,
-        )];
+        // TODO: avoid hard coding the address.
+        // 0x0 .. 0x8000_0000
+        // 0x8000_0000 .. 0x9000_0000
+        // 0xb000_0000 .. 0x4_0000_0000
+        let all_memory_map = [
+            MemoryMap::new(
+                GuestPhysicalAddress(0x0)..GuestPhysicalAddress(dram_start),
+                HostPhysicalAddress(0x0)..HostPhysicalAddress(dram_start),
+                G_STAGE_PTE_FLAGS,
+            ),
+            MemoryMap::new(
+                GuestPhysicalAddress(0xc000_0000)..GuestPhysicalAddress(0x480000000),
+                HostPhysicalAddress(0xc000_0000)..HostPhysicalAddress(0x480000000),
+                G_STAGE_PTE_FLAGS,
+            ),
+        ];
         page_table::sv39x4::generate_page_table(root_page_table_addr, &all_memory_map);
     }
 
