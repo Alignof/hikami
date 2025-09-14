@@ -89,11 +89,16 @@ fn split_memory_maps(memmaps: &[MemoryMap]) -> Vec<MemoryMap> {
         let mut current_virt = memmap.virt.start;
         let mut current_phys = memmap.phys.start;
 
+        assert!(memmap.virt.start % 0x1000 == 0);
+        assert!(memmap.phys.start % 0x1000 == 0);
+        assert!(memmap.virt.end % 0x1000 == 0);
+        assert!(memmap.phys.end % 0x1000 == 0);
+
         while current_virt < memmap.virt.end {
             let remaining_len = memmap.virt.end.raw() - current_virt.raw();
 
             // Determine the largest possible page size for the current address
-            let (page_level, page_size) = if remaining_len >= PageTableLevel::Lv1GB.size()
+            let (_page_level, page_size) = if remaining_len >= PageTableLevel::Lv1GB.size()
                 && current_virt % PageTableLevel::Lv1GB.size() == 0
                 && current_phys % PageTableLevel::Lv1GB.size() == 0
             {
@@ -107,37 +112,14 @@ fn split_memory_maps(memmaps: &[MemoryMap]) -> Vec<MemoryMap> {
                 (PageTableLevel::Lv4KB, PageTableLevel::Lv4KB.size())
             };
 
-            // Calculate the next alignment boundary for the chosen page size
-            let next_align_boundary = (current_virt.raw() + page_size) & !(page_size - 1);
-
-            // Determine the size of the current chunk to map
-            let chunk_end_virt =
-                core::cmp::min(memmap.virt.end, GuestPhysicalAddress(next_align_boundary));
-            let chunk_size = chunk_end_virt.raw() - current_virt.raw();
-
-            let map_size = if page_level != PageTableLevel::Lv4KB {
-                // For superpages, find the largest aligned chunk possible
-                let end_of_aligned_chunk = memmap.virt.end.raw() & !(page_size - 1);
-                if current_virt.raw() < end_of_aligned_chunk {
-                    end_of_aligned_chunk - current_virt.raw()
-                } else {
-                    page_size
-                }
-            } else {
-                // For 4KB pages, just align to the next superpage boundary
-                chunk_size
-            };
-
-            let final_chunk_size = core::cmp::min(map_size, remaining_len);
-
             split_maps.push(MemoryMap::new(
-                current_virt..current_virt + final_chunk_size,
-                current_phys..current_phys + final_chunk_size,
+                current_virt..current_virt + page_size,
+                current_phys..current_phys + page_size,
                 &memmap.flags_as_array(),
             ));
 
-            current_virt = current_virt + final_chunk_size;
-            current_phys = current_phys + final_chunk_size;
+            current_virt = current_virt + page_size;
+            current_phys = current_phys + page_size;
         }
     }
     split_maps
