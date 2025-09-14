@@ -100,8 +100,8 @@ impl HypervisorData {
                 G_STAGE_PTE_FLAGS,
             ),
             MemoryMap::new(
-                GuestPhysicalAddress(0xc000_0000)..GuestPhysicalAddress(0x480000000),
-                HostPhysicalAddress(0xc000_0000)..HostPhysicalAddress(0x480000000),
+                GuestPhysicalAddress(0x1_1000_0000)..GuestPhysicalAddress(0x480000000),
+                HostPhysicalAddress(0x1_1000_0000)..HostPhysicalAddress(0x480000000),
                 G_STAGE_PTE_FLAGS,
             ),
         ];

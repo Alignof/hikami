@@ -229,7 +229,7 @@
 	memory@90000000 {
 		compatible = "sifive,axi4-mem-port", "sifive,axi4-port", "sifive,mem-port";
 		device_type = "memory";
-		reg = <0x00 0x90000000 0x00 0x20000000>;
+		reg = <0x00 0x90000000 0x00 0x80000000>;
 		sifive,port-width-bytes = <0x20>;
 		numa-node-id = <0x00>;
 		phandle = <0x14>;
@@ -5570,8 +5570,8 @@
 		stdout-path = "serial0:115200n8";
             
         bootargs = "console=ttyS0,115200 root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon loglevel=8 debug earlyprintk=sbi selinux=0 LANG=en_US.UTF-8 single ";
-        linux,initrd-start = <0x0 0xad1b3000>;
-        linux,initrd-end = <0x0 0xaffff286>;
+        linux,initrd-start = <0x01 0x0d1b3000>;
+        linux,initrd-end = <0x01 0x0ffff286>;
         
 		domain-config {
 			compatible = "opensbi,domain,config";
@@ -5593,9 +5593,9 @@
 		linux,cma {
 			compatible = "shared-dma-pool";
 			reusable;
-			size = <0x00 0x2000000>; // 32MB
+			size = <0x00 0x8000000>; // 128MB
 			alignment = <0x00 0x1000>;
-			alloc-ranges = <0x00 0x90000000 0x00 0x20000000>;
+			alloc-ranges = <0x00 0x90000000 0x00 0x80000000>;
 			linux,cma-default;
 		};
 
