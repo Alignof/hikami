@@ -1179,6 +1179,7 @@
 		};
 
 		ethernet@50400000 {
+            local-mac-address = [4a db f3 67 92 fe];
 			compatible = "eswin,win2030-qos-eth";
 			reg = <0x00 0x50400000 0x00 0x10000>;
 			interrupt-parent = <0x10>;
@@ -2515,7 +2516,10 @@
 			reg-names = "dbi", "config", "mgmt";
 			device_type = "pci";
 			bus-range = <0x00 0xff>;
-			ranges = <0x81000000 0x00 0x40800000 0x00 0x40800000 0x00 0x800000 0x82000000 0x00 0x41000000 0x00 0x41000000 0x00 0xf000000 0xc3000000 0x80 0x00 0x80 0x00 0x02 0x00>;
+			ranges = <
+                0x81000000 0x00 0x40800000 0x00 0x40800000 0x00 0x800000
+                0x82000000 0x00 0x41000000 0x00 0x41000000 0x00 0xf000000
+                0xc3000000 0x80 0x00 0x80 0x00 0x02 0x00>;
 			num-lanes = <0x04>;
 			interrupts = <0xdc 0xb3 0xb4 0xb5 0xb6 0xb7 0xb8 0xb9 0xba>;
 			interrupt-names = "msi", "inta", "intb", "intc", "intd";
@@ -5942,11 +5946,13 @@
 	};
 
 	chosen {
-		stdout-path = "serial0:115200n8";
-
-        bootargs = "append root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 console=ttyS0,115200 root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon selinux=0 LANG=en_US.UTF-8";
         linux,initrd-start = <0x01 0x0c450000>;
         linux,initrd-end = <0x01 0x0ffff0f3>;
+        boot-hartid = <0x00>;
+        u-boot,version = "2024.01-g5414c4be";
+        bootargs = "root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 console=ttyS0,115200 loglevel=8 debug root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon selinux=0 LANG=en_US.UTF-8";
+
+		stdout-path = "serial0:115200n8";
 
 		domain-config {
 			compatible = "opensbi,domain,config";
@@ -5970,6 +5976,48 @@
 		#address-cells = <0x02>;
 		#size-cells = <0x02>;
 		ranges;
+
+		lpcpures@dfff0000 {
+			no-map;
+			reg = <0x00 0xdfff0000 0x00 0x10000>;
+			phandle = <0x60>;
+		};
+
+		region@e0000000 {
+			no-map;
+			reg = <0x00 0xe0000000 0x00 0x1000000>;
+			phandle = <0x5f>;
+		};
+
+		mmode_resv1@10,0 {
+			no-map;
+			reg = <0x10 0x00 0x00 0x400000>;
+			phandle = <0x5e>;
+		};
+
+		mmode_resv0@80000000 {
+			no-map;
+			reg = <0x00 0x80000000 0x00 0x80000>;
+			phandle = <0x5d>;
+		};
+
+		hyprvisor_resv0@83000000 {
+			no-map;
+			reg = <0x00 0x83000000 0x00 0xd000000>;
+			phandle = <0x61>;
+		};
+
+		hyprvisor_resv1@d0000000 {
+			no-map;
+			reg = <0x00 0xd0000000 0x00 0x8000000>;
+			phandle = <0x62>;
+		};
+
+		hyprvisor_resv2@f0000000 {
+			no-map;
+			reg = <0x00 0xf0000000 0x00 0x800000>;
+			phandle = <0x63>;
+		};
 
 		linux,cma {
 			compatible = "shared-dma-pool";
