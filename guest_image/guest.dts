@@ -2,6 +2,7 @@
 
 // copy from 2025-0423/dtbs/linux-image-6.6.87-win2030/eswin/eic7700-milkv-megrez.dtb
 
+/memreserve/        0x000000010c450000 0x0000000003baf0f3;
 / {
 	#address-cells = <0x02>;
 	#size-cells = <0x02>;
@@ -5946,8 +5947,8 @@
 	};
 
 	chosen {
-        linux,initrd-start = <0x01 0x7c450000>;
-        linux,initrd-end = <0x01 0x7ffff0f3>;
+        linux,initrd-start = <0x01 0x0c450000>;
+        linux,initrd-end = <0x01 0x0ffff0f3>;
         boot-hartid = <0x00>;
         u-boot,version = "2024.01-g5414c4be";
         bootargs = "root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 console=ttyS0,115200 loglevel=8 debug root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon selinux=0 LANG=en_US.UTF-8";
@@ -5960,9 +5961,9 @@
 		};
 	};
 
-	memory@100000000 {
+	memory@90000000 {
 		device_type = "memory";
-		reg = <0x01 0x00000000 0x00 0x80000000>;
+		reg = <0x00 0x90000000 0x00 0x80000000>;
 		numa-node-id = <0x00>;
 	};
 
