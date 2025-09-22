@@ -2,7 +2,7 @@
 
 // copy from 2025-0423/dtbs/linux-image-6.6.87-win2030/eswin/eic7700-milkv-megrez.dtb
 
-/memreserve/        0x000000010c450000 0x0000000003baf0f3;
+/memreserve/        0x000000017c450000 0x0000000003baf0f3;
 / {
 	#address-cells = <0x02>;
 	#size-cells = <0x02>;
@@ -5952,11 +5952,12 @@
 	};
 
 	chosen {
-        linux,initrd-start = <0x01 0x0c450000>;
-        linux,initrd-end = <0x01 0x0ffff0f3>;
+        linux,initrd-start = <0x01 0x7c450000>;
+        linux,initrd-end = <0x01 0x7ffff0f3>;
         boot-hartid = <0x00>;
         u-boot,version = "2024.01-g5414c4be";
-        bootargs = "root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 console=ttyS0,115200 loglevel=8 debug root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon selinux=0 LANG=en_US.UTF-8";
+        bootargs = "root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 console=ttyS0,115200 loglevel=8 debug root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon selinux=0 LANG=en_US.UTF-8 mem=debug dyndbg=\"file drivers/scsi* +p; file drivers/usb/storage/* +p; file drivers/usb/dwc3/* +p\" trace_event=scsi:scsi_dispatch_cmd_start,scsi:scsi_cmd_error,scsi:scsi_eh_wakeup";
+        // bootargs = "root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 console=ttyS0,115200 initcall_debug loglevel=8 debug root=PARTUUID=b0f77ad6-36cd-4a99-a8c0-31d73649aa09 rootfstype=ext4 rootwait rw earlycon selinux=0 LANG=en_US.UTF-8 dyndbg=\"file drivers/usb/dwc3/* +p\"";
 
 		stdout-path = "serial0:115200n8";
 
@@ -5966,9 +5967,9 @@
 		};
 	};
 
-	memory@90000000 {
+	memory@80000000 {
 		device_type = "memory";
-		reg = <0x00 0x90000000 0x00 0x80000000>;
+		reg = <0x00 0x80000000 0x04 0x00000000>;
 		numa-node-id = <0x00>;
 	};
 
@@ -6030,7 +6031,7 @@
 			reusable;
             size = <0x00 0x20000000>; // 512MB
 			alignment = <0x00 0x1000>;
-            alloc-ranges = <0x00 0x90000000 0x00 0x80000000>;
+            alloc-ranges = <0x01 0x00000000 0x00 0x80000000>;
 			linux,cma-default;
 		};
 
