@@ -33,7 +33,12 @@ pub extern "C" fn hs_forward_exception() {
             "csrw vscause, {scause}",
             "csrw vstval, {stval}",
             sepc = in(reg) context.sepc(),
-            scause = in(reg) scause::read().bits(),
+            scause = in(reg) match scause::read().bits() {
+                20 => 1, // Instruction access fault
+                21 => 5, // Load access fault
+                23 => 7, // Store/AMO access fault
+                _ => unimplemented!(),
+            },
             stval = in(reg) stval::read(),
         );
 
