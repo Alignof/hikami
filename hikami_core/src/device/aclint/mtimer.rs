@@ -4,12 +4,14 @@
 //! It has a single fixed-frequency monotonic time counter (MTIME) register and a time compare register (MTIMECMP) for each HART connected to the MTIMER device.
 //! A MTIMER device not connected to any HART should only have a MTIME register and no MTIMECMP registers.
 
-use super::MmioDevice;
-use crate::memmap::HostPhysicalAddress;
+use super::super::{DeviceEmulateError, MmioDevice};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, page_table};
 
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use fdt::{Fdt, standard_nodes::MemoryRegion};
+
+/// Mtimer Register size (8 Bytes)
+const MTIMER_REG_SIZE: usize = 0x8;
 
 /// MTIMER: Machine level TIMER device
 #[derive(Debug)]
@@ -18,22 +20,114 @@ pub struct Mtimer {
     name: String,
 
     #[allow(dead_code)]
-    /// Memory maps for memory mapped register.
-    register_map_regions: Vec<MemoryRegion>,
+    /// ACLINT MTIMER Time Register
+    timer_region: MemoryRegion,
+
+    /// ACLINT MTIMER Compware Register
+    compare_region: MemoryRegion,
 }
+
+impl Mtimer {
+    /// Return mtimer device base address.
+    fn base_addr(&self) -> HostPhysicalAddress {
+        HostPhysicalAddress(self.compare_region.starting_address as usize)
+    }
+
+    /// Return mtimer device register size
+    fn size(&self) -> usize {
+        self.compare_region.size.expect("mtimer does not have size")
+    }
+
+    /// Emulate reading mtimer register.
+    ///
+    /// # Errors
+    /// It will return an error if `dst_addr` is out of range.
+    pub fn emulate_loading(
+        &self,
+        hart_id: usize,
+        guest_hart_id: usize,
+        dst_addr: HostPhysicalAddress,
+    ) -> Result<u32, DeviceEmulateError> {
+        if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
+        let offset = dst_addr.raw() - self.base_addr().raw();
+        let calced_guest_hart_id = offset / MTIMER_REG_SIZE;
+
+        assert_eq!(guest_hart_id, calced_guest_hart_id);
+
+        let phys_hart_ptr = (self.base_addr().raw() + hart_id * MTIMER_REG_SIZE) as *mut u32;
+
+        unsafe { Ok(phys_hart_ptr.read_volatile()) }
+    }
+
+    /// Emulate storing mtimer register.
+    ///
+    /// # Errors
+    /// It will return an error if `dst_addr` is out of range.
+    pub fn emulate_storing(
+        &mut self,
+        hart_id: usize,
+        guest_hart_id: usize,
+        dst_addr: HostPhysicalAddress,
+        value: u32,
+    ) -> Result<(), DeviceEmulateError> {
+        if !(self.base_addr()..self.base_addr() + self.size()).contains(&dst_addr) {
+            return Err(DeviceEmulateError::InvalidAddress);
+        }
+
+        let offset = dst_addr.raw() - self.base_addr().raw();
+        let calced_guest_hart_id = offset / MTIMER_REG_SIZE;
+
+        assert_eq!(guest_hart_id, calced_guest_hart_id);
+
+        let phys_hart_ptr = (self.base_addr().raw() + hart_id * MTIMER_REG_SIZE) as *mut u32;
+
+        unsafe {
+            phys_hart_ptr.write_volatile(value);
+        }
+
+        Ok(())
+    }
+}
+
 impl MmioDevice for Mtimer {
     fn try_new(
         _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
-        let clint_node = device_tree.find_compatible(compatibles)?;
-        let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
+        let mtimer_node = device_tree.find_compatible(compatibles)?;
+        let timer_region: MemoryRegion = mtimer_node.reg().unwrap().next().unwrap();
+        let compare_region: MemoryRegion = mtimer_node.reg().unwrap().next().unwrap();
+
+        Self::invalidate_page_table(&[compare_region], mtimer_node.name);
 
         Some(Mtimer {
-            name: clint_node.name.to_string(),
-            register_map_regions,
+            name: mtimer_node.name.to_string(),
+            timer_region,
+            compare_region,
         })
+    }
+
+    /// Invalidate page table
+    fn invalidate_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
+        for map in memory_regions {
+            // invalidate memory map to emulate plic registers.
+            let invalidate_range = GuestPhysicalAddress(map.starting_address as usize)
+                ..GuestPhysicalAddress(map.starting_address as usize + map.size.unwrap());
+
+            crate::println!(
+                "[Device Unmap] {}: {:#x}..{:#x}",
+                node_name,
+                invalidate_range.start.raw(),
+                invalidate_range.end.raw()
+            );
+
+            page_table::sv39x4::invalidate_address_range(invalidate_range)
+                .expect("failed to invalidate mtimer registers range");
+        }
     }
 
     fn name(&self) -> &str {
