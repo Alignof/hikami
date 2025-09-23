@@ -14,20 +14,20 @@ use fdt::{Fdt, standard_nodes::MemoryRegion};
 pub struct Clint {
     /// Device tree name
     name: String,
+
+    #[allow(dead_code)]
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
 }
 
 impl MmioDevice for Clint {
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
         let clint_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
-
-        Self::create_page_table(root_page_table_addr, &register_map_regions, clint_node.name);
 
         Some(Clint {
             name: clint_node.name.to_string(),

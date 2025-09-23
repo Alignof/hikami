@@ -259,12 +259,17 @@ impl PciAddressSpace {
 pub struct Pci {
     /// Device tree name
     name: String,
+
+    #[allow(dead_code)]
     /// Memory maps for pci register.
     register_map_regions: Vec<MemoryRegion>,
+
     /// PCI address space manager
     _pci_addr_space: PciAddressSpace,
+
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
+
     /// PCI devices
     pub pci_devices: PciDevices,
 }
@@ -281,7 +286,7 @@ impl Pci {
 
 impl MmioDevice for Pci {
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
@@ -293,9 +298,6 @@ impl MmioDevice for Pci {
 
         let pci_addr_space = PciAddressSpace::new(device_tree, compatibles);
         let pci_devices = PciDevices::new(device_tree, base_address, &pci_addr_space);
-
-        // map Pci's register map
-        Self::create_page_table(root_page_table_addr, &register_map_regions, pci_node.name);
 
         let memory_maps = vec![
             // 32 bit reserved memory map
@@ -314,10 +316,30 @@ impl MmioDevice for Pci {
             ),
         ];
 
-        // map PCI device's register map field
-        if cfg!(feature = "identity_map") {
-            // mapping whole memory mapped register region of block divices.
-            page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+        // map PCI device's register map field if identity_map *disabled*.
+        if cfg!(not(feature = "identity_map")) {
+            crate::println!(
+                "[Device Unmap] pci: {:#x?}",
+                pci_addr_space.bit32_memory_space.start.raw()
+                    ..pci_addr_space.bit32_memory_space.end.raw(),
+            );
+            crate::println!(
+                "[Device Unmap] pci: {:#x?}",
+                pci_addr_space.bit64_memory_space.start.raw()
+                    ..pci_addr_space.bit64_memory_space.end.raw(),
+            );
+
+            // unmapping whole memory mapped register region of block divices for emulation.
+            page_table::sv39x4::invalidate_address_range(
+                GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
+                    ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
+            )
+            .expect("failed to invalidate pci memory map field");
+            page_table::sv39x4::invalidate_address_range(
+                GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
+                    ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
+            )
+            .expect("failed to invalidate pci memory map field");
         }
 
         // Initialize IOMMU

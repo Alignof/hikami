@@ -226,6 +226,13 @@ pub trait MmioDevice {
         page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
     }
 
+    /// Invalidate page table
+    ///
+    /// This method is disabled by default (only use for emulation).
+    fn invalidate_page_table(_memory_regions: &[MemoryRegion], node_name: &str) {
+        unreachable!("unreachable code: {}::invalidate_page_table", node_name);
+    }
+
     /// Return device tree node name
     fn name(&self) -> &str;
 }
@@ -239,36 +246,6 @@ pub struct OtherMmioDevice {
     pub name: String,
     /// Memory maps for memory mapped register.
     pub register_map_regions: Vec<MemoryRegion>,
-}
-
-/// Create page table for `OtherMmioDevice`
-fn create_page_table_for_other_devices(
-    root_page_table_addr: HostPhysicalAddress,
-    memory_regions: &[MemoryRegion],
-    node_name: &str,
-) {
-    for map in memory_regions {
-        crate::println!(
-            "[Other MMIO Device Map] {}: {:#x}..{:#x}",
-            node_name,
-            map.starting_address as usize,
-            map.starting_address as usize + map.size.unwrap(),
-        )
-    }
-    let memory_maps: Vec<MemoryMap> = memory_regions
-        .iter()
-        .cloned()
-        .map(|mut region| {
-            if region.starting_address as usize % PAGE_SIZE == 0 {
-                MemoryMap::from(region)
-            } else {
-                region.starting_address =
-                    ((region.starting_address as usize) & !(PAGE_SIZE - 1)) as *const u8;
-                MemoryMap::from(region)
-            }
-        })
-        .collect();
-    page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
 }
 
 /// Manage devices sush as uart, plic, etc...
@@ -299,6 +276,7 @@ pub struct Devices {
     /// Axi SD card
     pub axi_sdc: Option<axi_sdc::Mmc>,
 
+    #[allow(dead_code)]
     /// Other mmio devices
     other_mmio_devices: Vec<OtherMmioDevice>,
 }
@@ -357,8 +335,7 @@ impl Devices {
             pci.as_ref().map(|x| x.name()).unwrap_or(""),
             axi_sdc.as_ref().map(|x| x.name()).unwrap_or(""),
         ]);
-        let other_mmio_devices =
-            Self::get_other_mmio_devices(root_page_table_addr, &device_tree, &exclude_list);
+        let other_mmio_devices = Self::get_other_mmio_devices(&device_tree, &exclude_list);
 
         Devices {
             uart,
@@ -372,11 +349,7 @@ impl Devices {
         }
     }
 
-    fn get_other_mmio_devices(
-        root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        exclude_list: &[&str],
-    ) -> Vec<OtherMmioDevice> {
+    fn get_other_mmio_devices(device_tree: &Fdt, exclude_list: &[&str]) -> Vec<OtherMmioDevice> {
         let mut other_devices = Vec::new();
         if let Some(soc) = device_tree.find_node("/soc") {
             for node in soc.children() {
@@ -393,17 +366,11 @@ impl Devices {
                 }
 
                 // skip if it isn't memory mapped device.
-                if !node.reg().is_some() {
+                if node.reg().is_none() {
                     continue;
                 }
 
                 let register_map_regions: Vec<MemoryRegion> = node.reg().unwrap().collect();
-
-                create_page_table_for_other_devices(
-                    root_page_table_addr,
-                    &register_map_regions,
-                    node.name,
-                );
 
                 other_devices.push(OtherMmioDevice {
                     name: node.name.to_string(),

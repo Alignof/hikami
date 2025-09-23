@@ -21,6 +21,7 @@ pub fn handle_virtual_inst(_input: TokenStream) -> TokenStream {
             OpcodeKind::Zicsr(_) => {
                 let csr_num = fault_inst.rs2.unwrap() as u16;
                 #(#csr_field_arms)*
+                unimplemented!("unhandled CSRs: {csr_num:#x}");
             }
             _ => unreachable!(),
         }

@@ -33,7 +33,12 @@ pub extern "C" fn hs_forward_exception() {
             "csrw vscause, {scause}",
             "csrw vstval, {stval}",
             sepc = in(reg) context.sepc(),
-            scause = in(reg) scause::read().bits(),
+            scause = in(reg) match scause::read().bits() {
+                20 => 1, // Instruction access fault
+                21 => 5, // Load access fault
+                23 => 7, // Store/AMO access fault
+                _ => unimplemented!(),
+            },
             stval = in(reg) stval::read(),
         );
 
@@ -84,6 +89,31 @@ fn update_sepc_by_inst_type(is_compressed: bool, context: &mut guest::context::C
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub fn trap_exception(exception_cause: Exception) -> ! {
+    #[allow(unused_variables)]
+    if cfg!(feature = "debug_log") && scause::read().bits() != 0xa {
+        use hikami_core::memmap::page_table::g_stage_trans_addr;
+        use hikami_core::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
+        let htval = htval::read().bits();
+
+        if !(0xc00_0000..0x1000_0000).contains(&(htval << 2)) {
+            let scause = scause::read().bits();
+            let stval = stval::read();
+            let sepc = riscv::register::sepc::read();
+            let htval_hpa = g_stage_trans_addr(GuestPhysicalAddress(htval << 2))
+                .ok()
+                .map(HostPhysicalAddress::raw);
+            let htinst = hikami_core::h_extension::csrs::htinst::read().bits();
+
+            hikami_core::debugln!("!!! EXCEPTION CAUGHT !!!");
+            hikami_core::debugln!("sepc:   {:#x}", sepc);
+            hikami_core::debugln!("scause: {:#x}", scause);
+            hikami_core::debugln!("stval:  {:#x}", stval);
+            hikami_core::debugln!("htval << 2:  {:#x}", htval << 2);
+            hikami_core::debugln!("htval(hpa):  {:#x?}", htval_hpa);
+            hikami_core::debugln!("htinst: {:#x}", htinst);
+        }
+    }
+
     match exception_cause {
         Exception::IllegalInstruction => instruction_handler::illegal_instruction(),
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),

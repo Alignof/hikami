@@ -25,6 +25,8 @@ pub enum TransAddrError {
     InvalidEntry,
     /// Cannot reach leaf entry.
     NoLeafEntry,
+    /// Unsupported page size.
+    UnsupportedPageSize,
 }
 
 /// Page table level.

@@ -39,7 +39,7 @@ impl Uart {
 
 impl MmioDevice for Uart {
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
@@ -49,8 +49,6 @@ impl MmioDevice for Uart {
                 .expect("uart is not found in fdt")
         });
         let register_map_regions: Vec<MemoryRegion> = uart_node.reg().unwrap().collect();
-
-        Self::create_page_table(root_page_table_addr, &register_map_regions, uart_node.name);
 
         UART_ADDR
             .lock()

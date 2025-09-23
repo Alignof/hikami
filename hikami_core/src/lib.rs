@@ -24,8 +24,10 @@ use spin::Mutex;
 use device::Devices;
 use guest::Guest;
 use memmap::constant::MAX_HART_NUM;
-use memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
-use memmap::{GuestPhysicalAddress, HostPhysicalAddress, page_table, page_table::PageTableEntry};
+use memmap::page_table::{PteFlag, sv39x4::FIRST_LV_PAGE_TABLE_LEN};
+use memmap::{
+    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table, page_table::PageTableEntry,
+};
 
 /// Singleton for this hypervisor.
 pub static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
@@ -53,6 +55,8 @@ impl HypervisorData {
         // init page table
         page_table::sv39x4::initialize_page_table(root_page_table_addr);
 
+        Self::map_all_device_region(root_page_table_addr, device_tree);
+
         HypervisorData {
             // fix to zero for now
             //
@@ -62,6 +66,56 @@ impl HypervisorData {
             guests: [const { None }; MAX_HART_NUM],
             devices: Devices::new(root_page_table_addr, device_tree),
         }
+    }
+
+    /// Map all regions for memory mapped divices.
+    fn map_all_device_region(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) {
+        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+        const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
+
+        let dram_start = device_tree
+            .find_node("/memory")
+            .unwrap()
+            .reg()
+            .unwrap()
+            .next()
+            .expect("couldn't get memory region")
+            .starting_address as usize;
+
+        crate::println!(
+            "map memory mapped device region Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
+            dram_start,
+            0,
+            dram_start
+        );
+
+        // TODO: avoid hard coding the address.
+        // 0x0 .. 0x8000_0000
+        // 0x8000_0000 .. 0x9000_0000
+        // 0xb000_0000 .. 0x4_0000_0000
+        let all_memory_map = [
+            MemoryMap::new(
+                GuestPhysicalAddress(0x0)..GuestPhysicalAddress(dram_start),
+                HostPhysicalAddress(0x0)..HostPhysicalAddress(dram_start),
+                G_STAGE_PTE_FLAGS,
+            ),
+            MemoryMap::new(
+                GuestPhysicalAddress(0x8008_0000)..GuestPhysicalAddress(0x9000_0000),
+                HostPhysicalAddress(0x8008_0000)..HostPhysicalAddress(0x9000_0000),
+                G_STAGE_PTE_FLAGS,
+            ),
+            MemoryMap::new(
+                GuestPhysicalAddress(0x1_8000_0000)..GuestPhysicalAddress(0x4_8000_0000),
+                HostPhysicalAddress(0x1_8000_0000)..HostPhysicalAddress(0x4_8000_0000),
+                G_STAGE_PTE_FLAGS,
+            ),
+            MemoryMap::new(
+                GuestPhysicalAddress(0x80_0000_0000)..GuestPhysicalAddress(0x100_0000_0000),
+                HostPhysicalAddress(0x80_0000_0000)..HostPhysicalAddress(0x100_0000_0000),
+                G_STAGE_PTE_FLAGS,
+            ),
+        ];
+        page_table::sv39x4::generate_page_table(root_page_table_addr, &all_memory_map);
     }
 
     /// Return Device objects.

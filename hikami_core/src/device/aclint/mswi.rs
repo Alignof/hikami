@@ -4,7 +4,7 @@
 //! It has an IPI register (MSIP) for each HART connected to the MSWI device.
 
 use super::super::{DeviceEmulateError, MmioDevice};
-use crate::memmap::HostPhysicalAddress;
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, page_table};
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -98,10 +98,32 @@ impl MmioDevice for Mswi {
         let clint_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
 
+        // TODO: unmap
+        Self::invalidate_page_table(&register_map_regions, clint_node.name);
+
         Some(Mswi {
             name: clint_node.name.to_string(),
             register_map_regions,
         })
+    }
+
+    /// Invalidate page table
+    fn invalidate_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
+        for map in memory_regions {
+            // invalidate memory map to emulate plic registers.
+            let invalidate_range = GuestPhysicalAddress(map.starting_address as usize)
+                ..GuestPhysicalAddress(map.starting_address as usize + map.size.unwrap());
+
+            crate::println!(
+                "[Device Unmap] {}: {:#x}..{:#x}",
+                node_name,
+                invalidate_range.start.raw(),
+                invalidate_range.end.raw()
+            );
+
+            page_table::sv39x4::invalidate_address_range(invalidate_range)
+                .expect("failed to invalidate plic registers range");
+        }
     }
 
     fn name(&self) -> &str {
