@@ -70,6 +70,19 @@ pub fn load_guest_page_fault() {
         return;
     }
 
+    if let Some(clint) = &mut hypervisor_data.get_mut().unwrap().devices().clint {
+        if let Ok(value) = clint.emulate_loading(
+            hart_id,
+            guest_hart_id,
+            HostPhysicalAddress(fault_addr.raw()),
+        ) {
+            let mut context = hypervisor_data.get().unwrap().guest().context;
+            context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
+            update_sepc_by_inst_type(is_compressed, &mut context);
+            return;
+        }
+    }
+
     if let Some(aclint) = &mut hypervisor_data.get_mut().unwrap().devices().aclint {
         if let Ok(value) = aclint.mswi.emulate_loading(
             hart_id,
@@ -164,6 +177,18 @@ pub fn store_guest_page_fault() {
     {
         update_sepc_by_inst_type(is_compressed, &mut context);
         return;
+    }
+
+    if let Some(clint) = &mut hypervisor_data.get_mut().unwrap().devices().clint {
+        if let Ok(()) = clint.emulate_storing(
+            hart_id,
+            guest_hart_id,
+            HostPhysicalAddress(fault_addr.raw()),
+            store_value as u32,
+        ) {
+            update_sepc_by_inst_type(is_compressed, &mut context);
+            return;
+        }
     }
 
     if let Some(aclint) = &mut hypervisor_data.get_mut().unwrap().devices().aclint {
