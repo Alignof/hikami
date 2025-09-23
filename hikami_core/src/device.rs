@@ -365,7 +365,7 @@ impl Devices {
                 }
 
                 // skip if it isn't memory mapped device.
-                if !node.reg().is_some() {
+                if node.reg().is_none() {
                     continue;
                 }
 

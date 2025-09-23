@@ -89,29 +89,27 @@ fn update_sepc_by_inst_type(is_compressed: bool, context: &mut guest::context::C
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub fn trap_exception(exception_cause: Exception) -> ! {
-    if cfg!(feature = "debug_log") {
-        if scause::read().bits() != 0xa {
-            use hikami_core::memmap::page_table::g_stage_trans_addr;
-            use hikami_core::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
-            let htval = htval::read().bits();
+    if cfg!(feature = "debug_log") && scause::read().bits() != 0xa {
+        use hikami_core::memmap::page_table::g_stage_trans_addr;
+        use hikami_core::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
+        let htval = htval::read().bits();
 
-            if !(0xc00_0000..0x1000_0000).contains(&(htval << 2)) {
-                let scause = scause::read().bits();
-                let stval = stval::read();
-                let sepc = riscv::register::sepc::read();
-                let htval_hpa = g_stage_trans_addr(GuestPhysicalAddress(htval << 2))
-                    .ok()
-                    .map(|x| x.raw());
-                let htinst = hikami_core::h_extension::csrs::htinst::read().bits();
+        if !(0xc00_0000..0x1000_0000).contains(&(htval << 2)) {
+            let scause = scause::read().bits();
+            let stval = stval::read();
+            let sepc = riscv::register::sepc::read();
+            let htval_hpa = g_stage_trans_addr(GuestPhysicalAddress(htval << 2))
+                .ok()
+                .map(HostPhysicalAddress::raw);
+            let htinst = hikami_core::h_extension::csrs::htinst::read().bits();
 
-                hikami_core::debugln!("!!! EXCEPTION CAUGHT !!!");
-                hikami_core::debugln!("sepc:   {:#x}", sepc);
-                hikami_core::debugln!("scause: {:#x}", scause);
-                hikami_core::debugln!("stval:  {:#x}", stval);
-                hikami_core::debugln!("htval << 2:  {:#x}", htval << 2);
-                hikami_core::debugln!("htval(hpa):  {:#x?}", htval_hpa);
-                hikami_core::debugln!("htinst: {:#x}", htinst);
-            }
+            hikami_core::debugln!("!!! EXCEPTION CAUGHT !!!");
+            hikami_core::debugln!("sepc:   {:#x}", sepc);
+            hikami_core::debugln!("scause: {:#x}", scause);
+            hikami_core::debugln!("stval:  {:#x}", stval);
+            hikami_core::debugln!("htval << 2:  {:#x}", htval << 2);
+            hikami_core::debugln!("htval(hpa):  {:#x?}", htval_hpa);
+            hikami_core::debugln!("htinst: {:#x}", htinst);
         }
     }
 
