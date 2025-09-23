@@ -89,6 +89,7 @@ fn update_sepc_by_inst_type(is_compressed: bool, context: &mut guest::context::C
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
 pub fn trap_exception(exception_cause: Exception) -> ! {
+    #[allow(unused_variables)]
     if cfg!(feature = "debug_log") && scause::read().bits() != 0xa {
         use hikami_core::memmap::page_table::g_stage_trans_addr;
         use hikami_core::memmap::{GuestPhysicalAddress, HostPhysicalAddress};

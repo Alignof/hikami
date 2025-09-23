@@ -430,12 +430,16 @@ fn split_superpage(
     };
 
     // Populate the new page table with leaf entries that map the original region.
-    for i in 0..PAGE_TABLE_LEN {
+    for (i, next_level_pte) in next_level_page_table
+        .iter_mut()
+        .enumerate()
+        .take(PAGE_TABLE_LEN)
+    {
         let hpa_offset = i * next_level_page_size;
         let next_hpa = original_hpa_base + hpa_offset;
 
         // Create a new leaf PTE with the original permissions.
-        next_level_page_table[i] = PageTableEntry::new(next_hpa.page_number(), original_flags);
+        *next_level_pte = PageTableEntry::new(next_hpa.page_number(), original_flags);
     }
 
     // Atomically update the original PTE to be a pointer to the new table.
