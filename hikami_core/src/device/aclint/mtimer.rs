@@ -16,12 +16,14 @@ use fdt::{Fdt, standard_nodes::MemoryRegion};
 pub struct Mtimer {
     /// Device tree name
     name: String,
+
+    #[allow(dead_code)]
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
 }
 impl MmioDevice for Mtimer {
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {

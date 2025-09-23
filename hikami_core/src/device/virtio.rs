@@ -39,15 +39,21 @@ impl VirtIoList {
 pub struct VirtIo {
     /// Device tree name
     name: String,
+
+    #[allow(dead_code)]
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
+
     /// Interrupt Reqeust bit.
     irq: u8,
 }
 
 impl VirtIo {
     /// Create self with fdt node
-    pub fn new_with_node(root_page_table_addr: HostPhysicalAddress, virtio_node: &FdtNode) -> Self {
+    pub fn new_with_node(
+        _root_page_table_addr: HostPhysicalAddress,
+        virtio_node: &FdtNode,
+    ) -> Self {
         let register_map_regions: Vec<MemoryRegion> = virtio_node.reg().unwrap().collect();
 
         VirtIo {

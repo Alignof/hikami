@@ -125,7 +125,7 @@ impl EmulateDevice for Mmc {
 
 impl MmioDevice for Mmc {
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {

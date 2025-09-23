@@ -276,6 +276,7 @@ pub struct Devices {
     /// Axi SD card
     pub axi_sdc: Option<axi_sdc::Mmc>,
 
+    #[allow(dead_code)]
     /// Other mmio devices
     other_mmio_devices: Vec<OtherMmioDevice>,
 }

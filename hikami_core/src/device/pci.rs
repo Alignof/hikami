@@ -259,12 +259,17 @@ impl PciAddressSpace {
 pub struct Pci {
     /// Device tree name
     name: String,
+
+    #[allow(dead_code)]
     /// Memory maps for pci register.
     register_map_regions: Vec<MemoryRegion>,
+
     /// PCI address space manager
     _pci_addr_space: PciAddressSpace,
+
     /// Memory maps for pci devices
     memory_maps: Vec<MemoryMap>,
+
     /// PCI devices
     pub pci_devices: PciDevices,
 }
@@ -281,7 +286,7 @@ impl Pci {
 
 impl MmioDevice for Pci {
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {

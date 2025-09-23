@@ -260,7 +260,7 @@ impl Plic {
 impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
     fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
+        _root_page_table_addr: HostPhysicalAddress,
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
