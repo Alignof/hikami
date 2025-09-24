@@ -76,14 +76,16 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     hie::set(VsInterruptKind::Software);
 
     // enable Sstc extention
-    //henvcfg::set_stce();
-    //henvcfg::set_cde();
-    //henvcfg::set_cbze();
-    //henvcfg::set_cbcfe();
+    // use hikami_core::h_extension::csrs::henvcfg;
+    // henvcfg::set_stce();
+    // henvcfg::set_cde();
+    // henvcfg::set_cbze();
+    // henvcfg::set_cbcfe();
 
     // disable `ENVCFG` state
-    //hstateen0::all_state_set();
-    //hstateen0::clear_envcfg();
+    // use hikami_core::h_extension::csrs::hstateen0;
+    // hstateen0::all_state_set();
+    // hstateen0::clear_envcfg();
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
