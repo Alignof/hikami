@@ -1,6 +1,7 @@
 //! Handle VS-mode Ecall exception\
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
+use hikami_core::HYPERVISOR_DATA;
 use hikami_core::h_extension::csrs::{VsInterruptKind, hvip};
 
 use riscv::register::sie;
@@ -145,17 +146,24 @@ pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     use rustsbi::HartMask;
     use sbi_spec::rfnc::{REMOTE_FENCE_I, REMOTE_SFENCE_VMA, REMOTE_SFENCE_VMA_ASID};
+    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let current_hart_id = hypervisor_data.get().unwrap().guest().hart_id();
+    let current_guest_hart_id = hypervisor_data.get().unwrap().guest().guest_hart_id();
+    assert_eq!(args[0].trailing_ones() - 1, current_guest_hart_id as u32);
+    assert_eq!(args[1], 0);
+
+    let fixed_hart_id = 1 << current_hart_id;
     match func_id {
         REMOTE_FENCE_I => {
-            sbi_rt::remote_fence_i(HartMask::from_mask_base(args[0] as usize, args[1] as usize))
+            sbi_rt::remote_fence_i(HartMask::from_mask_base(fixed_hart_id, args[1] as usize))
         }
         REMOTE_SFENCE_VMA => sbi_rt::remote_sfence_vma(
-            HartMask::from_mask_base(args[0] as usize, args[1] as usize),
+            HartMask::from_mask_base(fixed_hart_id, args[1] as usize),
             args[2] as usize,
             args[3] as usize,
         ),
         REMOTE_SFENCE_VMA_ASID => sbi_rt::remote_sfence_vma_asid(
-            HartMask::from_mask_base(args[0] as usize, args[1] as usize),
+            HartMask::from_mask_base(fixed_hart_id, args[1] as usize),
             args[2] as usize,
             args[3] as usize,
             args[4] as usize,
