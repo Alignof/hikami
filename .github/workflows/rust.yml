@@ -27,6 +27,10 @@ jobs:
           touch guest_image/vmlinux
           touch guest_image/initrd
           touch guest_image/guest.dtb
+          touch guest_image/qemu/cpu0.dtb
+          touch guest_image/qemu/cpu1.dtb
+          touch guest_image/qemu/cpu2.dtb
+          touch guest_image/qemu/cpu3.dtb
           echo '#!/bin/sh' > dtc && chmod +x dtc && mv dtc /usr/local/bin/dtc
 
       - uses: sksat/action-clippy@v1.0.0
@@ -39,10 +43,9 @@ jobs:
         with:
           reporter: github-pr-review
 
-      - name: format check 
+      - name: format check
         run: cargo fmt --all -- --check
-      
+
       # no crate for test in no_std
       #- name: unit test
       #  run: cargo test
-
