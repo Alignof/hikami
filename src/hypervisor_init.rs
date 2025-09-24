@@ -1,7 +1,10 @@
 //! HS-mode level initialization.
 
 use crate::trap::hstrap_vector;
-use crate::{ALLOCATOR, GUEST_DTB, GUEST_INITRD, GUEST_KERNEL};
+use crate::{
+    ALLOCATOR, GUEST_DTB_CORE0, GUEST_DTB_CORE1, GUEST_DTB_CORE2, GUEST_DTB_CORE3, GUEST_INITRD,
+    GUEST_KERNEL,
+};
 use hikami_core::guest::context::ContextData;
 use hikami_core::h_extension::csrs::{
     VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, hgatp, hideleg, hie, hstatus,
@@ -73,14 +76,16 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     hie::set(VsInterruptKind::Software);
 
     // enable Sstc extention
-    //henvcfg::set_stce();
-    //henvcfg::set_cde();
-    //henvcfg::set_cbze();
-    //henvcfg::set_cbcfe();
+    // use hikami_core::h_extension::csrs::henvcfg;
+    // henvcfg::set_stce();
+    // henvcfg::set_cde();
+    // henvcfg::set_cbze();
+    // henvcfg::set_cbcfe();
 
     // disable `ENVCFG` state
-    //hstateen0::all_state_set();
-    //hstateen0::clear_envcfg();
+    // use hikami_core::h_extension::csrs::hstateen0;
+    // hstateen0::all_state_set();
+    // hstateen0::clear_envcfg();
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
@@ -141,7 +146,13 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         hart_id,
         &ROOT_PAGE_TABLE,
         &GUEST_KERNEL,
-        &GUEST_DTB,
+        match hart_id {
+            0 => &GUEST_DTB_CORE0,
+            1 => &GUEST_DTB_CORE1,
+            2 => &GUEST_DTB_CORE2,
+            3 => &GUEST_DTB_CORE3,
+            _ => unreachable!(),
+        },
         &GUEST_INITRD,
     );
 
@@ -199,7 +210,11 @@ fn hart_entry(guest_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // init guest stack pointer is don't care
     sscratch::write(0);
 
-    crate::println!("Guest start (guest hart: {})", guest_hart_id);
+    crate::println!(
+        "Guest start (guest hart: {}, device tree: {:#x})",
+        guest_hart_id,
+        dtb_addr.raw()
+    );
     unsafe {
         // enter VS-mode
         asm!(

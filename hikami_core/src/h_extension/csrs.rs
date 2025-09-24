@@ -238,17 +238,23 @@ pub mod hedeleg {
     /// Ref: The RISC-V Instruction Set Manual: Volume II Version 20240411, p132 Table 29.
     pub enum ExceptionKind {
         /// Instruction address misaligned (bit 0)
-        InstructionAddressMissaligned = 0x1,
+        InstructionAddressMissaligned = 0b0001,
+        /// Instruction access fault (bit 1)
+        InstructionAccessFault = 0b0010,
         /// Breakpoint (bit 3)
-        Breakpoint = 0x8,
+        Breakpoint = 0b1000,
+        /// Load access fault (bit 5)
+        LoadAccessFault = 0b10_0000,
+        /// Store/AMO access fault (bit 7)
+        StoreAmoAccessFault = 0b1000_0000,
         /// Environment call from U-mode or VU-mode (bit 8)
-        EnvCallFromUorVU = 0x100,
+        EnvCallFromUorVU = 0b1_0000_0000,
         /// Instruction page fault (bit 12)
-        InstructionPageFault = 0x1000,
+        InstructionPageFault = 0b1_0000_0000_0000,
         /// Load page fault (bit13)
-        LoadPageFault = 0x2000,
+        LoadPageFault = 0b10_0000_0000_0000,
         /// Store AMO page fault (bit 15)
-        StoreAmoPageFault = 0x8000,
+        StoreAmoPageFault = 0b1000_0000_0000_0000,
     }
 
     read_csr_as!(Hedeleg, 0x602);

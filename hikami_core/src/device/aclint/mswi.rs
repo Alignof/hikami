@@ -95,14 +95,13 @@ impl MmioDevice for Mswi {
         device_tree: &Fdt,
         compatibles: &[&str],
     ) -> Option<Self> {
-        let clint_node = device_tree.find_compatible(compatibles)?;
-        let register_map_regions: Vec<MemoryRegion> = clint_node.reg().unwrap().collect();
+        let mswi_node = device_tree.find_compatible(compatibles)?;
+        let register_map_regions: Vec<MemoryRegion> = mswi_node.reg().unwrap().collect();
 
-        // TODO: unmap
-        Self::invalidate_page_table(&register_map_regions, clint_node.name);
+        Self::invalidate_page_table(&register_map_regions, mswi_node.name);
 
         Some(Mswi {
-            name: clint_node.name.to_string(),
+            name: mswi_node.name.to_string(),
             register_map_regions,
         })
     }

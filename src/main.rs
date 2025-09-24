@@ -24,8 +24,20 @@ pub static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
 
 /// Device tree blob that is passed to guest
 #[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB: [u8; include_bytes!("../guest_image/guest.dtb").len()] =
-    *include_bytes!("../guest_image/guest.dtb");
+pub static GUEST_DTB_CORE0: [u8; include_bytes!("../guest_image/qemu/cpu0.dtb").len()] =
+    *include_bytes!("../guest_image/qemu/cpu0.dtb");
+/// Device tree blob for hart id 1 that is passed to guest
+#[unsafe(link_section = ".guest_dtb")]
+pub static GUEST_DTB_CORE1: [u8; include_bytes!("../guest_image/qemu/cpu1.dtb").len()] =
+    *include_bytes!("../guest_image/qemu/cpu1.dtb");
+/// Device tree blob for hart id 2 that is passed to guest
+#[unsafe(link_section = ".guest_dtb")]
+pub static GUEST_DTB_CORE2: [u8; include_bytes!("../guest_image/qemu/cpu2.dtb").len()] =
+    *include_bytes!("../guest_image/qemu/cpu2.dtb");
+/// Device tree blob for hart id 3 that is passed to guest
+#[unsafe(link_section = ".guest_dtb")]
+pub static GUEST_DTB_CORE3: [u8; include_bytes!("../guest_image/qemu/cpu3.dtb").len()] =
+    *include_bytes!("../guest_image/qemu/cpu3.dtb");
 
 /// Guest intird
 #[unsafe(link_section = ".guest_initrd")]
