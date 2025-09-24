@@ -22,22 +22,22 @@ use hikami_core::{_end_bss, _start_bss, _top_b_stack};
 pub static GUEST_KERNEL: [u8; include_bytes!("../guest_image/vmlinux").len()] =
     *include_bytes!("../guest_image/vmlinux");
 
-/// Device tree blob that is passed to guest
+/// Device tree blob for hart id 0 that is passed to guest
 #[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE0: [u8; include_bytes!("../guest_image/qemu/cpu0.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu0.dtb");
+pub static GUEST_DTB_CORE0: [u8; include_bytes!("../guest_image/megrez/cpu0.dtb").len()] =
+    *include_bytes!("../guest_image/megrez/cpu0.dtb");
 /// Device tree blob for hart id 1 that is passed to guest
 #[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE1: [u8; include_bytes!("../guest_image/qemu/cpu1.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu1.dtb");
+pub static GUEST_DTB_CORE1: [u8; include_bytes!("../guest_image/megrez/cpu1.dtb").len()] =
+    *include_bytes!("../guest_image/megrez/cpu1.dtb");
 /// Device tree blob for hart id 2 that is passed to guest
 #[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE2: [u8; include_bytes!("../guest_image/qemu/cpu2.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu2.dtb");
+pub static GUEST_DTB_CORE2: [u8; include_bytes!("../guest_image/megrez/cpu2.dtb").len()] =
+    *include_bytes!("../guest_image/megrez/cpu2.dtb");
 /// Device tree blob for hart id 3 that is passed to guest
 #[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE3: [u8; include_bytes!("../guest_image/qemu/cpu3.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu3.dtb");
+pub static GUEST_DTB_CORE3: [u8; include_bytes!("../guest_image/megrez/cpu3.dtb").len()] =
+    *include_bytes!("../guest_image/megrez/cpu3.dtb");
 
 /// Guest intird
 #[unsafe(link_section = ".guest_initrd")]
