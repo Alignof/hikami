@@ -286,8 +286,6 @@ impl Guest {
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
     ) -> GuestPhysicalAddress {
-        use PteFlag::{Accessed, Dirty, Read, User, Valid};
-
         /// Segment type `PT_LOAD`
         ///
         /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
@@ -366,27 +364,6 @@ impl Guest {
                                 PAGE_SIZE - copy_size,
                             );
                         }
-                    }
-
-                    // update page flags based on segment permissions
-                    #[allow(clippy::match_same_arms)]
-                    match prog_header.p_flags & 0b111 {
-                        // R--
-                        0b100 => page_table::sv39x4::update_page_flags(
-                            guest_physical_addr,
-                            [Dirty, Accessed, Read, User, Valid] // No Exec, No Write
-                                .iter()
-                                .fold(0, |pte_f, f| (pte_f | *f as u8)),
-                        )
-                        .expect("failed to update page flags"),
-                        // Add Write permission to RX for dynamic patch
-                        // ref: https://github.com/torvalds/linux/blob/67784a74e258a467225f0e68335df77acd67b7ab/arch/riscv/kernel/patch.c#L215C5-L215C21
-                        // TODO: switch enable/disable write permission corresponding to VS-stage page table.
-                        0b101 => (), // no update
-                        // FIXME: Add Exec permission (RW -> RWX)
-                        0b110 => (), // no update
-                        0b111 => (), // no update
-                        _ => panic!("unsupported ELF segment flags"),
                     }
                 }
             }
