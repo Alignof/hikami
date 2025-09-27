@@ -18,28 +18,30 @@ panic = 'abort'
 codegen-units = 1
 
 [workspace]
-members = [ "extension_manager" , "hikami_core"]
+members = ["extension_manager", "hikami_core"]
 
 [workspace.dependencies]
 elf = { version = "0.7.2", default-features = false }
 fdt = "0.1.5"
 linked_list_allocator = "0.10.5"
-raki = { git = "https://github.com/Alignof/raki", branch = "feature/Zbb"}
+raki = { git = "https://github.com/Alignof/raki", branch = "feature/Zbb" }
 riscv = "0.11.1"
 rustsbi = "0.4.0"
 sbi-rt = "0.0.3"
-sbi-spec = { version = "0.0.8", features = [ "legacy" ] }
+sbi-spec = { version = "0.0.8", features = ["legacy"] }
 spin = "0.9.8"
 
 [features]
 # debug log
-debug_log = [ "hikami_core/debug_log" ]
+debug_log = ["hikami_core/debug_log"]
 # identity memory map
-identity_map = [ "hikami_core/identity_map" ]
+identity_map = ["hikami_core/identity_map"]
+# target qemu
+qemu = []
 # default on
-default = [ "enable_extension" ]
+default = ["enable_extension"]
 # for `extension_manager`
-enable_extension = [ "hikami_zbb" ]
+enable_extension = ["hikami_zbb"]
 
 [dependencies]
 hikami_core = { path = "hikami_core" }

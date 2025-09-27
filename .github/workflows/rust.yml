@@ -24,13 +24,17 @@ jobs:
 
       - name: create dummy file
         run: |
-          touch guest_image/vmlinux
           touch guest_image/initrd
-          touch guest_image/guest.dtb
+          touch guest_image/megrez/cpu0.dtb
+          touch guest_image/megrez/cpu1.dtb
+          touch guest_image/megrez/cpu2.dtb
+          touch guest_image/megrez/cpu3.dtb
+          touch guest_image/megrez/vmlinux
           touch guest_image/qemu/cpu0.dtb
           touch guest_image/qemu/cpu1.dtb
           touch guest_image/qemu/cpu2.dtb
           touch guest_image/qemu/cpu3.dtb
+          touch guest_image/qemu/vmlinux
           echo '#!/bin/sh' > dtc && chmod +x dtc && mv dtc /usr/local/bin/dtc
 
       - uses: sksat/action-clippy@v1.0.0
