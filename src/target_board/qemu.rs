@@ -1,3 +1,11 @@
+//! QEMU
+//!
+//! ```no_run
+//! $ qemu-system-riscv64 --version
+//! QEMU emulator version 10.0.2
+//! Copyright (c) 2003-2025 Fabrice Bellard and the QEMU Project developers
+//! ```
+
 /// Guest kernel image
 #[unsafe(link_section = ".guest_kernel")]
 pub static GUEST_KERNEL: [u8; include_bytes!("../../guest_image/qemu/vmlinux").len()] =

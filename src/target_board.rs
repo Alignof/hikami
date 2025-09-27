@@ -1,3 +1,9 @@
+//! Codes depend on target board
+//!
+//! e.g.
+//! - kernel image
+//! - device tree
+
 #[cfg(feature = "qemu")]
 mod qemu;
 

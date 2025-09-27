@@ -1,3 +1,8 @@
+//! Milk-V Megrez
+//!
+//! Milk-V Megrez is a Mini-ITX device powered by the ESWIN EIC7700X.
+//! [https://milkv.io/docs/megrez/overview](https://milkv.io/docs/megrez/overview)
+
 /// Guest kernel image
 #[unsafe(link_section = ".guest_kernel")]
 pub static GUEST_KERNEL: [u8; include_bytes!("../../guest_image/megrez/vmlinux").len()] =
