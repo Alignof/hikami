@@ -5,6 +5,7 @@
 #![allow(static_mut_refs)]
 
 mod hypervisor_init;
+mod target_board;
 mod trap;
 
 use core::arch::naked_asm;
@@ -16,60 +17,9 @@ use crate::hypervisor_init::hstart;
 use hikami_core::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
 use hikami_core::println;
 use hikami_core::{_end_bss, _start_bss, _top_b_stack};
-
-/// Guest kernel image
-#[cfg(not(feature = "qemu"))]
-#[unsafe(link_section = ".guest_kernel")]
-pub static GUEST_KERNEL: [u8; include_bytes!("../guest_image/megrez/vmlinux").len()] =
-    *include_bytes!("../guest_image/megrez/vmlinux");
-
-/// Guest kernel image
-#[cfg(feature = "qemu")]
-#[unsafe(link_section = ".guest_kernel")]
-pub static GUEST_KERNEL: [u8; include_bytes!("../guest_image/qemu/vmlinux").len()] =
-    *include_bytes!("../guest_image/qemu/vmlinux");
-
-/// Device tree blob for hart id 0 that is passed to guest
-#[cfg(not(feature = "qemu"))]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE0: [u8; include_bytes!("../guest_image/megrez/cpu0.dtb").len()] =
-    *include_bytes!("../guest_image/megrez/cpu0.dtb");
-/// Device tree blob for hart id 1 that is passed to guest
-#[cfg(not(feature = "qemu"))]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE1: [u8; include_bytes!("../guest_image/megrez/cpu1.dtb").len()] =
-    *include_bytes!("../guest_image/megrez/cpu1.dtb");
-/// Device tree blob for hart id 2 that is passed to guest
-#[cfg(not(feature = "qemu"))]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE2: [u8; include_bytes!("../guest_image/megrez/cpu2.dtb").len()] =
-    *include_bytes!("../guest_image/megrez/cpu2.dtb");
-/// Device tree blob for hart id 3 that is passed to guest
-#[cfg(not(feature = "qemu"))]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE3: [u8; include_bytes!("../guest_image/megrez/cpu3.dtb").len()] =
-    *include_bytes!("../guest_image/megrez/cpu3.dtb");
-
-/// Device tree blob for hart id 0 that is passed to guest
-#[cfg(feature = "qemu")]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE0: [u8; include_bytes!("../guest_image/qemu/cpu0.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu0.dtb");
-/// Device tree blob for hart id 1 that is passed to guest
-#[cfg(feature = "qemu")]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE1: [u8; include_bytes!("../guest_image/qemu/cpu1.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu1.dtb");
-/// Device tree blob for hart id 2 that is passed to guest
-#[cfg(feature = "qemu")]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE2: [u8; include_bytes!("../guest_image/qemu/cpu2.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu2.dtb");
-/// Device tree blob for hart id 3 that is passed to guest
-#[cfg(feature = "qemu")]
-#[unsafe(link_section = ".guest_dtb")]
-pub static GUEST_DTB_CORE3: [u8; include_bytes!("../guest_image/qemu/cpu3.dtb").len()] =
-    *include_bytes!("../guest_image/qemu/cpu3.dtb");
+use target_board::{
+    GUEST_DTB_CORE0, GUEST_DTB_CORE1, GUEST_DTB_CORE2, GUEST_DTB_CORE3, GUEST_KERNEL,
+};
 
 /// Guest intird
 #[unsafe(link_section = ".guest_initrd")]
