@@ -88,6 +88,7 @@ impl Guest {
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
+    #[cfg(not(feature = "identity_map"))]
     fn allocate_memory_region(
         page_table_addr: HostPhysicalAddress,
         region: &Range<GuestPhysicalAddress>,
@@ -100,12 +101,7 @@ impl Guest {
             let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
 
             // allocate memory from heap
-            let aligned_page_size_block_addr: HostPhysicalAddress =
-                if cfg!(feature = "identity_map") {
-                    HostPhysicalAddress(guest_physical_addr.raw())
-                } else {
-                    PageBlock::alloc()
-                };
+            let aligned_page_size_block_addr: HostPhysicalAddress = PageBlock::alloc();
 
             // create memory mapping
             page_table::sv39x4::generate_page_table(
@@ -117,6 +113,26 @@ impl Guest {
                 )],
             );
         }
+    }
+
+    /// Allocate guest memory space from heap and create corresponding page table.
+    #[cfg(feature = "identity_map")]
+    fn allocate_memory_region(
+        page_table_addr: HostPhysicalAddress,
+        region: &Range<GuestPhysicalAddress>,
+    ) {
+        use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
+        const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
+
+        // create memory mapping
+        page_table::sv39x4::generate_page_table(
+            page_table_addr,
+            &[MemoryMap::new(
+                region.clone(),
+                HostPhysicalAddress(region.start.raw())..HostPhysicalAddress(region.end.raw()),
+                G_STAGE_PTE_FLAGS,
+            )],
+        );
     }
 
     /// Load guest's initrd
