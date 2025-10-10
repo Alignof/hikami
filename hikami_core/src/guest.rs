@@ -291,14 +291,44 @@ impl Guest {
         /// The array element specifies a loadable segment, described by `p_filesz` and `p_memsz`.
         const PT_LOAD: u32 = 1;
 
+        let segments = guest_elf
+            .segments()
+            .expect("failed to get segments from elf");
+        let entry_point = guest_elf.ehdr.e_entry;
+
+        let entry_segment = segments
+            .iter()
+            .find(|s| s.p_vaddr <= entry_point && entry_point < s.p_vaddr + s.p_memsz)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Failed to find a segment containing the entry point {:#x}",
+                    entry_point
+                )
+            });
+
+        assert_eq!(
+            entry_segment.p_type, PT_LOAD,
+            "The segment containing the entry point {:#x} must be of PT_LOAD type",
+            entry_point
+        );
+
+        let base_paddr = entry_segment.p_paddr;
+
+        for s in segments.iter() {
+            if s.p_type == PT_LOAD {
+                assert!(
+                    s.p_paddr >= base_paddr,
+                    "Found a PT_LOAD segment at p_addr {:#x}, which is before the entry point segment's p_addr {:#x}",
+                    s.p_paddr,
+                    base_paddr
+                );
+            }
+        }
+
         let align_size =
             |size: u64, align: u64| usize::try_from((size + (align - 1)) & !(align - 1)).unwrap();
 
-        for prog_header in guest_elf
-            .segments()
-            .expect("failed to get segments from elf")
-            .iter()
-        {
+        for prog_header in segments.iter() {
             if prog_header.p_type == PT_LOAD {
                 // Skip segments that have no memory footprint.
                 if prog_header.p_memsz == 0 {
@@ -314,7 +344,7 @@ impl Guest {
                 for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
                     // Calculate the target GPA: Kernel's physical base + segment's physical offset + page offset
                     let guest_physical_addr =
-                        self.dram_base() + prog_header.p_paddr as usize + offset;
+                        self.dram_base() + (prog_header.p_paddr - base_paddr) as usize + offset;
 
                     // Check if the target address is within the pre-allocated guest memory region
                     if !self.memory_region.contains(&guest_physical_addr) {
