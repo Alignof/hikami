@@ -37,7 +37,7 @@ pub extern "C" fn hs_forward_exception() {
                 20 => 1, // Instruction access fault
                 21 => 5, // Load access fault
                 23 => 7, // Store/AMO access fault
-                _ => unimplemented!(),
+                unhadled_cause => unimplemented!("cause: {unhadled_cause}"),
             },
             stval = in(reg) stval::read(),
         );
