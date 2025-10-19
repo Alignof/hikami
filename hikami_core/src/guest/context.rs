@@ -17,6 +17,8 @@ pub struct ContextData {
     pub sstatus: usize,
     /// Program counter
     pub sepc: usize,
+    /// instret
+    pub instret: u64,
 }
 
 /// Guest context
