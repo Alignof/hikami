@@ -198,7 +198,7 @@ pub fn vs_stage_trans_addr(
 
     let vsatp = vsatp::read();
     match vsatp.mode() {
-        vsatp::Mode::Bare => unreachable!("no trans addr"),
+        vsatp::Mode::Bare => Ok(GuestPhysicalAddress(gva.0)),
         vsatp::Mode::Sv39 => sv39::trans_addr(gva),
         vsatp::Mode::Sv48 => sv48::trans_addr(gva),
         vsatp::Mode::Sv57 => sv57::trans_addr(gva),
@@ -217,7 +217,7 @@ pub fn g_stage_trans_addr(
 
     let hgatp = hgatp::read();
     match hgatp.mode() {
-        hgatp::Mode::Bare => unreachable!("no trans addr"),
+        hgatp::Mode::Bare => Ok(HostPhysicalAddress(gpa.raw())),
         hgatp::Mode::Sv39x4 => sv39x4::trans_addr(gpa),
         hgatp::Mode::Sv48x4 | hgatp::Mode::Sv57x4 => unimplemented!(),
     }
