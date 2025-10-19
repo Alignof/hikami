@@ -152,9 +152,6 @@ pub extern "C" fn hstrap_vector() -> ! {
             // save pc
             csrr t1, sepc
             sd t1, 33*8(sp)
-
-            rdinstret t0
-            sd t0, 34*8(sp)
             ",
             HS_CONTEXT_SIZE = const size_of::<ContextData>(),
         );
