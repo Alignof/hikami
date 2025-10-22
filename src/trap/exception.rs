@@ -115,7 +115,59 @@ pub fn trap_exception(exception_cause: Exception) -> ! {
     }
 
     match exception_cause {
-        Exception::IllegalInstruction => instruction_handler::illegal_instruction(),
+        Exception::IllegalInstruction => {
+            instruction_handler::illegal_instruction();
+            /*
+            use hikami_core::guest::context::ContextData;
+            use raki::Instruction;
+            use riscv::register::sepc;
+
+            let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+            let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
+            unsafe {
+                let mut current_instret: u64;
+                let interrupt_instret: u64;
+
+                core::arch::asm!("
+                    rdinstret {current_instret}
+
+                    // set to stack top
+                    mv t5, {stack_top}
+                    addi t5, t5, -{HS_CONTEXT_SIZE}
+                    ld {interrupt_instret}, 34*8(t5)
+                    ",
+                    HS_CONTEXT_SIZE = const size_of::<ContextData>(),
+                    stack_top = in(reg) stack_top.raw(),
+                    current_instret = out(reg) current_instret,
+                    interrupt_instret = out(reg) interrupt_instret,
+                );
+                let fault_inst_value = stval::read();
+                let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
+                    use hikami_core::memmap::GuestVirtualAddress;
+                    let gva = GuestVirtualAddress(sepc::read());
+                    let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
+                    let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
+
+                    panic!(
+                        "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
+                        sepc::read(), gpa.raw(), hpa.raw()
+                    );
+                });
+                if let raki::OpcodeKind::Zbs(_) = fault_inst.opc {
+                    hikami_core::debugln!("current_instret {}", current_instret);
+                    hikami_core::debugln!("interrupt_instret {}", interrupt_instret);
+                    hikami_core::debugln!(
+                        "[Emulation] 37 + current_instret - 2 - interrupt_instret + 40: {}",
+                        37 // instructions before get interrupt_instret value
+                        + current_instret // current instret value
+                        - 2 // rdinstret t0, sd t0, 34*8(sp)
+                        - interrupt_instret // instret value when entered interrupt handler
+                        + 40 // remain instructions to exit
+                    );
+                }
+            }
+            */
+        }
         Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
         // Enum not found in `riscv` crate.
         Exception::Unknown => match HvException::from(scause::read().code()) {
