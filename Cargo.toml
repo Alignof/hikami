@@ -31,6 +31,9 @@ sbi-rt = "0.0.3"
 sbi-spec = { version = "0.0.8", features = ["legacy"] }
 spin = "0.9.8"
 
+[build-dependencies]
+walkdir = "2"
+
 [features]
 # debug log
 debug_log = ["hikami_core/debug_log"]
