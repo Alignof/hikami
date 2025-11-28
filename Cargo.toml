@@ -14,8 +14,9 @@ missing_docs = "warn"
 missing_crate_level_docs = "warn"
 
 [profile.release]
-panic = 'abort'
+# lto = "fat"
 codegen-units = 1
+# panic = "abort"
 
 [workspace]
 members = ["extension_manager", "hikami_core"]
@@ -48,7 +49,8 @@ enable_extension = ["hikami_zbs"]
 
 [dependencies]
 hikami_core = { path = "hikami_core" }
-hikami_zbs = { git = "https://github.com/Alignof/hikami_zbs", branch = "develop", optional = true }
+#hikami_zbs = { git = "https://github.com/Alignof/hikami_zbs", branch = "develop", optional = true }
+hikami_zbs = { path = "../../Research/hikami_zbs/", optional = true }
 extension_manager = { path = "extension_manager" }
 
 elf = { workspace = true }

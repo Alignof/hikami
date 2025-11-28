@@ -8,8 +8,8 @@
 
 /// Guest kernel image
 #[unsafe(link_section = ".guest_kernel")]
-pub static GUEST_KERNEL: [u8; include_bytes!("../../guest_image/qemu/vmlinux").len()] =
-    *include_bytes!("../../guest_image/qemu/vmlinux");
+pub static GUEST_KERNEL: [u8; include_bytes!("../../guest_image/qemu/emulation_eval").len()] =
+    *include_bytes!("../../guest_image/qemu/emulation_eval");
 
 /// Device tree blob for hart id 0 that is passed to guest
 #[unsafe(link_section = ".guest_dtb")]

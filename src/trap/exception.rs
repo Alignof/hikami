@@ -95,23 +95,23 @@ pub fn trap_exception(exception_cause: Exception) -> ! {
         use hikami_core::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
         let htval = htval::read().bits();
 
-        if !(0xc00_0000..0x1000_0000).contains(&(htval << 2)) {
-            let scause = scause::read().bits();
-            let stval = stval::read();
-            let sepc = riscv::register::sepc::read();
-            let htval_hpa = g_stage_trans_addr(GuestPhysicalAddress(htval << 2))
-                .ok()
-                .map(HostPhysicalAddress::raw);
-            let htinst = hikami_core::h_extension::csrs::htinst::read().bits();
+        // if !(0xc00_0000..0x1000_0000).contains(&(htval << 2)) {
+        //     let scause = scause::read().bits();
+        //     let stval = stval::read();
+        //     let sepc = riscv::register::sepc::read();
+        //     let htval_hpa = g_stage_trans_addr(GuestPhysicalAddress(htval << 2))
+        //         .ok()
+        //         .map(HostPhysicalAddress::raw);
+        //     let htinst = hikami_core::h_extension::csrs::htinst::read().bits();
 
-            hikami_core::debugln!("!!! EXCEPTION CAUGHT !!!");
-            hikami_core::debugln!("sepc:   {:#x}", sepc);
-            hikami_core::debugln!("scause: {:#x}", scause);
-            hikami_core::debugln!("stval:  {:#x}", stval);
-            hikami_core::debugln!("htval << 2:  {:#x}", htval << 2);
-            hikami_core::debugln!("htval(hpa):  {:#x?}", htval_hpa);
-            hikami_core::debugln!("htinst: {:#x}", htinst);
-        }
+        //     hikami_core::debugln!("!!! EXCEPTION CAUGHT !!!");
+        //     hikami_core::debugln!("sepc:   {:#x}", sepc);
+        //     hikami_core::debugln!("scause: {:#x}", scause);
+        //     hikami_core::debugln!("stval:  {:#x}", stval);
+        //     hikami_core::debugln!("htval << 2:  {:#x}", htval << 2);
+        //     hikami_core::debugln!("htval(hpa):  {:#x?}", htval_hpa);
+        //     hikami_core::debugln!("htinst: {:#x}", htinst);
+        // }
     }
 
     match exception_cause {
@@ -122,15 +122,23 @@ pub fn trap_exception(exception_cause: Exception) -> ! {
             use raki::Instruction;
             use riscv::register::sepc;
 
+            let mut current_instret: u64 = unsafe {
+                let mut current_instret: u64;
+                core::arch::asm!("
+                    rdinstret {current_instret}
+                    ",
+                    current_instret = out(reg) current_instret,
+                );
+
+                current_instret
+            };
+
             let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
             let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
             unsafe {
-                let mut current_instret: u64;
                 let interrupt_instret: u64;
 
                 core::arch::asm!("
-                    rdinstret {current_instret}
-
                     // set to stack top
                     mv t5, {stack_top}
                     addi t5, t5, -{HS_CONTEXT_SIZE}
@@ -138,7 +146,6 @@ pub fn trap_exception(exception_cause: Exception) -> ! {
                     ",
                     HS_CONTEXT_SIZE = const size_of::<ContextData>(),
                     stack_top = in(reg) stack_top.raw(),
-                    current_instret = out(reg) current_instret,
                     interrupt_instret = out(reg) interrupt_instret,
                 );
                 let fault_inst_value = stval::read();
@@ -154,9 +161,9 @@ pub fn trap_exception(exception_cause: Exception) -> ! {
                     );
                 });
                 if let raki::OpcodeKind::Zbs(_) = fault_inst.opc {
-                    hikami_core::debugln!("current_instret {}", current_instret);
-                    hikami_core::debugln!("interrupt_instret {}", interrupt_instret);
-                    hikami_core::debugln!(
+                    hikami_core::println!("current_instret {}", current_instret);
+                    hikami_core::println!("interrupt_instret {}", interrupt_instret);
+                    hikami_core::println!(
                         "[Emulation] 37 + current_instret - 2 - interrupt_instret + 40: {}",
                         37 // instructions before get interrupt_instret value
                         + current_instret // current instret value

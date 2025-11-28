@@ -18,9 +18,8 @@ pub fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             sie::clear_ssoft();
         },
         Interrupt::SupervisorTimer => unsafe {
-            // hikami_core::debugln!("[DEBUG] timer interrupt occured!!!!");
-            let hypervisor_data = HYPERVISOR_DATA.lock();
-            let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
+            // let hypervisor_data = HYPERVISOR_DATA.lock();
+            // let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
 
             hvip::set(VsInterruptKind::Timer);
             sie::clear_stimer();
@@ -60,7 +59,6 @@ pub fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             */
         },
         Interrupt::SupervisorExternal => unsafe {
-            // hikami_core::debugln!("[DEBUG] external interrupt occured!!!!");
             let mut hypervisor_data = HYPERVISOR_DATA.lock();
             let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
             let context_id = ContextId::new(hart_id, true);
