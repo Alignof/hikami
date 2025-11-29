@@ -67,12 +67,12 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     unsafe {
         sie::set_sext();
         sie::set_ssoft();
-        sie::set_stimer();
+        // sie::set_stimer();
     }
 
     // set hie = 0x444
     hie::set(VsInterruptKind::External);
-    hie::set(VsInterruptKind::Timer);
+    // hie::set(VsInterruptKind::Timer);
     hie::set(VsInterruptKind::Software);
 
     if cfg!(feature = "qemu") {
@@ -80,7 +80,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         use hikami_core::h_extension::csrs::hstateen0;
 
         // enable Sstc extention
-        henvcfg::set_stce();
+        // henvcfg::set_stce();
         henvcfg::set_cde();
         henvcfg::set_cbze();
         henvcfg::set_cbcfe();
@@ -110,7 +110,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     // specify delegation interrupt kinds.
     hideleg::write(
         VsInterruptKind::External as usize
-            | VsInterruptKind::Timer as usize
+          //   | VsInterruptKind::Timer as usize
             | VsInterruptKind::Software as usize,
     );
 

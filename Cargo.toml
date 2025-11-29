@@ -14,9 +14,9 @@ missing_docs = "warn"
 missing_crate_level_docs = "warn"
 
 [profile.release]
-# lto = "fat"
+lto = "fat"
 codegen-units = 1
-# panic = "abort"
+panic = "abort"
 
 [workspace]
 members = ["extension_manager", "hikami_core"]

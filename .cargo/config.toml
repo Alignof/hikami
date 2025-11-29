@@ -5,6 +5,7 @@ runner = """
 qemu-system-riscv64
 -cpu rv64,smstateen=true,zbs=false
 -icount shift=0
+-d in_asm,nochain -accel tcg,one-insn-per-tb=on -D qemu.log
 -machine virt
 -bios default
 -nographic
