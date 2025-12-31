@@ -13,22 +13,52 @@ use riscv::register::{sepc, stval};
 
 extension_manager::import_global_variables!();
 
+#[inline]
+fn decode_instruction(fault_inst_value: usize) -> Instruction {
+    let cached_inst = {
+        if let Some(hypervisor) = unsafe { HYPERVISOR_DATA.lock() }.get() {
+            hypervisor
+                .guest()
+                .instruction_cache
+                .get(&fault_inst_value)
+                .cloned()
+        } else {
+            None
+        }
+    };
+
+    if let Some(inst) = cached_inst {
+        inst
+    } else {
+        let inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
+            use hikami_core::memmap::GuestVirtualAddress;
+            let gva = GuestVirtualAddress(sepc::read());
+            let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
+            let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
+
+            panic!(
+                "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
+                sepc::read(), gpa.raw(), hpa.raw()
+            );
+        });
+
+        if let Some(hypervisor) = unsafe { HYPERVISOR_DATA.lock() }.get_mut() {
+            hypervisor
+                .guest_mut()
+                .instruction_cache
+                .insert(fault_inst_value, inst.clone());
+        }
+
+        inst
+    }
+}
+
 /// Trap `Illegal instruction` exception.
 #[inline]
 #[allow(clippy::similar_names)]
 pub fn illegal_instruction() {
     let fault_inst_value = stval::read();
-    let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        use hikami_core::memmap::GuestVirtualAddress;
-        let gva = GuestVirtualAddress(sepc::read());
-        let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
-        let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
-
-        panic!(
-            "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
-            sepc::read(), gpa.raw(), hpa.raw()
-        );
-    });
+    let fault_inst = decode_instruction(fault_inst_value);
 
     // emulate the instruction
     extension_manager::handle_illegal_inst!();
