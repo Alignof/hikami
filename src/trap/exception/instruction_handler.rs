@@ -13,22 +13,46 @@ use riscv::register::{sepc, stval};
 
 extension_manager::import_global_variables!();
 
+/// Decode instruction which caused the exception.
+#[inline]
+fn decode_instruction(fault_inst_value: usize) -> Instruction {
+    let mut hypervisor = unsafe { HYPERVISOR_DATA.lock() };
+    let hypervisor = hypervisor.get_mut().unwrap();
+    if let Some(cached_inst) = hypervisor
+        .guest()
+        .instruction_cache
+        .get(&fault_inst_value)
+        .copied()
+    {
+        return cached_inst;
+    }
+
+    let inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
+            use hikami_core::memmap::GuestVirtualAddress;
+            let gva = GuestVirtualAddress(sepc::read());
+            let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
+            let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
+
+            panic!(
+                "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
+                sepc::read(), gpa.raw(), hpa.raw()
+            );
+        });
+
+    hypervisor
+        .guest_mut()
+        .instruction_cache
+        .insert(fault_inst_value, inst);
+
+    inst
+}
+
 /// Trap `Illegal instruction` exception.
 #[inline]
 #[allow(clippy::similar_names)]
 pub fn illegal_instruction() {
     let fault_inst_value = stval::read();
-    let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        use hikami_core::memmap::GuestVirtualAddress;
-        let gva = GuestVirtualAddress(sepc::read());
-        let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
-        let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
-
-        panic!(
-            "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
-            sepc::read(), gpa.raw(), hpa.raw()
-        );
-    });
+    let fault_inst = decode_instruction(fault_inst_value);
 
     // emulate the instruction
     extension_manager::handle_illegal_inst!();
