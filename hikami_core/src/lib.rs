@@ -138,6 +138,17 @@ impl HypervisorData {
             .expect("guest data not found")
     }
 
+    /// Return current hart's guest as mutable.
+    ///
+    /// # Panics
+    /// It will be panic if current HART's guest data is empty.
+    #[must_use]
+    pub fn guest_mut(&mut self) -> &mut Guest {
+        self.guests[self.current_guest_hart]
+            .as_mut()
+            .expect("guest data not found")
+    }
+
     /// Create and register new guest.
     ///
     /// # Panics
