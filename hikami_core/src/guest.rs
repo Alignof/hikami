@@ -12,8 +12,10 @@ use crate::memmap::{
 };
 use context::{Context, ContextData};
 
+use alloc::collections::BTreeMap;
 use core::ops::Range;
 use elf::{ElfBytes, endian::AnyEndian};
+use raki::Instruction;
 
 /// Guest Information
 #[derive(Debug)]
@@ -33,6 +35,8 @@ pub struct Guest {
     memory_region: Range<GuestPhysicalAddress>,
     /// Guest context data
     pub context: Context,
+    /// Decoded instruction cache
+    pub instruction_cache: BTreeMap<usize, Instruction>,
 }
 
 impl Guest {
@@ -84,6 +88,7 @@ impl Guest {
             stack_top_addr,
             memory_region,
             context: Context::new(stack_top_addr - core::mem::size_of::<ContextData>()),
+            instruction_cache: BTreeMap::new(),
         }
     }
 
