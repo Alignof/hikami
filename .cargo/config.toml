@@ -3,9 +3,8 @@
 # -cpu rv64,smstateen=true -> -cpu rv64,smstateen=true,zbb=false
 runner = """
 qemu-system-riscv64
--cpu rv64,smstateen=true,zbs=false
+-cpu rv64,smstateen=true,zicfiss=false,zbs=false
 -icount shift=0
--d in_asm,nochain -accel tcg,one-insn-per-tb=on -D qemu.log
 -machine virt
 -bios default
 -nographic
@@ -36,6 +35,9 @@ qemu-system-riscv64
 
 # for debug
 # runner = "../../qemu/build/qemu-system-riscv64 -S -gdb tcp::1111 -d int,in_asm,cpu_reset,mmu,page,guest_errors -machine virt -bios none -nographic -m 2G -initrd vmlinux_debug -drive file=rootfs.img,format=raw,id=hd0,if=none -device virtio-blk-pci,drive=hd0,iommu_platform=true,disable-legacy=on -append root=/dev/vda,rw,console=ttyS0 -device riscv-iommu-pci -kernel"
+# -plugin file=/home/takana/Research/hikami_evaluation/libtrace_pc.so,trigger=0x83004500,stop=0x100000084 \
+# -d plugin \
+# -D qemu.log
 # memo: maintenance packet Qqemu.PhyMemMode:1
 
 rustflags = ["-C", "link-arg=-Tmemory.x", "-C", "target-feature=+h"]
