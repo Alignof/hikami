@@ -88,7 +88,32 @@ impl Guest {
             stack_top_addr,
             memory_region,
             context: Context::new(stack_top_addr - core::mem::size_of::<ContextData>()),
-            instruction_cache: BTreeMap::new(),
+            instruction_cache: BTreeMap::from([
+                (
+                    0x29de13b3,
+                    Instruction {
+                        opc: raki::OpcodeKind::Zbs(raki::ZbsOpcode::BSET),
+                        rd: Some(7),
+                        rs1: Some(28),
+                        rs2: Some(31),
+                        imm: None,
+                        inst_format: raki::InstFormat::RFormat,
+                        is_compressed: false,
+                    },
+                ),
+                (
+                    0x011fd073,
+                    Instruction {
+                        opc: raki::OpcodeKind::Zicsr(raki::ZicsrOpcode::CSRRWI),
+                        rd: Some(0),
+                        rs1: None,
+                        rs2: Some(0x11),
+                        imm: Some(31),
+                        inst_format: raki::InstFormat::RFormat,
+                        is_compressed: false,
+                    },
+                ),
+            ]),
         }
     }
 
