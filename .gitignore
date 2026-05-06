@@ -23,5 +23,7 @@ Cargo.lock
 vmlinux*
 rootfs.*
 initrd
+guest_image/megrez/*_eval
+guest_image/qemu/*_eval
 
 .envrc
