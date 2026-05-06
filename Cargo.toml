@@ -50,7 +50,7 @@ enable_extension = ["hikami_zbs"]
 [dependencies]
 hikami_core = { path = "hikami_core" }
 #hikami_zbs = { git = "https://github.com/Alignof/hikami_zbs", branch = "develop", optional = true }
-hikami_zbs = { path = "../../Research/hikami_zbs/", optional = true }
+hikami_zbs = { path = "../hikami_zbs/", optional = true }
 extension_manager = { path = "extension_manager" }
 
 elf = { workspace = true }
