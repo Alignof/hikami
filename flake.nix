@@ -31,6 +31,7 @@
           nativeBuildInputs = [
             toolchain
             pkgs.dtc
+            pkgs.tokei
           ];
         };
       }
