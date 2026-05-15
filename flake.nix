@@ -32,6 +32,7 @@
             toolchain
             pkgs.dtc
             pkgs.tokei
+            pkgs.qemu
           ];
         };
       }
