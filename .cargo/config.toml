@@ -8,7 +8,7 @@ qemu-system-riscv64
 -machine virt
 -bios default
 -nographic
--smp 4
+-smp 1
 -m 4G
 -drive file=rootfs.ext2,format=raw,id=hd0,if=none
 -device ich9-ahci,id=ahci -device ide-hd,drive=hd0,bus=ahci.0 
