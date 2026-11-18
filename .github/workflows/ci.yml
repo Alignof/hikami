@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - develop
+
+jobs:
+  lint:
+    name: Format & Clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - uses: cachix/cachix-action@v15
+        with:
+          name: hikami
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      # Guest images are embedded with include_bytes! but are not tracked.
+      # Empty files are enough for lint; device trees are compiled from the
+      # tracked .dts files by build.rs.
+      - name: Create dummy guest images
+        run: touch guest_image/initrd guest_image/qemu/vmlinux guest_image/megrez/vmlinux
+
+      - name: Format check
+        run: nix develop .#ci -c cargo fmt --all -- --check
+
+      - name: Clippy (Megrez)
+        run: nix develop .#ci -c cargo clippy --workspace -- -D warnings
+
+      - name: Clippy (QEMU)
+        run: nix develop .#ci -c cargo clippy --workspace --features qemu -- -D warnings
+
+      - name: Clippy (QEMU, identity map)
+        run: nix develop .#ci -c cargo clippy --workspace --features qemu,identity_map -- -D warnings
+
+      - name: Clippy (QEMU, debug log)
+        run: nix develop .#ci -c cargo clippy --workspace --features qemu,debug_log -- -D warnings
+
+      - name: Clippy (QEMU, without extensions)
+        run: nix develop .#ci -c cargo clippy --workspace --no-default-features --features qemu -- -D warnings
+
+      - name: Doc check (warnings as errors)
+        run: nix develop .#ci -c cargo doc --workspace --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
