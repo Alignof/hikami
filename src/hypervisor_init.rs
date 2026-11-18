@@ -178,7 +178,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         sepc::write(guest_entry_point.raw());
 
         // set trap vector
-        assert!(hstrap_vector as *const fn() as usize % 4 == 0);
+        assert!((hstrap_vector as *const fn() as usize).is_multiple_of(4));
         stvec::write(
             hstrap_vector as *const fn() as usize,
             stvec::TrapMode::Direct,

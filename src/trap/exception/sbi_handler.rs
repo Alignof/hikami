@@ -72,7 +72,7 @@ pub fn sbi_time_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
 
             sbi_ret
         }
-        _ => panic!("unsupported fid: {}", func_id),
+        _ => panic!("unsupported fid: {func_id}"),
     }
 }
 
@@ -137,7 +137,7 @@ pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
         // `sbi_rt::pmu_snapshot_set_shmem` is unimplemented.
         // thus it is called by ecall instruction directly.
         SNAPSHOT_SET_SHMEM => sbi_call(EID_PMU, SNAPSHOT_SET_SHMEM, args),
-        _ => panic!("unsupported fid: {}", func_id),
+        _ => panic!("unsupported fid: {func_id}"),
     }
 }
 
@@ -168,7 +168,7 @@ pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
             args[3] as usize,
             args[4] as usize,
         ),
-        _ => panic!("unsupported fid: {}", func_id),
+        _ => panic!("unsupported fid: {func_id}"),
     }
 }
 

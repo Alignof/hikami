@@ -197,8 +197,8 @@ impl PciAddressSpace {
             .unwrap()
             .value;
 
-        assert!(ranges.len() % 4 == 0);
-        assert!((ranges.len() / 4) % 7 == 0);
+        assert!(ranges.len().is_multiple_of(4));
+        assert!((ranges.len() / 4).is_multiple_of(7));
 
         let get_u32 = |range: &[u8], four_bytes_index: usize| {
             let index = four_bytes_index * 4;
@@ -343,12 +343,12 @@ impl MmioDevice for Pci {
         }
 
         // Initialize IOMMU
-        if cfg!(not(feature = "identity_map")) {
-            if let Some(ref iommu) = pci_devices.iommu {
-                iommu.init(HostPhysicalAddress(
-                    register_map_regions[0].starting_address as usize,
-                ));
-            }
+        if cfg!(not(feature = "identity_map"))
+            && let Some(ref iommu) = pci_devices.iommu
+        {
+            iommu.init(HostPhysicalAddress(
+                register_map_regions[0].starting_address as usize,
+            ));
         }
 
         Some(Pci {

@@ -214,7 +214,7 @@ pub trait MmioDevice {
             .iter()
             .cloned()
             .map(|mut region| {
-                if region.starting_address as usize % PAGE_SIZE == 0 {
+                if (region.starting_address as usize).is_multiple_of(PAGE_SIZE) {
                     MemoryMap::from(region)
                 } else {
                     region.starting_address =
@@ -354,10 +354,10 @@ impl Devices {
         if let Some(soc) = device_tree.find_node("/soc") {
             for node in soc.children() {
                 // skip if it marked as disabled.
-                if let Some(status) = node.property("status") {
-                    if status.as_str() == Some("disabled") {
-                        continue;
-                    }
+                if let Some(status) = node.property("status")
+                    && status.as_str() == Some("disabled")
+                {
+                    continue;
                 }
 
                 // skip if it has already mapped.
