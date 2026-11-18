@@ -19,7 +19,7 @@ jobs:
       - uses: cachix/cachix-action@v15
         with:
           name: hikami
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
       # Guest images are embedded with include_bytes! but are not tracked.
       # Empty files are enough for lint; device trees are compiled from the
@@ -28,24 +28,44 @@ jobs:
         run: touch guest_image/initrd guest_image/qemu/vmlinux guest_image/megrez/vmlinux
 
       - name: Format check
-        run: nix develop .#ci -c cargo fmt --all -- --check
+        run: nix develop .#lint -c cargo fmt --all -- --check
 
       - name: Clippy (Megrez)
-        run: nix develop .#ci -c cargo clippy --workspace -- -D warnings
+        run: nix develop .#lint -c cargo clippy --workspace -- -D warnings
 
       - name: Clippy (QEMU)
-        run: nix develop .#ci -c cargo clippy --workspace --features qemu -- -D warnings
+        run: nix develop .#lint -c cargo clippy --workspace --features qemu -- -D warnings
 
       - name: Clippy (QEMU, identity map)
-        run: nix develop .#ci -c cargo clippy --workspace --features qemu,identity_map -- -D warnings
+        run: nix develop .#lint -c cargo clippy --workspace --features qemu,identity_map -- -D warnings
 
       - name: Clippy (QEMU, debug log)
-        run: nix develop .#ci -c cargo clippy --workspace --features qemu,debug_log -- -D warnings
+        run: nix develop .#lint -c cargo clippy --workspace --features qemu,debug_log -- -D warnings
 
       - name: Clippy (QEMU, without extensions)
-        run: nix develop .#ci -c cargo clippy --workspace --no-default-features --features qemu -- -D warnings
+        run: nix develop .#lint -c cargo clippy --workspace --no-default-features --features qemu -- -D warnings
 
       - name: Doc check (warnings as errors)
-        run: nix develop .#ci -c cargo doc --workspace --no-deps
+        run: nix develop .#lint -c cargo doc --workspace --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
+
+  test:
+    name: Boot Linux on QEMU
+    runs-on: ubuntu-latest
+    # The first run builds the guest kernel; later runs fetch it from Cachix.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - uses: cachix/cachix-action@v15
+        with:
+          name: hikami
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      # Builds the guest Linux and rootfs with Nix, builds hikami and boots it
+      # on QEMU. Passes when the guest powers off after printing a marker.
+      - name: Boot Linux on hikami
+        run: nix develop .#test -c cargo make test
