@@ -5,6 +5,7 @@
 
 use super::hs_forward_exception;
 use hikami_core::HYPERVISOR_DATA;
+#[cfg(feature = "enable_extension")]
 use hikami_core::emulate_extension::EmulateExtension;
 
 use core::arch::asm;
