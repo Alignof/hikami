@@ -1,10 +1,12 @@
 //! UART: Universal Asynchronous Receiver-Transmitter
 
-use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use super::MmioDevice;
+use crate::memmap::HostPhysicalAddress;
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::cell::OnceCell;
-use fdt::Fdt;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 use spin::Mutex;
 
 mod register {
@@ -20,53 +22,45 @@ static UART_ADDR: Mutex<OnceCell<HostPhysicalAddress>> = Mutex::new(OnceCell::ne
 /// UART: Universal asynchronous receiver-transmitter
 #[derive(Debug)]
 pub struct Uart {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Device tree name
+    name: String,
+    /// Memory maps for memory mapped register.
+    register_map_regions: Vec<MemoryRegion>,
 }
 
 impl Uart {
     /// Return address of LSR register.
     #[must_use]
     pub fn lsr_addr(&self) -> HostPhysicalAddress {
-        self.base_addr + register::LSR_OFFSET
+        HostPhysicalAddress(self.register_map_regions[0].starting_address as usize)
+            + register::LSR_OFFSET
     }
 }
 
 impl MmioDevice for Uart {
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .next()
-            .unwrap();
+    fn try_new(
+        _root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let uart_node = device_tree.find_compatible(compatibles).unwrap_or_else(|| {
+            device_tree
+                .find_node("/soc/serial")
+                .expect("uart is not found in fdt")
+        });
+        let register_map_regions: Vec<MemoryRegion> = uart_node.reg().unwrap().collect();
 
         UART_ADDR
             .lock()
-            .get_or_init(|| HostPhysicalAddress(region.starting_address as usize));
+            .get_or_init(|| HostPhysicalAddress(register_map_regions[0].starting_address as usize));
 
         Some(Uart {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            name: uart_node.name.to_string(),
+            register_map_regions,
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn name(&self) -> &str {
+        &self.name
     }
 }
