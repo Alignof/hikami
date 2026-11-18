@@ -43,7 +43,7 @@ qemu = []
 # default on
 default = ["enable_extension"]
 # for `extension_manager`
-enable_extension = ["hikami_zbs"]
+enable_extension = ["hikami_zbs", "extension_manager/enable_extension"]
 
 [dependencies]
 hikami_core = { path = "hikami_core" }

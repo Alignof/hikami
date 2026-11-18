@@ -3,6 +3,10 @@ name = "extension_manager"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+# Set by the root crate's `enable_extension` feature.
+enable_extension = []
+
 [lib]
 proc-macro = true
 

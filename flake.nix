@@ -9,11 +9,11 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      utils,
-      fenix,
+    { self
+    , nixpkgs
+    , utils
+    , fenix
+    ,
     }:
     utils.lib.eachDefaultSystem (
       system:
@@ -23,17 +23,40 @@
           sha256 = "sha256-MFHoWVcPZKjFrLnQnodCXbUsfZcofGfo9tV9fTTvklg=";
         };
         pkgs = nixpkgs.legacyPackages.${system};
+        pkgsRiscv = pkgs.pkgsCross.riscv64;
       in
       {
         formatter = pkgs.nixpkgs-fmt;
-        devShells.default = pkgs.stdenv.mkDerivation {
-          name = "rust environment";
+
+        # Guest images for running hikami on QEMU
+        packages = {
+          guest-linux = pkgsRiscv.callPackage ./nix/guest/linux.nix { };
+          guest-rootfs = pkgs.callPackage ./nix/guest/rootfs.nix { inherit (pkgsRiscv) busybox; };
+          guest-rootfs-test = pkgs.callPackage ./nix/guest/rootfs.nix {
+            inherit (pkgsRiscv) busybox;
+            test = true;
+          };
+        };
+
+        # Build hikami and run lint
+        devShells.lint = pkgs.mkShell {
+          name = "hikami-lint";
           nativeBuildInputs = [
             toolchain
             pkgs.dtc
-            pkgs.tokei
-            pkgs.qemu
+            pkgs.cargo-make
           ];
+        };
+        # Additionally run hikami on QEMU
+        devShells.test = pkgs.mkShell {
+          name = "hikami-test";
+          inputsFrom = [ self.devShells.${system}.lint ];
+          nativeBuildInputs = [ pkgs.qemu ];
+        };
+        devShells.default = pkgs.mkShell {
+          name = "rust environment";
+          inputsFrom = [ self.devShells.${system}.test ];
+          nativeBuildInputs = [ pkgs.tokei ];
         };
       }
     );

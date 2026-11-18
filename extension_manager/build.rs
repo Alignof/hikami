@@ -44,11 +44,18 @@ fn main() {
         .map(|deps| {
             deps.iter()
                 .filter_map(|dep| dep.as_str())
+                .filter(|dep| !dep.contains('/'))
                 .map(|dep| dep.replace('-', "_")) // replace `-` with `_`
                 .collect()
         })
         .unwrap_or_default();
-    let crate_names = feature_dependencies.into_iter().collect::<Vec<_>>();
+
+    // Extension crates are only linked when the root crate enables `enable_extension`.
+    let crate_names = if env::var_os("CARGO_FEATURE_ENABLE_EXTENSION").is_some() {
+        feature_dependencies.into_iter().collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
 
     // output crates list to `OUT_DIR/dependencies.rs`
     let out_dir = env::var("OUT_DIR").unwrap();
