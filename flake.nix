@@ -27,9 +27,6 @@
       in
       {
         formatter = pkgs.nixpkgs-fmt;
-        # Tools required to build hikami (used as is in CI)
-        devShells.ci = pkgs.mkShell {
-          name = "hikami-ci";
 
         # Guest images for running hikami on QEMU
         packages = {
@@ -41,19 +38,25 @@
           };
         };
 
+        # Build hikami and run lint
+        devShells.lint = pkgs.mkShell {
+          name = "hikami-lint";
           nativeBuildInputs = [
             toolchain
             pkgs.dtc
             pkgs.cargo-make
           ];
         };
+        # Additionally run hikami on QEMU
+        devShells.test = pkgs.mkShell {
+          name = "hikami-test";
+          inputsFrom = [ self.devShells.${system}.lint ];
+          nativeBuildInputs = [ pkgs.qemu ];
+        };
         devShells.default = pkgs.mkShell {
           name = "rust environment";
-          inputsFrom = [ self.devShells.${system}.ci ];
-          nativeBuildInputs = [
-            pkgs.tokei
-            pkgs.qemu
-          ];
+          inputsFrom = [ self.devShells.${system}.test ];
+          nativeBuildInputs = [ pkgs.tokei ];
         };
       }
     );
