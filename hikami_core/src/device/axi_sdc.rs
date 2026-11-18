@@ -4,27 +4,35 @@
 
 mod register;
 
-use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::page_table::{constants::PAGE_SIZE, g_stage_trans_addr};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
+use super::{DeviceEmulateError, DmaHostBuffer, EmulateDevice, MmioDevice};
+use crate::memmap::page_table::{self, constants::PAGE_SIZE, g_stage_trans_addr};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 use register::SdcRegisters;
 
-use fdt::Fdt;
+use alloc::string::{String, ToString};
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 #[allow(clippy::doc_markdown)]
 /// MMC: Multi Media Card
 #[derive(Debug)]
 pub struct Mmc {
-    /// Base address of memory map.
-    base_addr: HostPhysicalAddress,
-    /// Memory map size.
-    size: usize,
+    /// Device tree name
+    name: String,
+    /// Memory map for memory mapped register.
+    register_map_region: MemoryRegion,
     /// DMA address.
     dma_addr: GuestPhysicalAddress,
     /// DMA alternative buffer
     dma_alt_buffer: DmaHostBuffer,
     /// Is the mmc command being executed now.
     is_transferring: bool,
+}
+
+impl Mmc {
+    /// Return base address of memory mapped register region.
+    fn base_addr(&self) -> HostPhysicalAddress {
+        HostPhysicalAddress(self.register_map_region.starting_address as usize)
+    }
 }
 
 impl EmulateDevice for Mmc {
@@ -41,14 +49,14 @@ impl EmulateDevice for Mmc {
         dst_addr: HostPhysicalAddress,
         value: u32,
     ) -> Result<(), DeviceEmulateError> {
-        let offset = dst_addr.raw() - self.base_addr.raw();
+        let offset = dst_addr.raw() - self.base_addr().raw();
         match offset {
             // Argument
             //
             // Start transfer when write command to `Argument`
             // See: https://github.com/eugene-tarassov/vivado-risc-v/blob/d72a439f786b455cc321e2e615d7954a75f9ebde/sdc/axi_sdc_controller.v#L392
             0 => {
-                let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
+                let registers_ptr = self.base_addr().raw() as *mut SdcRegisters;
                 let command = unsafe { ((*registers_ptr).command) as usize };
                 let dma_gpa = GuestPhysicalAddress(unsafe { (*registers_ptr).dma_addres } as usize);
 
@@ -86,7 +94,7 @@ impl EmulateDevice for Mmc {
             60 => {
                 // end transfer
                 if value == 0 && self.is_transferring {
-                    let registers_ptr = self.base_addr.raw() as *mut SdcRegisters;
+                    let registers_ptr = self.base_addr().raw() as *mut SdcRegisters;
                     // restore address
                     unsafe {
                         (*registers_ptr).dma_addres = self.dma_addr.raw() as u64;
@@ -116,36 +124,48 @@ impl EmulateDevice for Mmc {
 }
 
 impl MmioDevice for Mmc {
-    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
-        let region = device_tree
-            .find_compatible(compatibles)?
-            .reg()
-            .unwrap()
-            .next()?;
+    fn try_new(
+        _root_page_table_addr: HostPhysicalAddress,
+        device_tree: &Fdt,
+        compatibles: &[&str],
+    ) -> Option<Self> {
+        let mmc_node = device_tree.find_compatible(compatibles)?;
+        let register_map_region = mmc_node.reg().unwrap().next().unwrap();
+
+        if cfg!(not(feature = "identity_map")) {
+            // TODO: unmap
+            Self::invalidate_page_table(&[register_map_region], mmc_node.name);
+        }
 
         Some(Mmc {
-            base_addr: HostPhysicalAddress(region.starting_address as usize),
-            size: region.size.unwrap(),
+            name: mmc_node.name.to_string(),
+            register_map_region,
             dma_addr: GuestPhysicalAddress(0),
             dma_alt_buffer: DmaHostBuffer::new(PAGE_SIZE),
             is_transferring: false,
         })
     }
 
-    fn size(&self) -> usize {
-        self.size
+    /// Invalidate page table
+    fn invalidate_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
+        for map in memory_regions {
+            // invalidate memory map to emulate plic registers.
+            let invalidate_range = GuestPhysicalAddress(map.starting_address as usize)
+                ..GuestPhysicalAddress(map.starting_address as usize + map.size.unwrap());
+
+            crate::println!(
+                "[Device Unmap] {}: {:#x}..{:#x}",
+                node_name,
+                invalidate_range.start.raw(),
+                invalidate_range.end.raw()
+            );
+
+            page_table::sv39x4::invalidate_address_range(invalidate_range)
+                .expect("failed to invalidate plic registers range");
+        }
     }
 
-    fn paddr(&self) -> HostPhysicalAddress {
-        self.base_addr
-    }
-
-    fn memmap(&self) -> MemoryMap {
-        let vaddr = GuestPhysicalAddress(self.paddr().raw());
-        MemoryMap::new(
-            vaddr..vaddr + self.size(),
-            self.paddr()..self.paddr() + self.size(),
-            &PTE_FLAGS_FOR_DEVICE,
-        )
+    fn name(&self) -> &str {
+        &self.name
     }
 }

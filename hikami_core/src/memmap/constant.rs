@@ -24,9 +24,10 @@ pub mod guest_memory {
     /// Dram base address in guest memory
     ///
     /// It starts from as high as `DRAM_SIZE_PER_GUEST` to distinguish from HPA.
-    pub const DRAM_BASE: GuestPhysicalAddress = GuestPhysicalAddress(super::DRAM_BASE);
+    pub const DRAM_BASE: GuestPhysicalAddress =
+        GuestPhysicalAddress(super::DRAM_BASE + 0x8000_0000);
     /// Dram memory space per HART.
-    pub const DRAM_SIZE_PER_GUEST: usize = 256 * 1024 * 1024; // 256 MB = 0x1000_0000
+    pub const DRAM_SIZE_PER_GUEST: usize = 2 * 1024 * 1024 * 1024; // 2 GB = 0x8000_0000
     /// Guest DTB space size
-    pub const GUEST_DTB_REGION_SIZE: usize = 0x2000;
+    pub const GUEST_DTB_REGION_SIZE: usize = 0x26000;
 }

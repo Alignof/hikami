@@ -2,6 +2,7 @@
 
 pub mod sv39;
 pub mod sv39x4;
+pub mod sv48;
 pub mod sv57;
 
 use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
@@ -24,6 +25,8 @@ pub enum TransAddrError {
     InvalidEntry,
     /// Cannot reach leaf entry.
     NoLeafEntry,
+    /// Unsupported page size.
+    UnsupportedPageSize,
 }
 
 /// Page table level.
@@ -92,6 +95,12 @@ impl PageTableEntry {
     /// Constructor for `PageTableEntry`.
     fn new(ppn: u64, flags: u8) -> Self {
         Self((ppn << 10) | u64::from(flags))
+    }
+
+    /// Set PTE flag.
+    fn set_flags(&mut self, flags: u8) {
+        let ppn_mask = 0xFFF_FFFF_FFFF_FC00; // 10 bit
+        self.0 = (self.0 & ppn_mask) | u64::from(flags);
     }
 
     /// Is leaf page table entry
@@ -189,10 +198,11 @@ pub fn vs_stage_trans_addr(
 
     let vsatp = vsatp::read();
     match vsatp.mode() {
-        vsatp::Mode::Bare => unreachable!("no trans addr"),
+        vsatp::Mode::Bare => Ok(GuestPhysicalAddress(gva.0)),
         vsatp::Mode::Sv39 => sv39::trans_addr(gva),
+        vsatp::Mode::Sv48 => sv48::trans_addr(gva),
         vsatp::Mode::Sv57 => sv57::trans_addr(gva),
-        vsatp::Mode::Sv48 | vsatp::Mode::Sv64 => unimplemented!(),
+        vsatp::Mode::Sv64 => unimplemented!(),
     }
 }
 
@@ -207,7 +217,7 @@ pub fn g_stage_trans_addr(
 
     let hgatp = hgatp::read();
     match hgatp.mode() {
-        hgatp::Mode::Bare => unreachable!("no trans addr"),
+        hgatp::Mode::Bare => Ok(HostPhysicalAddress(gpa.raw())),
         hgatp::Mode::Sv39x4 => sv39x4::trans_addr(gpa),
         hgatp::Mode::Sv48x4 | hgatp::Mode::Sv57x4 => unimplemented!(),
     }
