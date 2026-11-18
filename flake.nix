@@ -26,11 +26,18 @@
       in
       {
         formatter = pkgs.nixpkgs-fmt;
-        devShells.default = pkgs.stdenv.mkDerivation {
-          name = "rust environment";
+        # Tools required to build hikami (used as is in CI)
+        devShells.ci = pkgs.mkShell {
+          name = "hikami-ci";
           nativeBuildInputs = [
             toolchain
             pkgs.dtc
+          ];
+        };
+        devShells.default = pkgs.mkShell {
+          name = "rust environment";
+          inputsFrom = [ self.devShells.${system}.ci ];
+          nativeBuildInputs = [
             pkgs.tokei
             pkgs.qemu
           ];
