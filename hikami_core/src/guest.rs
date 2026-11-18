@@ -308,8 +308,7 @@ impl Guest {
 
         assert_eq!(
             entry_segment.p_type, PT_LOAD,
-            "The segment containing the entry point {:#x} must be of PT_LOAD type",
-            entry_point
+            "The segment containing the entry point {entry_point:#x} must be of PT_LOAD type",
         );
 
         let base_paddr = entry_segment.p_paddr;

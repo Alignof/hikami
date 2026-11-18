@@ -2,7 +2,7 @@
 
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use walkdir::WalkDir;
 
@@ -22,7 +22,7 @@ fn main() {
         for entry in WalkDir::new(&target_path)
             .into_iter()
             .filter_map(Result::ok)
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "dts"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "dts"))
         {
             let dts_file = entry.path();
             let dtb_file = dts_file.with_extension("dtb");
