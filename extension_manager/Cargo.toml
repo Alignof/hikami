@@ -10,6 +10,6 @@ proc-macro = true
 serde_json = "1.0.138"
 
 [dependencies]
-quote = "1.0.38"
-syn = "2.0.98"
-proc-macro2 = "1.0.93"
+quote = "1.0.47"
+syn = "3.0.10"
+proc-macro2 = "1.0.107"
