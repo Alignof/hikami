@@ -5,8 +5,6 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() {
-    println!("cargo:rerun-if-changed=Cargo.toml");
-
     // exec `cargo metadata` and get a json.
     let output = Command::new("cargo")
         .args(["metadata", "--format-version=1", "--no-deps"])
@@ -20,23 +18,22 @@ fn main() {
 
     // retrieve `workspace_root`.
     let workspace_root = json.get("workspace_root").and_then(|v| v.as_str()).unwrap();
-    let root_package_name = Path::new(workspace_root)
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap();
 
     // extract `features` in `macro_crate`.
+    let root_manifest = Path::new(workspace_root).join("Cargo.toml");
+    println!("cargo:rerun-if-changed={}", root_manifest.display());
+
     let root_crate = json
         .get("packages")
         .and_then(|v| v.as_array())
         .and_then(|packages| {
-            packages
-                .iter()
-                .find(|pkg| pkg.get("name").and_then(|n| n.as_str()) == Some(root_package_name))
+            packages.iter().find(|pkg| {
+                pkg.get("manifest_path")
+                    .and_then(|p| p.as_str())
+                    .is_some_and(|p| Path::new(p) == root_manifest)
+            })
         })
         .expect("Failed to find root_crate package");
-
-    dbg!(&root_crate);
 
     // collect crates reguardless of `enable_extension`.
     let feature_dependencies: HashSet<String> = root_crate
