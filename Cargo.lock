@@ -52,7 +52,6 @@ checksum = "784a4df722dc6267a04af36895398f59d21d07dce47232adf31ec0ff2fa45e67"
 name = "hikami"
 version = "3.0.0"
 dependencies = [
- "elf",
  "extension_manager",
  "fdt",
  "hikami_core",
@@ -74,7 +73,6 @@ dependencies = [
  "raki",
  "riscv",
  "sbi-rt",
- "sbi-spec",
  "spin 0.12.3",
 ]
 

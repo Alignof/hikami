@@ -15,5 +15,4 @@ fdt = { workspace = true }
 raki = { workspace = true }
 riscv = { workspace = true }
 sbi-rt = { workspace = true }
-sbi-spec = { workspace = true }
 spin = { workspace = true }
