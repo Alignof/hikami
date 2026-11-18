@@ -6,7 +6,7 @@ use hikami_core::h_extension::csrs::{VsInterruptKind, hvip};
 
 use riscv::register::sie;
 use sbi_rt::SbiRet;
-use sbi_rt::{ConfigFlags, StartFlags, StopFlags};
+use sbi_rt::{ConfigFlags, CounterMask, StartFlags, StopFlags};
 
 /// SBI re-ecall
 ///
@@ -117,21 +117,20 @@ pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
         },
         COUNTER_GET_INFO => sbi_rt::pmu_counter_get_info(args[0] as usize),
         COUNTER_CONFIG_MATCHING => sbi_rt::pmu_counter_config_matching(
-            args[0] as usize,
-            args[1] as usize,
+            CounterMask::from_mask_base(args[1] as usize, args[0] as usize),
             PmuFlag::new(args[2]),
             args[3] as usize,
             args[4],
         ),
         COUNTER_START => sbi_rt::pmu_counter_start(
-            args[0] as usize,
-            args[1] as usize,
+            CounterMask::from_mask_base(args[1] as usize, args[0] as usize),
             PmuFlag::new(args[2]),
             args[3],
         ),
-        COUNTER_STOP => {
-            sbi_rt::pmu_counter_stop(args[0] as usize, args[1] as usize, PmuFlag::new(args[2]))
-        }
+        COUNTER_STOP => sbi_rt::pmu_counter_stop(
+            CounterMask::from_mask_base(args[1] as usize, args[0] as usize),
+            PmuFlag::new(args[2]),
+        ),
         COUNTER_FW_READ => sbi_rt::pmu_counter_fw_read(args[0] as usize),
         COUNTER_FW_READ_HI => sbi_rt::pmu_counter_fw_read_hi(args[0] as usize),
         // `sbi_rt::pmu_snapshot_set_shmem` is unimplemented.
@@ -144,7 +143,7 @@ pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
 /// SBI ecall handler for RFENCE Extension (EID: #0x52464E43)
 #[allow(clippy::module_name_repetitions, clippy::cast_possible_truncation)]
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
-    use rustsbi::HartMask;
+    use sbi_rt::HartMask;
     use sbi_spec::rfnc::{REMOTE_FENCE_I, REMOTE_SFENCE_VMA, REMOTE_SFENCE_VMA_ASID};
     let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     let current_hart_id = hypervisor_data.get().unwrap().guest().hart_id();
