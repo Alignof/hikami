@@ -9,11 +9,11 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      utils,
-      fenix,
+    { self
+    , nixpkgs
+    , utils
+    , fenix
+    ,
     }:
     utils.lib.eachDefaultSystem (
       system:
@@ -23,15 +23,28 @@
           sha256 = "sha256-MFHoWVcPZKjFrLnQnodCXbUsfZcofGfo9tV9fTTvklg=";
         };
         pkgs = nixpkgs.legacyPackages.${system};
+        pkgsRiscv = pkgs.pkgsCross.riscv64;
       in
       {
         formatter = pkgs.nixpkgs-fmt;
         # Tools required to build hikami (used as is in CI)
         devShells.ci = pkgs.mkShell {
           name = "hikami-ci";
+
+        # Guest images for running hikami on QEMU
+        packages = {
+          guest-linux = pkgsRiscv.callPackage ./nix/guest/linux.nix { };
+          guest-rootfs = pkgs.callPackage ./nix/guest/rootfs.nix { inherit (pkgsRiscv) busybox; };
+          guest-rootfs-test = pkgs.callPackage ./nix/guest/rootfs.nix {
+            inherit (pkgsRiscv) busybox;
+            test = true;
+          };
+        };
+
           nativeBuildInputs = [
             toolchain
             pkgs.dtc
+            pkgs.cargo-make
           ];
         };
         devShells.default = pkgs.mkShell {
