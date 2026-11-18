@@ -120,7 +120,7 @@ impl MemoryMap {
         Self {
             virt,
             phys,
-            flags: flags.iter().fold(0, |pte_f, f| (pte_f | *f as u8)),
+            flags: flags.iter().fold(0, |pte_f, f| pte_f | *f as u8),
         }
     }
     /// Return flags as raw u8.

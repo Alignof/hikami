@@ -13,10 +13,8 @@ use hikami_core::h_extension::{
 };
 
 use core::arch::asm;
-use riscv::register::{
-    scause::{self, Exception},
-    stval,
-};
+use riscv::interrupt::{ExceptionNumber, supervisor::Exception};
+use riscv::register::{scause, stval};
 use sbi_handler::sbi_call;
 use sbi_handler::{
     sbi_base_handler, sbi_fwft_handler, sbi_pmu_handler, sbi_rfnc_handler, sbi_time_handler,
@@ -88,7 +86,7 @@ fn update_sepc_by_inst_type(is_compressed: bool, context: &mut guest::context::C
 
 /// Trap handler for exception
 #[allow(clippy::cast_possible_truncation, clippy::module_name_repetitions)]
-pub fn trap_exception(exception_cause: Exception) -> ! {
+pub fn trap_exception(exception_code: usize) -> ! {
     #[allow(unused_variables)]
     if cfg!(feature = "debug_log") && scause::read().bits() != 0xa {
         use hikami_core::memmap::page_table::g_stage_trans_addr;
@@ -114,11 +112,12 @@ pub fn trap_exception(exception_cause: Exception) -> ! {
         }
     }
 
-    match exception_cause {
-        Exception::IllegalInstruction => instruction_handler::illegal_instruction(),
-        Exception::SupervisorEnvCall => panic!("SupervisorEnvCall should be handled by M-mode"),
+    match Exception::from_number(exception_code) {
+        Ok(Exception::IllegalInstruction) => instruction_handler::illegal_instruction(),
+        Ok(Exception::SupervisorEnvCall) => panic!("SupervisorEnvCall should be handled by M-mode"),
+        Ok(_) => hs_forward_exception(),
         // Enum not found in `riscv` crate.
-        Exception::Unknown => match HvException::from(scause::read().code()) {
+        Err(err_exp) => match HvException::from(err_exp) {
             HvException::EcallFromVsMode => {
                 let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
                 sbi_vs_mode_handler(&mut context);
@@ -135,7 +134,6 @@ pub fn trap_exception(exception_cause: Exception) -> ! {
             HvException::StoreAmoGuestPageFault => page_fault_handler::store_guest_page_fault(),
             HvException::VirtualInstruction => instruction_handler::virtual_instruction(),
         },
-        _ => hs_forward_exception(),
     }
 
     unsafe {

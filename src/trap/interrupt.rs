@@ -5,22 +5,22 @@ use hikami_core::HYPERVISOR_DATA;
 use hikami_core::device::plic::ContextId;
 use hikami_core::h_extension::csrs::{VsInterruptKind, hvip};
 
-use riscv::register::scause::Interrupt;
+use riscv::interrupt::{InterruptNumber, supervisor::Interrupt};
 use riscv::register::sie;
 
 /// Trap handler for Interrupt
 #[allow(clippy::module_name_repetitions)]
-pub fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
-    match interrupt_cause {
-        Interrupt::SupervisorSoft => unsafe {
+pub fn trap_interrupt(interrupt_code: usize) -> ! {
+    match Interrupt::from_number(interrupt_code) {
+        Ok(Interrupt::SupervisorSoft) => unsafe {
             hvip::set(VsInterruptKind::Software);
             sie::clear_ssoft();
         },
-        Interrupt::SupervisorTimer => unsafe {
+        Ok(Interrupt::SupervisorTimer) => unsafe {
             hvip::set(VsInterruptKind::Timer);
             sie::clear_stimer();
         },
-        Interrupt::SupervisorExternal => unsafe {
+        Ok(Interrupt::SupervisorExternal) => unsafe {
             let mut hypervisor_data = HYPERVISOR_DATA.lock();
             let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
             let context_id = ContextId::new(hart_id, true);
@@ -36,7 +36,7 @@ pub fn trap_interrupt(interrupt_cause: Interrupt) -> ! {
             hvip::set(VsInterruptKind::External);
             sie::clear_sext();
         },
-        Interrupt::Unknown => panic!("unknown interrupt type"),
+        Err(err_int) => panic!("unknown interrupt type: {err_int}"),
     }
 
     unsafe {

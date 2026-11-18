@@ -88,7 +88,7 @@ impl HbaPort {
         port_offset: usize,
         value: u32,
     ) {
-        let base_gpa = if port_offset % 8 == 0 {
+        let base_gpa = if port_offset.is_multiple_of(8) {
             let upper_addr = unsafe {
                 core::ptr::read_volatile((hba_base_addr.raw() + offset + 0x4) as *const u32)
                     as usize
@@ -108,35 +108,35 @@ impl HbaPort {
             self.fis_gpa = base_gpa;
         }
 
-        if (0x9000_0000..0xa000_0000).contains(&base_gpa.raw()) {
-            if let Ok(base_hpa) = g_stage_trans_addr(base_gpa) {
-                if port_offset == 0x0 || port_offset == 0x4 {
-                    crate::debugln!(
-                        "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
-                        (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE,
-                        base_gpa.raw(),
-                        base_hpa.raw()
-                    );
-                } else {
-                    crate::debugln!(
-                        "[translate] P{}FB: {:#x}(GPA) -> {:#x}(HPA)",
-                        (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE,
-                        base_gpa.raw(),
-                        base_hpa.raw()
-                    );
-                }
+        if (0x9000_0000..0xa000_0000).contains(&base_gpa.raw())
+            && let Ok(base_hpa) = g_stage_trans_addr(base_gpa)
+        {
+            if port_offset == 0x0 || port_offset == 0x4 {
+                crate::debugln!(
+                    "[translate] P{}CLB: {:#x}(GPA) -> {:#x}(HPA)",
+                    (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE,
+                    base_gpa.raw(),
+                    base_hpa.raw()
+                );
+            } else {
+                crate::debugln!(
+                    "[translate] P{}FB: {:#x}(GPA) -> {:#x}(HPA)",
+                    (offset - PORT_CONTROL_REGS_OFFSET) / PORT_CONTROL_REGS_SIZE,
+                    base_gpa.raw(),
+                    base_hpa.raw()
+                );
+            }
 
-                let lower_offset = offset & !0b111;
-                unsafe {
-                    core::ptr::write_volatile(
-                        (hba_base_addr.raw() + lower_offset) as *mut u32,
-                        (base_hpa.raw() & 0xffff_ffff) as u32,
-                    );
-                    core::ptr::write_volatile(
-                        (hba_base_addr.raw() + lower_offset + 4) as *mut u32,
-                        ((base_hpa.raw() >> 32) & 0xffff_ffff) as u32,
-                    );
-                }
+            let lower_offset = offset & !0b111;
+            unsafe {
+                core::ptr::write_volatile(
+                    (hba_base_addr.raw() + lower_offset) as *mut u32,
+                    (base_hpa.raw() & 0xffff_ffff) as u32,
+                );
+                core::ptr::write_volatile(
+                    (hba_base_addr.raw() + lower_offset + 4) as *mut u32,
+                    ((base_hpa.raw() >> 32) & 0xffff_ffff) as u32,
+                );
             }
         }
     }
