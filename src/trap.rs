@@ -10,7 +10,8 @@ use hikami_core::HYPERVISOR_DATA;
 use hikami_core::guest::context::ContextData;
 
 use core::arch::asm;
-use riscv::register::scause::{self, Trap};
+use riscv::interrupt::Trap;
+use riscv::register::scause;
 
 /// Switch to original mode stack and save contexts.
 ///

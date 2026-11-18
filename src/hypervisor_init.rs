@@ -179,10 +179,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
 
         // set trap vector
         assert!((hstrap_vector as *const fn() as usize).is_multiple_of(4));
-        stvec::write(
+        stvec::write(stvec::Stvec::new(
             hstrap_vector as *const fn() as usize,
             stvec::TrapMode::Direct,
-        );
+        ));
 
         let mut context = hypervisor_data.get().unwrap().guest().context;
         context.set_sepc(sepc::read());
@@ -211,7 +211,9 @@ fn hart_entry(guest_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     drop(hypervisor_data);
 
     // init guest stack pointer is don't care
-    sscratch::write(0);
+    unsafe {
+        sscratch::write(0);
+    }
 
     crate::println!(
         "Guest start (guest hart: {}, device tree: {:#x})",

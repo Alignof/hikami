@@ -25,7 +25,7 @@ elf = { version = "0.8.0", default-features = false }
 fdt = "0.1.5"
 linked_list_allocator = "0.10.6"
 raki = { git = "https://github.com/Alignof/raki", branch = "feature/zbs" }
-riscv = "0.11.1"
+riscv = "0.16.1"
 sbi-rt = "0.0.4"
 sbi-spec = { version = "0.0.9", features = ["legacy"] }
 spin = "0.12.3"

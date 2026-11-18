@@ -17,15 +17,19 @@ pub enum HvException {
     StoreAmoGuestPageFault = 23,
 }
 
-impl From<usize> for HvException {
-    fn from(exception_num: usize) -> Self {
-        match exception_num {
-            10 => HvException::EcallFromVsMode,
-            20 => HvException::InstructionGuestPageFault,
-            21 => HvException::LoadGuestPageFault,
-            22 => HvException::VirtualInstruction,
-            23 => HvException::StoreAmoGuestPageFault,
-            _ => panic!("unsupported exception number: {exception_num}"),
+impl From<riscv::result::Error> for HvException {
+    fn from(convert_err: riscv::result::Error) -> Self {
+        if let riscv::result::Error::InvalidVariant(exception_num) = convert_err {
+            match exception_num {
+                10 => HvException::EcallFromVsMode,
+                20 => HvException::InstructionGuestPageFault,
+                21 => HvException::LoadGuestPageFault,
+                22 => HvException::VirtualInstruction,
+                23 => HvException::StoreAmoGuestPageFault,
+                _ => panic!("unsupported exception number: {exception_num}"),
+            }
+        } else {
+            panic!("Tried to retrieve exception value from other error code.")
         }
     }
 }
