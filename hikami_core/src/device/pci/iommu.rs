@@ -90,7 +90,7 @@ impl IoMmu {
         write_config_register(
             config_space_header_addr,
             ConfigSpaceHeaderField::Command,
-            0b10, // enable memory space
+            0b110, // enable memory space and bus master
         );
 
         // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
