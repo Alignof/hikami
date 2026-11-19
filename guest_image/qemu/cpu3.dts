@@ -204,7 +204,7 @@
 	chosen {
 		stdout-path = "/soc/serial@10000000";
 		rng-seed = <0x59fe3ffe 0x3cdc38c2 0xb16157c6 0xd6f4791e 0x42d8fb39 0x8fab83ca 0x6d598156 0xe308ca45>;
-        bootargs = "root=/boot/sda earlycon console=ttyS0,115200 rootwait rw locale.LANG=en_US.UTF-8";
+        bootargs = "root=/dev/sda earlycon console=ttyS0,115200 rootwait rw locale.LANG=en_US.UTF-8";
 	};
 
 	soc {
@@ -295,14 +295,14 @@
 			riscv,ndev = <0x5f>;
 			reg = <0x00 0xc000000 0x00 0x600000>;
 			interrupts-extended = <
-                // 0x08 0x03
-                // 0x08 0x07
-                // 0x06 0x03
-                // 0x06 0x07
-                // 0x04 0x03
-                // 0x04 0x07
-                0x02 0x03
-                0x02 0x07
+                // 0x08 0x0b
+                // 0x08 0x09
+                // 0x06 0x0b
+                // 0x06 0x09
+                // 0x04 0x0b
+                // 0x04 0x09
+                0x02 0x0b
+                0x02 0x09
             >;
 			interrupt-controller;
 			compatible = "sifive,plic-1.0.0", "riscv,plic0";
