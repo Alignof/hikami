@@ -65,17 +65,20 @@ impl IoMmu {
             ConfigSpaceHeaderField::BaseAddressRegister0,
         ) >> 1)
             & 0b11;
-        let iommu_reg_addr = match memory_space_kind {
-            0b00 => pci_addr_space.base_addr_32bit_memory_space(),
-            0b10 => pci_addr_space.base_addr_64bit_memory_space(),
-            0b01 | 0b11 => panic!("[pci BAR] reserved field"),
-            _ => unreachable!(),
-        };
 
         let bar_size = get_bar_size(
             config_space_header_addr,
             ConfigSpaceHeaderField::BaseAddressRegister0,
-        );
+        ) as usize;
+        // Place the registers at the end of the memory space so that they do not collide with BARs
+        // that the guest assigns from the start. The guest device tree must exclude them.
+        let iommu_reg_addr = match memory_space_kind {
+            0b00 => pci_addr_space.end_addr_32bit_memory_space(),
+            0b10 => pci_addr_space.end_addr_64bit_memory_space(),
+            0b01 | 0b11 => panic!("[pci BAR] reserved field"),
+            _ => unreachable!(),
+        } - bar_size;
+
         // set iommu reg space
         write_config_register(
             config_space_header_addr,
@@ -98,7 +101,7 @@ impl IoMmu {
             _ident: ident,
             reg_space: Range {
                 start: iommu_reg_addr,
-                end: iommu_reg_addr + bar_size as usize,
+                end: iommu_reg_addr + bar_size,
             },
             // TODO: obtain from pci register.
             // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html

@@ -172,16 +172,16 @@ impl PciAddressSpace {
         }
     }
 
-    /// Return base address of 32-bit memory space.
+    /// Return end address of 32-bit memory space.
     #[must_use]
-    pub fn base_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
-        self.bit32_memory_space.start
+    pub fn end_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit32_memory_space.end
     }
 
-    /// Return base address of 64-bit memory space.
+    /// Return end address of 64-bit memory space.
     #[must_use]
-    pub fn base_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
-        self.bit64_memory_space.start
+    pub fn end_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit64_memory_space.end
     }
 }
 
