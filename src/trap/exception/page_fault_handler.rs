@@ -105,6 +105,28 @@ pub fn load_guest_page_fault() {
         }
     }
 
+    // Hide IOMMU config register from guest.
+    #[cfg(feature = "iommu")]
+    if let Some(pci) = &hypervisor_data.get_mut().unwrap().devices().pci
+        && pci.is_hidden_config_space(HostPhysicalAddress(fault_addr.raw()))
+    {
+        use raki::{BaseIOpcode, OpcodeKind};
+
+        let mut context = hypervisor_data.get().unwrap().guest().context;
+        context.set_xreg(
+            fault_inst.rd.expect("rd is not found"),
+            match fault_inst.opc {
+                OpcodeKind::BaseI(BaseIOpcode::LBU) => 0xff,
+                OpcodeKind::BaseI(BaseIOpcode::LHU) => 0xffff,
+                OpcodeKind::BaseI(BaseIOpcode::LWU) => 0xffff_ffff,
+                // The other loads sign-extend the loaded value.
+                _ => u64::MAX,
+            },
+        );
+        update_sepc_by_inst_type(is_compressed, &mut context);
+        return;
+    }
+
     drop(hypervisor_data);
     hs_forward_exception();
 }
@@ -199,6 +221,15 @@ pub fn store_guest_page_fault() {
             update_sepc_by_inst_type(is_compressed, &mut context);
             return;
         }
+    }
+
+    // Writes to the hidden configuration space are ignored.
+    #[cfg(feature = "iommu")]
+    if let Some(pci) = &hypervisor_data.get_mut().unwrap().devices().pci
+        && pci.is_hidden_config_space(HostPhysicalAddress(fault_addr.raw()))
+    {
+        update_sepc_by_inst_type(is_compressed, &mut context);
+        return;
     }
 
     drop(hypervisor_data);

@@ -22,6 +22,8 @@ pub struct IoMmu {
     _ident: Bdf,
     /// IOMMU memory mapped register
     reg_space: Range<HostPhysicalAddress>,
+    /// Configuration space of the IOMMU function
+    config_space: Range<HostPhysicalAddress>,
     /// PCI Vender ID
     _vender_id: u32,
     /// PCI Device ID
@@ -103,11 +105,25 @@ impl IoMmu {
                 start: iommu_reg_addr,
                 end: iommu_reg_addr + bar_size,
             },
+            config_space: HostPhysicalAddress(config_space_header_addr)
+                ..HostPhysicalAddress(config_space_header_addr) + PAGE_SIZE,
             // TODO: obtain from pci register.
             // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html
             _vender_id: 0x1efd,
             _device_id: 0xedf1,
         })
+    }
+
+    /// Return the range of memory mapped registers.
+    #[must_use]
+    pub fn reg_space(&self) -> &Range<HostPhysicalAddress> {
+        &self.reg_space
+    }
+
+    /// Return the range of the configuration space.
+    #[must_use]
+    pub fn config_space(&self) -> &Range<HostPhysicalAddress> {
+        &self.config_space
     }
 
     /// Set page table in IOMMU.
