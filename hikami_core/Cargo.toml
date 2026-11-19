@@ -8,6 +8,8 @@ edition = "2024"
 debug_log = []
 # identity memory map
 identity_map = []
+# use IOMMU
+iommu = []
 
 [dependencies]
 elf = { workspace = true }

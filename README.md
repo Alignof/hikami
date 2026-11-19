@@ -82,8 +82,13 @@ $ vim guest_image/guest.dts
 
 ```sh
 # The actual command to be executed is written in .cargo/config.toml.
-$ cargo r --features qemu
+$ cargo r --features qemu,identity_map
 ```
+
+Either `identity_map` or `iommu` must be enabled to select how guest memory and DMA are handled.
+
+- `identity_map`: guest physical addresses are mapped to the same host physical addresses, so devices can use them for DMA as is.
+- `iommu`: guest memory is allocated by the hypervisor, and DMA addresses are translated by the IOMMU.
 
 ### Run on FPGA
 

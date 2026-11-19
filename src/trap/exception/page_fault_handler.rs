@@ -5,7 +5,6 @@
 
 use super::{hs_forward_exception, update_sepc_by_inst_type};
 use hikami_core::HYPERVISOR_DATA;
-use hikami_core::device::EmulateDevice;
 use hikami_core::h_extension::csrs::{htinst, htval};
 use hikami_core::memmap::page_table::{g_stage_trans_addr, vs_stage_trans_addr};
 use hikami_core::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
@@ -106,25 +105,6 @@ pub fn load_guest_page_fault() {
         }
     }
 
-    if let Some(pci) = &mut hypervisor_data.get_mut().unwrap().devices().pci
-        && let Some(sata) = &pci.pci_devices.sata
-        && let Ok(value) = sata.emulate_loading(HostPhysicalAddress(fault_addr.raw()))
-    {
-        let mut context = hypervisor_data.get().unwrap().guest().context;
-        context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
-        update_sepc_by_inst_type(is_compressed, &mut context);
-        return;
-    }
-
-    if let Some(mmc) = &mut hypervisor_data.get_mut().unwrap().devices().axi_sdc
-        && let Ok(value) = mmc.emulate_loading(HostPhysicalAddress(fault_addr.raw()))
-    {
-        let mut context = hypervisor_data.get().unwrap().guest().context;
-        context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
-        update_sepc_by_inst_type(is_compressed, &mut context);
-        return;
-    }
-
     drop(hypervisor_data);
     hs_forward_exception();
 }
@@ -219,23 +199,6 @@ pub fn store_guest_page_fault() {
             update_sepc_by_inst_type(is_compressed, &mut context);
             return;
         }
-    }
-
-    if let Some(pci) = &mut hypervisor_data.get_mut().unwrap().devices().pci
-        && let Some(sata) = &mut pci.pci_devices.sata
-        && let Ok(()) =
-            sata.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
-    {
-        update_sepc_by_inst_type(is_compressed, &mut context);
-        return;
-    }
-
-    if let Some(mmc) = &mut hypervisor_data.get_mut().unwrap().devices().axi_sdc
-        && let Ok(()) =
-            mmc.emulate_storing(HostPhysicalAddress(fault_addr.raw()), store_value as u32)
-    {
-        update_sepc_by_inst_type(is_compressed, &mut context);
-        return;
     }
 
     drop(hypervisor_data);

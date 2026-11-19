@@ -4,6 +4,11 @@
 // TODO: FIX AND REMOVE IT!!!
 #![allow(static_mut_refs)]
 
+#[cfg(all(feature = "identity_map", feature = "iommu"))]
+compile_error!("features `identity_map` and `iommu` are mutually exclusive");
+#[cfg(not(any(feature = "identity_map", feature = "iommu")))]
+compile_error!("either `identity_map` or `iommu` feature must be enabled");
+
 extern crate alloc;
 pub mod device;
 pub mod emulate_extension;

@@ -30,23 +30,23 @@ jobs:
       - name: Format check
         run: nix develop .#lint -c cargo fmt --all -- --check
 
-      - name: Clippy (Megrez)
-        run: nix develop .#lint -c cargo clippy --workspace -- -D warnings
-
-      - name: Clippy (QEMU)
-        run: nix develop .#lint -c cargo clippy --workspace --features qemu -- -D warnings
+      - name: Clippy (Megrez, identity map)
+        run: nix develop .#lint -c cargo clippy --workspace --features identity_map -- -D warnings
 
       - name: Clippy (QEMU, identity map)
         run: nix develop .#lint -c cargo clippy --workspace --features qemu,identity_map -- -D warnings
 
-      - name: Clippy (QEMU, debug log)
-        run: nix develop .#lint -c cargo clippy --workspace --features qemu,debug_log -- -D warnings
+      - name: Clippy (QEMU, IOMMU)
+        run: nix develop .#lint -c cargo clippy --workspace --features qemu,iommu -- -D warnings
 
-      - name: Clippy (QEMU, without extensions)
-        run: nix develop .#lint -c cargo clippy --workspace --no-default-features --features qemu -- -D warnings
+      - name: Clippy (QEMU, identity map, debug log)
+        run: nix develop .#lint -c cargo clippy --workspace --features qemu,identity_map,debug_log -- -D warnings
+
+      - name: Clippy (QEMU, identity map, without extensions)
+        run: nix develop .#lint -c cargo clippy --workspace --no-default-features --features qemu,identity_map -- -D warnings
 
       - name: Doc check (warnings as errors)
-        run: nix develop .#lint -c cargo doc --workspace --no-deps
+        run: nix develop .#lint -c cargo doc --workspace --no-deps --features qemu,identity_map
         env:
           RUSTDOCFLAGS: -D warnings
 

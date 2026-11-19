@@ -38,6 +38,8 @@ walkdir = "2"
 debug_log = ["hikami_core/debug_log"]
 # identity memory map
 identity_map = ["hikami_core/identity_map"]
+# IOMMU
+iommu = ["hikami_core/iommu"]
 # target qemu
 qemu = []
 # default on
