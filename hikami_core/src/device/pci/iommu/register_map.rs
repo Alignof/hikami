@@ -2,6 +2,25 @@
 
 use crate::memmap::HostPhysicalAddress;
 
+/// A memory mapped register that is always accessed with volatile operations.
+///
+/// The IOMMU updates registers such as `cqcsr.cqon` by itself,
+/// so the compiler must not merge or remove accesses to them.
+#[repr(transparent)]
+pub struct Volatile<T: Copy>(T);
+
+impl<T: Copy> Volatile<T> {
+    /// Read the register.
+    fn read(&self) -> T {
+        unsafe { core::ptr::read_volatile(&raw const self.0) }
+    }
+
+    /// Write the register.
+    fn write(&mut self, value: T) {
+        unsafe { core::ptr::write_volatile(&raw mut self.0, value) }
+    }
+}
+
 /// IOMMU register map
 #[repr(C)]
 pub struct IoMmuRegisters {
@@ -44,11 +63,11 @@ pub struct IoMmuRegisters {
 }
 
 /// IOMMU capabilities
-pub struct Capabilities(u64);
+pub struct Capabilities(Volatile<u64>);
 impl Capabilities {
     /// Return (major version, minor version)
     pub fn version(&self) -> (u8, u8) {
-        let version_reg = self.0;
+        let version_reg = self.0.read();
         (((version_reg >> 4) & 0xf) as u8, (version_reg & 0xf) as u8)
     }
 
@@ -57,7 +76,7 @@ impl Capabilities {
     /// true -> base format
     /// false -> extended format
     pub fn is_base_format(&self) -> bool {
-        (self.0 >> 22) & 0x1 == 0
+        (self.0.read() >> 22) & 0x1 == 0
     }
 
     /// Is sv39x4 supported?
@@ -65,12 +84,12 @@ impl Capabilities {
         /// Field `Sv39x4` of `capabilities` register.
         const FIELD_CAPABILITIES_SV39X4: usize = 17;
 
-        (self.0 >> FIELD_CAPABILITIES_SV39X4) & 0x1 == 1
+        (self.0.read() >> FIELD_CAPABILITIES_SV39X4) & 0x1 == 1
     }
 }
 
 /// Command-queue base
-pub struct Cqb(u64);
+pub struct Cqb(Volatile<u64>);
 impl Cqb {
     /// set ppn value and `log_2(size`).
     pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
@@ -78,25 +97,27 @@ impl Cqb {
         assert!(queue_addr % 4096 == 0);
 
         // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
-        self.0 = ((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1);
+        self.0
+            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1));
     }
 }
 
 /// Command-queue tail
-pub struct Cqt(u32);
+pub struct Cqt(Volatile<u32>);
 impl Cqt {
     /// Write a value.
     pub fn write(&mut self, value: u32) {
-        self.0 = value;
+        self.0.write(value);
     }
 }
 
 /// Command-queue CSR
-pub struct CqCsr(u32);
+pub struct CqCsr(Volatile<u32>);
 impl CqCsr {
     /// set cqen (offset: 0) bit
     pub fn set_cqen(&mut self) {
-        self.0 |= 1;
+        let value = self.0.read();
+        self.0.write(value | 1);
     }
 
     /// Return `cqon` field value. (offset: 16)
@@ -104,13 +125,13 @@ impl CqCsr {
         /// Field `cqon` of `cqcsr` register. (16 bit)
         const FIELD_CQCSR_CQON: usize = 0x10;
 
-        let cqcsr = self.0;
+        let cqcsr = self.0.read();
         (cqcsr >> FIELD_CQCSR_CQON) & 0x1 == 1
     }
 }
 
 /// Fault-queue base
-pub struct Fqb(u64);
+pub struct Fqb(Volatile<u64>);
 impl Fqb {
     /// set ppn value and `log_2(size`).
     pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
@@ -118,38 +139,40 @@ impl Fqb {
         assert!(queue_addr % 4096 == 0);
 
         // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
-        self.0 = ((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1);
+        self.0
+            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1));
     }
 }
 
 /// Fault-queue tail
-pub struct Fqt(u32);
+pub struct Fqt(Volatile<u32>);
 impl Fqt {
     /// Write a value.
     pub fn write(&mut self, value: u32) {
-        self.0 = value;
+        self.0.write(value);
     }
 }
 
 /// Fault-queue CSR
-pub struct FqCsr(u32);
+pub struct FqCsr(Volatile<u32>);
 impl FqCsr {
     /// set fqen (offset: 0) bit
     pub fn set_fqen(&mut self) {
-        self.0 |= 1;
+        let value = self.0.read();
+        self.0.write(value | 1);
     }
 
     /// fqon (offset: 16)
     pub fn fqon(&self) -> bool {
         /// Field `fqon` of `fqcsr` register. (16 bit)
         const FIELD_FQCSR_FQON: usize = 0x10;
-        let fqcsr = self.0;
+        let fqcsr = self.0.read();
         (fqcsr >> FIELD_FQCSR_FQON) & 0x1 == 1
     }
 }
 
 /// Page-request-queue base
-pub struct Pqb(u64);
+pub struct Pqb(Volatile<u64>);
 impl Pqb {
     /// set ppn value and `log_2(size`).
     pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
@@ -157,25 +180,27 @@ impl Pqb {
         assert!(queue_addr % 4096 == 0);
 
         // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
-        self.0 = ((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1);
+        self.0
+            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1));
     }
 }
 
 /// Page-request-queue tail
-pub struct Pqt(u32);
+pub struct Pqt(Volatile<u32>);
 impl Pqt {
     /// Write a value.
     pub fn write(&mut self, value: u32) {
-        self.0 = value;
+        self.0.write(value);
     }
 }
 
 /// Page-request-queue CSR
-pub struct PqCsr(u32);
+pub struct PqCsr(Volatile<u32>);
 impl PqCsr {
     /// set pqen (offset: 0) bit
     pub fn set_pqen(&mut self) {
-        self.0 |= 1;
+        let value = self.0.read();
+        self.0.write(value | 1);
     }
 
     /// pqon (offset: 16)
@@ -183,7 +208,7 @@ impl PqCsr {
         /// Field `pqon` of `pqcsr` register. (16 bit)
         const FIELD_PQCSR_PQON: usize = 0x10;
 
-        let pqcsr = self.0;
+        let pqcsr = self.0.read();
         (pqcsr >> FIELD_PQCSR_PQON) & 0x1 == 1
     }
 }
@@ -204,13 +229,14 @@ pub enum IoMmuMode {
 }
 
 /// Device-directory-table pointer
-pub struct Ddtp(u64);
+pub struct Ddtp(Volatile<u64>);
 impl Ddtp {
     /// set ppn and mode (defined in `IoMmuMode`).
     pub fn set(&mut self, mode: IoMmuMode, ddt_addr: HostPhysicalAddress) {
         /// Field `ppn` of `ddtp` register. (16 bit)
         const FIELD_DDTP_PPN: usize = 10;
 
-        self.0 = ((ddt_addr.0 as u64 >> 12) << FIELD_DDTP_PPN) | mode as u64;
+        self.0
+            .write(((ddt_addr.0 as u64 >> 12) << FIELD_DDTP_PPN) | mode as u64);
     }
 }
