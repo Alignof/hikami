@@ -88,7 +88,7 @@ impl Guest {
     }
 
     /// Allocate guest memory space from heap and create corresponding page table.
-    #[cfg(not(feature = "identity_map"))]
+    #[cfg(feature = "iommu")]
     fn allocate_memory_region(
         page_table_addr: HostPhysicalAddress,
         region: &Range<GuestPhysicalAddress>,

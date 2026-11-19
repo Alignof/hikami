@@ -74,18 +74,21 @@ pub trait PciDevice {
 /// Pci devices
 pub struct PciDevices {
     /// IOMMU: I/O memory management unit.
+    #[cfg(feature = "iommu")]
     iommu: Option<iommu::IoMmu>,
 }
 
 impl PciDevices {
     /// Constructor of `PciDevices`.
     #[allow(clippy::cast_possible_truncation)]
+    #[cfg_attr(not(feature = "iommu"), allow(unused_variables))]
     pub fn new(
         device_tree: &Fdt,
         pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
     ) -> Self {
         PciDevices {
+            #[cfg(feature = "iommu")]
             iommu: iommu::IoMmu::new_from_dtb(
                 device_tree,
                 &["riscv,pci-iommu"],
@@ -247,13 +250,14 @@ impl MmioDevice for Pci {
         ];
 
         // Initialize IOMMU
-        if cfg!(not(feature = "identity_map"))
-            && let Some(ref iommu) = pci_devices.iommu
-        {
-            iommu.init(HostPhysicalAddress(
+        #[cfg(feature = "iommu")]
+        pci_devices
+            .iommu
+            .as_ref()
+            .expect("`iommu` feature is enabled but IOMMU is not found in device tree")
+            .init(HostPhysicalAddress(
                 register_map_regions[0].starting_address as usize,
             ));
-        }
 
         Some(Pci {
             name: pci_node.name.to_string(),
