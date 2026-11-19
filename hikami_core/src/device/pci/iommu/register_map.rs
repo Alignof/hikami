@@ -92,13 +92,14 @@ impl Capabilities {
 pub struct Cqb(Volatile<u64>);
 impl Cqb {
     /// set ppn value and `log_2(size`).
-    pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
+    pub fn set(&mut self, queue_addr: HostPhysicalAddress, num_entries: usize) {
         // Is queue address aligned 4KiB?
         assert!(queue_addr % 4096 == 0);
+        assert!(num_entries.is_power_of_two());
 
         // CQB.PPN = B, CQB.LOG2SZ-1 = k - 1
         self.0
-            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1));
+            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(num_entries.ilog2() - 1));
     }
 }
 
@@ -134,13 +135,14 @@ impl CqCsr {
 pub struct Fqb(Volatile<u64>);
 impl Fqb {
     /// set ppn value and `log_2(size`).
-    pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
+    pub fn set(&mut self, queue_addr: HostPhysicalAddress, num_entries: usize) {
         // Is queue address aligned 4KiB?
         assert!(queue_addr % 4096 == 0);
+        assert!(num_entries.is_power_of_two());
 
         // FQB.PPN = B, FQB.LOG2SZ-1 = k - 1
         self.0
-            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1));
+            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(num_entries.ilog2() - 1));
     }
 }
 
@@ -175,13 +177,14 @@ impl FqCsr {
 pub struct Pqb(Volatile<u64>);
 impl Pqb {
     /// set ppn value and `log_2(size`).
-    pub fn set(&mut self, queue_addr: HostPhysicalAddress, size: usize) {
+    pub fn set(&mut self, queue_addr: HostPhysicalAddress, num_entries: usize) {
         // Is queue address aligned 4KiB?
         assert!(queue_addr % 4096 == 0);
+        assert!(num_entries.is_power_of_two());
 
         // PQB.PPN = B, PQB.LOG2SZ-1 = k - 1
         self.0
-            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(size.ilog2() - 1));
+            .write(((queue_addr.0 as u64 >> 12) << 10) | u64::from(num_entries.ilog2() - 1));
     }
 }
 

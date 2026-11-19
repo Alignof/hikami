@@ -142,6 +142,13 @@ impl PciDevice for IoMmu {
 
     #[allow(clippy::cast_possible_truncation)]
     fn init(&self, _pci_config_space_base_addr: HostPhysicalAddress) {
+        /// Size of a command-queue entry [byte].
+        const COMMAND_SIZE: usize = 16;
+        /// Size of a fault-queue record [byte].
+        const FAULT_RECORD_SIZE: usize = 32;
+        /// Size of a page-request-queue entry [byte].
+        const PAGE_REQUEST_SIZE: usize = 16;
+
         let registers = self.reg_space.start.raw() as *mut IoMmuRegisters;
         let registers = unsafe { &mut *registers };
 
@@ -170,7 +177,7 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(command_queue_ptr, 0u8, PAGE_SIZE);
         }
-        registers.cqb.set(command_queue, 4096);
+        registers.cqb.set(command_queue, PAGE_SIZE / COMMAND_SIZE);
         // cqt = 0
         registers.cqt.write(0);
         // cqcsr.cqen = 1
@@ -188,7 +195,9 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(fault_queue_ptr, 0u8, PAGE_SIZE);
         }
-        registers.fqb.set(fault_queue, 4096);
+        registers
+            .fqb
+            .set(fault_queue, PAGE_SIZE / FAULT_RECORD_SIZE);
         // fqt = 0
         registers.fqt.write(0);
         // fqcsr.fqen = 1
@@ -206,7 +215,9 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(page_request_queue_ptr, 0u8, PAGE_SIZE);
         }
-        registers.pqb.set(page_request_queue, 4096);
+        registers
+            .pqb
+            .set(page_request_queue, PAGE_SIZE / PAGE_REQUEST_SIZE);
         // pqt = 0
         registers.pqt.write(0);
         // pqcsr.pqen = 1
