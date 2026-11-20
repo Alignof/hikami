@@ -4,7 +4,7 @@
 //! - Virtual Instruction
 
 use super::hs_forward_exception;
-use hikami_core::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR;
 #[cfg(feature = "enable_extension")]
 use hikami_core::emulate_extension::EmulateExtension;
 
@@ -54,11 +54,7 @@ pub fn virtual_instruction() {
 
     // emulate CSR set
     if fault_inst.rs2.unwrap() == 0x10a {
-        let mut context = unsafe { HYPERVISOR_DATA.lock() }
-            .get()
-            .unwrap()
-            .guest()
-            .context;
+        let mut context = HYPERVISOR.lock().get().unwrap().guest().context;
 
         let mut csr: u64;
         unsafe {

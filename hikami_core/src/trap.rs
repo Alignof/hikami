@@ -2,13 +2,13 @@
 
 use crate::guest::context::ContextData;
 
-use crate::HYPERVISOR_DATA;
+use crate::HYPERVISOR;
 use core::arch::asm;
 
 /// Switch to original mode stack and save contexts.
 ///
 /// # Panics
-/// Panics if `hypervisor_data.get().unwrap()` is called on a `None` value.
+/// Panics if `hypervisor.get().unwrap()` is called on a `None` value.
 /// This typically occurs if the hypervisor data has not been initialized.
 ///
 /// # Safety
@@ -17,10 +17,10 @@ use core::arch::asm;
 #[allow(clippy::inline_always)]
 pub unsafe fn hstrap_exit() -> ! {
     // aquire hypervisor data
-    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
-    // release HYPERVISOR_DATA lock
-    drop(hypervisor_data);
+    let hypervisor = HYPERVISOR.lock();
+    let stack_top = hypervisor.get().unwrap().guest().stack_top();
+    // release HYPERVISOR lock
+    drop(hypervisor);
 
     unsafe {
         asm!(

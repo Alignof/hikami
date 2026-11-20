@@ -5,7 +5,7 @@ mod page_fault_handler;
 mod sbi_handler;
 
 use super::hstrap_exit;
-use hikami_core::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR;
 use hikami_core::guest;
 use hikami_core::h_extension::{
     HvException,
@@ -25,7 +25,7 @@ use sbi_handler::{
 #[allow(clippy::inline_always, clippy::module_name_repetitions)]
 pub extern "C" fn hs_forward_exception() {
     unsafe {
-        let mut context = HYPERVISOR_DATA.lock().get().unwrap().guest().context;
+        let mut context = HYPERVISOR.lock().get().unwrap().guest().context;
         asm!(
             "csrw vsepc, {sepc}",
             "csrw vscause, {scause}",
@@ -119,7 +119,7 @@ pub fn trap_exception(exception_code: usize) -> ! {
         // Enum not found in `riscv` crate.
         Err(err_exp) => match HvException::from(err_exp) {
             HvException::EcallFromVsMode => {
-                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+                let mut context = HYPERVISOR.lock().get().unwrap().guest().context;
                 sbi_vs_mode_handler(&mut context);
                 context.set_sepc(context.sepc() + 4);
             }
