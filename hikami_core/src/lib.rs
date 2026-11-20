@@ -52,6 +52,9 @@ pub struct HypervisorData {
     ///
     /// The hypervisor itself and `/reserved-memory` of the host device tree.
     reserved_regions: Vec<core::ops::Range<usize>>,
+    /// Host memory that backs guest memory.
+    #[cfg(feature = "iommu")]
+    host_memory_pool: memmap::host_memory_pool::HostMemoryPool,
 }
 
 impl HypervisorData {
@@ -60,7 +63,12 @@ impl HypervisorData {
     /// # Panics
     /// It will be panic when parsing device tree failed.
     #[must_use]
-    pub fn new(device_tree: Fdt, hypervisor_region: core::ops::Range<HostPhysicalAddress>) -> Self {
+    #[cfg_attr(not(feature = "iommu"), allow(unused_variables))]
+    pub fn new(
+        device_tree: Fdt,
+        host_dtb_addr: HostPhysicalAddress,
+        hypervisor_region: core::ops::Range<HostPhysicalAddress>,
+    ) -> Self {
         // init page table
         page_table::sv39x4::initialize_page_table();
 
@@ -72,6 +80,20 @@ impl HypervisorData {
             crate::println!("[Reserved] {:#x}..{:#x}", region.start, region.end);
         }
 
+        #[cfg(feature = "iommu")]
+        let host_memory_pool = {
+            let host_dtb_region =
+                host_dtb_addr.raw()..host_dtb_addr.raw() + device_tree.total_size();
+            let pool = memmap::host_memory_pool::HostMemoryPool::new(
+                &memmap::memory_regions(&device_tree),
+                &[reserved_regions.as_slice(), &[host_dtb_region]].concat(),
+            );
+            for range in pool.free_ranges() {
+                crate::println!("[Guest Memory Pool] {:#x}..{:#x}", range.start, range.end);
+            }
+            pool
+        };
+
         HypervisorData {
             // fix to zero for now
             //
@@ -81,6 +103,8 @@ impl HypervisorData {
             guests: [const { None }; MAX_HART_NUM],
             devices: Devices::new(device_tree),
             reserved_regions,
+            #[cfg(feature = "iommu")]
+            host_memory_pool,
         }
     }
 
@@ -152,6 +176,8 @@ impl HypervisorData {
             stack_top_addr,
             board,
             &self.reserved_regions,
+            #[cfg(feature = "iommu")]
+            &mut self.host_memory_pool,
         );
 
         // load guest elf `from GUEST_KERNEL`

@@ -1,5 +1,8 @@
 //! See `memmap/constant` module for specefic memmory map.
 
+#[cfg(feature = "iommu")]
+pub mod host_memory_pool;
+
 pub mod constant;
 pub mod page_table;
 

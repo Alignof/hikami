@@ -10,8 +10,10 @@ default_to_workspace = false
 skip_core_tasks = true
 
 [env]
-# `identity_map` is required until SATA emulation works without it.
-HIKAMI_FEATURES = { value = "qemu,identity_map", condition = { env_not_set = ["HIKAMI_FEATURES"] } }
+# Set `HIKAMI_FEATURES=qemu,iommu` to translate DMA addresses by the IOMMU. 
+HIKAMI_FEATURES = { value = "qemu,identity_map", condition = { env_not_set = [
+  "HIKAMI_FEATURES",
+] } }
 GUEST_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/target/guest"
 TEST_TIMEOUT = { value = "300", condition = { env_not_set = ["TEST_TIMEOUT"] } }
 

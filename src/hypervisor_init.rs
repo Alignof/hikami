@@ -127,13 +127,13 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
             | VsInterruptKind::Software as usize,
     );
 
-    vsmode_setup(hart_id, device_tree);
+    vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr), device_tree);
 }
 
 /// Setup for VS-mode
 ///
 /// * Setup page table
-fn vsmode_setup(hart_id: usize, device_tree: fdt::Fdt) -> ! {
+fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt::Fdt) -> ! {
     // enable two-level address translation
     hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr().raw() >> 12);
     hfence_gvma_all();
@@ -143,6 +143,7 @@ fn vsmode_setup(hart_id: usize, device_tree: fdt::Fdt) -> ! {
     hypervisor_data.get_or_init(|| {
         HypervisorData::new(
             device_tree,
+            dtb_addr,
             HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_start) as usize)
                 ..HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_end) as usize),
         )

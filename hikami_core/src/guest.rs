@@ -4,6 +4,8 @@ pub mod context;
 
 use crate::PageBlock;
 use crate::board::Board;
+#[cfg(feature = "iommu")]
+use crate::memmap::host_memory_pool::HostMemoryPool;
 use crate::memmap::{
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
     constant::guest_memory,
@@ -40,12 +42,14 @@ impl Guest {
     /// - Zero filling root page table.
     /// - Map guest dtb to guest memory space.
     #[must_use]
+    #[cfg_attr(feature = "iommu", allow(unused_variables))]
     pub fn new(
         hart_id: usize,
         guest_hart_id: usize,
         stack_top_addr: HostPhysicalAddress,
         board: &Board,
         reserved_regions: &[Range<usize>],
+        #[cfg(feature = "iommu")] host_memory_pool: &mut HostMemoryPool,
     ) -> Self {
         let guest_dtb = *board
             .guest_dtbs
@@ -69,7 +73,14 @@ impl Guest {
                 region.start.raw(),
                 region.end.raw(),
             );
-            Self::allocate_memory_region(region, reserved_regions);
+
+            // allocate guest memory space
+            {
+                #[cfg(feature = "identity_map")]
+                Self::allocate_memory_region(region, reserved_regions);
+                #[cfg(feature = "iommu")]
+                Self::allocate_memory_region(region, host_memory_pool);
+            }
         }
 
         // load guest dtb to memory
@@ -88,29 +99,39 @@ impl Guest {
         }
     }
 
-    /// Allocate guest memory space from heap and create corresponding page table.
+    /// Allocate guest memory space from `host_memory_pool` and create corresponding page table.
     #[cfg(feature = "iommu")]
     fn allocate_memory_region(
         region: &Range<GuestPhysicalAddress>,
-        _reserved_regions: &[Range<usize>],
+        host_memory_pool: &mut HostMemoryPool,
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
-
         const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
 
-        for guest_physical_addr in (region.start.raw()..region.end.raw()).step_by(PAGE_SIZE) {
-            let guest_physical_addr = GuestPhysicalAddress(guest_physical_addr);
-
-            // allocate memory from heap
-            let aligned_page_size_block_addr: HostPhysicalAddress = PageBlock::alloc();
-
-            // create memory mapping
-            page_table::sv39x4::generate_page_table(&[MemoryMap::new(
-                guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                G_STAGE_PTE_FLAGS,
-            )]);
-        }
+        let mut guest_physical_addr = region.start;
+        let memory_maps: Vec<MemoryMap> = host_memory_pool
+            .alloc(region.end.raw() - region.start.raw())
+            .into_iter()
+            .map(|host_range| {
+                let len = (host_range.end.raw() - host_range.start.raw())
+                    .min(region.end.raw() - guest_physical_addr.raw());
+                crate::println!(
+                    "GPA [{:#x} - {:#x}] -> HPA [{:#x} - {:#x}]",
+                    guest_physical_addr.raw(),
+                    guest_physical_addr.raw() + len,
+                    host_range.start.raw(),
+                    host_range.start.raw() + len,
+                );
+                let memory_map = MemoryMap::new(
+                    guest_physical_addr..guest_physical_addr + len,
+                    host_range.start..host_range.start + len,
+                    G_STAGE_PTE_FLAGS,
+                );
+                guest_physical_addr = guest_physical_addr + len;
+                memory_map
+            })
+            .collect();
+        page_table::sv39x4::generate_page_table(&memory_maps);
     }
 
     /// Map guest memory space to the same host physical addresses.
