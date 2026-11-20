@@ -33,13 +33,11 @@ use memmap::page_table::PteFlag;
 use memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 
 /// Singleton for this hypervisor.
-pub static HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
+pub static HYPERVISOR: Mutex<OnceCell<Hypervisor>> = Mutex::new(OnceCell::new());
 
 /// Global data for hypervisor.
-///
-/// FIXME: Rename me!
 #[derive(Debug)]
-pub struct HypervisorData {
+pub struct Hypervisor {
     /// Current guest hart id (zero indexed).
     current_guest_hart: usize,
     /// Guests data
@@ -56,12 +54,12 @@ pub struct HypervisorData {
 }
 
 // # Safety
-// `HypervisorData` is only accessed through `HYPERVISOR_DATA` lock.
+// `Hypervisor` is only accessed through the `HYPERVISOR` lock.
 // Raw pointers in it (e.g. `fdt::standard_nodes::MemoryRegion`) hold physical addresses of
 // devices, which are the same on all harts.
-unsafe impl Send for HypervisorData {}
+unsafe impl Send for Hypervisor {}
 
-impl HypervisorData {
+impl Hypervisor {
     /// Initialize hypervisor.
     ///
     /// # Panics
@@ -98,7 +96,7 @@ impl HypervisorData {
             pool
         };
 
-        HypervisorData {
+        Hypervisor {
             // fix to zero for now
             //
             // TODO: save `hart_id` and `guest_hart_id` to `ContextData` and decide current guest

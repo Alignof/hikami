@@ -79,7 +79,7 @@ dependencies = [
 [[package]]
 name = "hikami_zbs"
 version = "0.1.0"
-source = "git+https://github.com/Alignof/hikami_zbs?branch=develop#8d4aee2e9a24e116c28c9afa137fe1c730872d4d"
+source = "git+https://github.com/Alignof/hikami_zbs?branch=develop#64f690c0b14611f3d372eec0d68b305700d7ef04"
 dependencies = [
  "hikami_core",
  "raki",

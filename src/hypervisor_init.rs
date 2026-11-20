@@ -13,7 +13,7 @@ use hikami_core::h_extension::instruction::hfence_gvma_all;
 use hikami_core::memmap::{
     GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::root_page_table_addr,
 };
-use hikami_core::{HYPERVISOR_DATA, HypervisorData};
+use hikami_core::{HYPERVISOR, Hypervisor};
 
 use core::arch::asm;
 
@@ -139,9 +139,9 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
     hfence_gvma_all();
 
     // initialize hypervisor data
-    let mut hypervisor_data = HYPERVISOR_DATA.lock();
-    hypervisor_data.get_or_init(|| {
-        HypervisorData::new(
+    let mut hypervisor = HYPERVISOR.lock();
+    hypervisor.get_or_init(|| {
+        Hypervisor::new(
             device_tree,
             dtb_addr,
             HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_start) as usize)
@@ -150,7 +150,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
     });
 
     // create and register a new guest
-    let (guest_hart_id, guest_entry_point) = hypervisor_data.get_mut().unwrap().register_new_guest(
+    let (guest_hart_id, guest_entry_point) = hypervisor.get_mut().unwrap().register_new_guest(
         hart_id,
         HostPhysicalAddress(core::ptr::addr_of!(_stack_start) as usize),
         &BOARD,
@@ -179,7 +179,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
             stvec::TrapMode::Direct,
         ));
 
-        let mut context = hypervisor_data.get().unwrap().guest().context;
+        let mut context = hypervisor.get().unwrap().guest().context;
         context.set_sepc(sepc::read());
 
         // set sstatus value to context
@@ -188,10 +188,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
         context.set_sstatus(sstatus_val);
     }
 
-    let guest_dtb_addr = hypervisor_data.get().unwrap().guest().guest_dtb_addr();
+    let guest_dtb_addr = hypervisor.get().unwrap().guest().guest_dtb_addr();
 
-    // release HYPERVISOR_DATA lock
-    drop(hypervisor_data);
+    // release HYPERVISOR lock
+    drop(hypervisor);
 
     hart_entry(guest_hart_id, guest_dtb_addr);
 }
@@ -200,10 +200,10 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
 #[inline(never)]
 fn hart_entry(guest_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // aquire hypervisor data
-    let hypervisor_data = HYPERVISOR_DATA.lock();
-    let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
-    // release HYPERVISOR_DATA lock
-    drop(hypervisor_data);
+    let hypervisor = HYPERVISOR.lock();
+    let stack_top = hypervisor.get().unwrap().guest().stack_top();
+    // release HYPERVISOR lock
+    drop(hypervisor);
 
     // init guest stack pointer is don't care
     unsafe {

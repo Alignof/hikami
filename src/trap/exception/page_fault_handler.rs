@@ -4,7 +4,7 @@
 //! - Store AMO guest page fault
 
 use super::{hs_forward_exception, update_sepc_by_inst_type};
-use hikami_core::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR;
 use hikami_core::h_extension::csrs::{htinst, htval};
 use hikami_core::memmap::page_table::{g_stage_trans_addr, vs_stage_trans_addr};
 use hikami_core::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
@@ -53,42 +53,42 @@ pub fn load_guest_page_fault() {
         )
     };
 
-    let mut hypervisor_data = HYPERVISOR_DATA.lock();
-    let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
-    let guest_hart_id = hypervisor_data.get().unwrap().guest().guest_hart_id();
-    if let Ok(value) = hypervisor_data
+    let mut hypervisor = HYPERVISOR.lock();
+    let hart_id = hypervisor.get().unwrap().guest().hart_id();
+    let guest_hart_id = hypervisor.get().unwrap().guest().guest_hart_id();
+    if let Ok(value) = hypervisor
         .get_mut()
         .unwrap()
         .devices()
         .plic
         .emulate_loading(hart_id, HostPhysicalAddress(fault_addr.raw()))
     {
-        let mut context = hypervisor_data.get().unwrap().guest().context;
+        let mut context = hypervisor.get().unwrap().guest().context;
         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
         update_sepc_by_inst_type(is_compressed, &mut context);
         return;
     }
 
-    if let Some(clint) = &mut hypervisor_data.get_mut().unwrap().devices().clint
+    if let Some(clint) = &mut hypervisor.get_mut().unwrap().devices().clint
         && let Ok(value) = clint.emulate_loading(
             hart_id,
             guest_hart_id,
             HostPhysicalAddress(fault_addr.raw()),
         )
     {
-        let mut context = hypervisor_data.get().unwrap().guest().context;
+        let mut context = hypervisor.get().unwrap().guest().context;
         context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
         update_sepc_by_inst_type(is_compressed, &mut context);
         return;
     }
 
-    if let Some(aclint) = &mut hypervisor_data.get_mut().unwrap().devices().aclint {
+    if let Some(aclint) = &mut hypervisor.get_mut().unwrap().devices().aclint {
         if let Ok(value) = aclint.mtimer.emulate_loading(
             hart_id,
             guest_hart_id,
             HostPhysicalAddress(fault_addr.raw()),
         ) {
-            let mut context = hypervisor_data.get().unwrap().guest().context;
+            let mut context = hypervisor.get().unwrap().guest().context;
             context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
             update_sepc_by_inst_type(is_compressed, &mut context);
             return;
@@ -98,7 +98,7 @@ pub fn load_guest_page_fault() {
             guest_hart_id,
             HostPhysicalAddress(fault_addr.raw()),
         ) {
-            let mut context = hypervisor_data.get().unwrap().guest().context;
+            let mut context = hypervisor.get().unwrap().guest().context;
             context.set_xreg(fault_inst.rd.expect("rd is not found"), u64::from(value));
             update_sepc_by_inst_type(is_compressed, &mut context);
             return;
@@ -107,12 +107,12 @@ pub fn load_guest_page_fault() {
 
     // Hide IOMMU config register from guest.
     #[cfg(feature = "iommu")]
-    if let Some(pci) = &hypervisor_data.get_mut().unwrap().devices().pci
+    if let Some(pci) = &hypervisor.get_mut().unwrap().devices().pci
         && pci.is_hidden_config_space(HostPhysicalAddress(fault_addr.raw()))
     {
         use raki::{BaseIOpcode, OpcodeKind};
 
-        let mut context = hypervisor_data.get().unwrap().guest().context;
+        let mut context = hypervisor.get().unwrap().guest().context;
         context.set_xreg(
             fault_inst.rd.expect("rd is not found"),
             match fault_inst.opc {
@@ -127,7 +127,7 @@ pub fn load_guest_page_fault() {
         return;
     }
 
-    drop(hypervisor_data);
+    drop(hypervisor);
     hs_forward_exception();
 }
 
@@ -164,8 +164,8 @@ pub fn store_guest_page_fault() {
         )
     };
 
-    let mut hypervisor_data = HYPERVISOR_DATA.lock();
-    let guest = hypervisor_data.get().unwrap().guest();
+    let mut hypervisor = HYPERVISOR.lock();
+    let guest = hypervisor.get().unwrap().guest();
     let hart_id = guest.hart_id();
     let guest_hart_id = guest.guest_hart_id();
     let mut context = guest.context;
@@ -174,7 +174,7 @@ pub fn store_guest_page_fault() {
         None => panic!("rs2 is not found: {fault_inst:#?} (inst_value: {fault_inst_value})"),
     });
 
-    if let Ok(()) = hypervisor_data
+    if let Ok(()) = hypervisor
         .get_mut()
         .unwrap()
         .devices()
@@ -190,7 +190,7 @@ pub fn store_guest_page_fault() {
         return;
     }
 
-    if let Some(clint) = &mut hypervisor_data.get_mut().unwrap().devices().clint
+    if let Some(clint) = &mut hypervisor.get_mut().unwrap().devices().clint
         && let Ok(()) = clint.emulate_storing(
             hart_id,
             guest_hart_id,
@@ -202,7 +202,7 @@ pub fn store_guest_page_fault() {
         return;
     }
 
-    if let Some(aclint) = &mut hypervisor_data.get_mut().unwrap().devices().aclint {
+    if let Some(aclint) = &mut hypervisor.get_mut().unwrap().devices().aclint {
         if let Ok(()) = aclint.mtimer.emulate_storing(
             hart_id,
             guest_hart_id,
@@ -225,13 +225,13 @@ pub fn store_guest_page_fault() {
 
     // Writes to the hidden configuration space are ignored.
     #[cfg(feature = "iommu")]
-    if let Some(pci) = &hypervisor_data.get_mut().unwrap().devices().pci
+    if let Some(pci) = &hypervisor.get_mut().unwrap().devices().pci
         && pci.is_hidden_config_space(HostPhysicalAddress(fault_addr.raw()))
     {
         update_sepc_by_inst_type(is_compressed, &mut context);
         return;
     }
 
-    drop(hypervisor_data);
+    drop(hypervisor);
     hs_forward_exception();
 }

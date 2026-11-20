@@ -6,7 +6,7 @@ mod interrupt;
 use exception::trap_exception;
 use interrupt::trap_interrupt;
 
-use hikami_core::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR;
 use hikami_core::guest::context::ContextData;
 
 use core::arch::asm;
@@ -16,7 +16,7 @@ use riscv::register::scause;
 /// Switch to original mode stack and save contexts.
 ///
 /// # Panics
-/// Panics if `hypervisor_data.get().unwrap()` is called on a `None` value.
+/// Panics if `hypervisor.get().unwrap()` is called on a `None` value.
 /// This typically occurs if the hypervisor data has not been initialized.
 ///
 /// # Safety
@@ -25,10 +25,10 @@ use riscv::register::scause;
 #[allow(clippy::inline_always)]
 pub unsafe fn hstrap_exit() -> ! {
     // aquire hypervisor data
-    let hypervisor_data = HYPERVISOR_DATA.lock();
-    let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
-    // release HYPERVISOR_DATA lock
-    drop(hypervisor_data);
+    let hypervisor = HYPERVISOR.lock();
+    let stack_top = hypervisor.get().unwrap().guest().stack_top();
+    // release HYPERVISOR lock
+    drop(hypervisor);
 
     unsafe {
         asm!(

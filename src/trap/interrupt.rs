@@ -1,7 +1,7 @@
 //! Trap VS-mode interrupt.
 
 use super::hstrap_exit;
-use hikami_core::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR;
 use hikami_core::device::plic::ContextId;
 use hikami_core::h_extension::csrs::{VsInterruptKind, hvip};
 
@@ -21,12 +21,12 @@ pub fn trap_interrupt(interrupt_code: usize) -> ! {
             sie::clear_stimer();
         },
         Ok(Interrupt::SupervisorExternal) => unsafe {
-            let mut hypervisor_data = HYPERVISOR_DATA.lock();
-            let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
+            let mut hypervisor = HYPERVISOR.lock();
+            let hart_id = hypervisor.get().unwrap().guest().hart_id();
             let context_id = ContextId::new(hart_id, true);
 
             // read plic claim/update register and reflect to plic.claim_complete.
-            hypervisor_data
+            hypervisor
                 .get_mut()
                 .unwrap()
                 .devices()
