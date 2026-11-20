@@ -45,6 +45,7 @@ impl Guest {
         hart_id: usize,
         guest_hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
+        stack_top_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8],
         guest_initrd: &'static [u8],
     ) -> Self {
@@ -64,7 +65,6 @@ impl Guest {
             memory_region.end.raw(),
         );
 
-        let stack_top_addr = HostPhysicalAddress(core::ptr::addr_of!(crate::_stack_start) as usize);
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
         // map guest memory space

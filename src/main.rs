@@ -5,6 +5,7 @@
 #![allow(static_mut_refs)]
 
 mod hypervisor_init;
+mod linker;
 mod target_board;
 mod trap;
 
@@ -13,10 +14,10 @@ use core::panic::PanicInfo;
 
 use linked_list_allocator::LockedHeap;
 
-use crate::hypervisor_init::hstart;
 use hikami_core::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
 use hikami_core::println;
-use hikami_core::{_end_bss, _start_bss, _top_b_stack};
+use hypervisor_init::hstart;
+use linker::_top_b_stack;
 use target_board::{
     GUEST_DTB_CORE0, GUEST_DTB_CORE1, GUEST_DTB_CORE2, GUEST_DTB_CORE3, GUEST_KERNEL,
 };

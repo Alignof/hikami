@@ -1,5 +1,6 @@
 //! HS-mode level initialization.
 
+use crate::linker::{_hv_heap_size, _stack_start, _start_heap};
 use crate::trap::hstrap_vector;
 use crate::{
     ALLOCATOR, GUEST_DTB_CORE0, GUEST_DTB_CORE1, GUEST_DTB_CORE2, GUEST_DTB_CORE3, GUEST_INITRD,
@@ -14,7 +15,6 @@ use hikami_core::h_extension::instruction::hfence_gvma_all;
 use hikami_core::memmap::{
     GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::ROOT_PAGE_TABLE,
 };
-use hikami_core::{_hv_heap_size, _start_heap};
 use hikami_core::{HYPERVISOR_DATA, HypervisorData};
 
 use core::arch::asm;
@@ -37,7 +37,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // clear bss section
     unsafe {
-        use crate::{_end_bss, _start_bss};
+        use crate::linker::{_end_bss, _start_bss};
         use core::ptr::addr_of;
 
         core::slice::from_raw_parts_mut(
@@ -148,6 +148,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
     let (guest_hart_id, guest_entry_point) = hypervisor_data.get_mut().unwrap().register_new_guest(
         hart_id,
         &ROOT_PAGE_TABLE,
+        HostPhysicalAddress(core::ptr::addr_of!(_stack_start) as usize),
         &GUEST_KERNEL,
         match hart_id {
             0 => &GUEST_DTB_CORE0,

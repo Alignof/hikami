@@ -151,6 +151,7 @@ impl HypervisorData {
         &mut self,
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
+        stack_top_addr: HostPhysicalAddress,
         guest_kernel: &'static [u8],
         guest_dtb: &'static [u8],
         guest_initrd: &'static [u8],
@@ -167,6 +168,7 @@ impl HypervisorData {
             hart_id,
             guest_hart_id,
             root_page_table,
+            stack_top_addr,
             guest_dtb,
             guest_initrd,
         );
@@ -188,21 +190,6 @@ impl HypervisorData {
 
         (guest_hart_id, guest_entry_point)
     }
-}
-
-unsafe extern "C" {
-    /// stack top (defined in `memory.x`)
-    pub static _stack_start: u8;
-    /// start of heap (defined in `memory.x`)
-    pub static mut _start_heap: u8;
-    /// heap size (defined in `memory.x`)
-    pub static _hv_heap_size: u8;
-    /// boot stack top (defined in `memory.x`)
-    pub static _top_b_stack: u8;
-    /// start of bss and sbss section.
-    pub static _start_bss: u8;
-    /// end of bss and sbss section.
-    pub static _end_bss: u8;
 }
 
 /// Aligned page size memory block
