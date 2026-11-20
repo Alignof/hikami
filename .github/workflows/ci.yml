@@ -51,8 +51,14 @@ jobs:
           RUSTDOCFLAGS: -D warnings
 
   test:
-    name: Boot Linux on QEMU
+    name: Boot Linux on QEMU (${{ matrix.features }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - qemu,identity_map
+          - qemu,iommu
     # The first run builds the guest kernel; later runs fetch it from Cachix.
     timeout-minutes: 60
     steps:
@@ -69,3 +75,5 @@ jobs:
       # on QEMU. Passes when the guest powers off after printing a marker.
       - name: Boot Linux on hikami
         run: nix develop .#test -c cargo make test
+        env:
+          HIKAMI_FEATURES: ${{ matrix.features }}
