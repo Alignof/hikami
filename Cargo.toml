@@ -40,8 +40,10 @@ debug_log = ["hikami_core/debug_log"]
 identity_map = ["hikami_core/identity_map"]
 # IOMMU
 iommu = ["hikami_core/iommu"]
-# target qemu
+# target QEMU virt
 qemu = []
+# target Milk-V Megrez
+megrez = []
 # default on
 default = ["enable_extension"]
 # for `extension_manager`

@@ -85,6 +85,7 @@ $ vim guest_image/guest.dts
 $ cargo r --features qemu,identity_map
 ```
 
+One of the board features (`qemu` or `megrez`) must be enabled.
 Either `identity_map` or `iommu` must be enabled to select how guest memory and DMA are handled.
 
 - `identity_map`: guest physical addresses are mapped to the same host physical addresses, so devices can use them for DMA as is.
