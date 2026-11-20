@@ -1,8 +1,6 @@
 //! hikami library
 
 #![no_std]
-// TODO: FIX AND REMOVE IT!!!
-#![allow(static_mut_refs)]
 
 #[cfg(all(feature = "identity_map", feature = "iommu"))]
 compile_error!("features `identity_map` and `iommu` are mutually exclusive");
@@ -35,7 +33,7 @@ use memmap::page_table::PteFlag;
 use memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 
 /// Singleton for this hypervisor.
-pub static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
+pub static HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
 
 /// Global data for hypervisor.
 ///
@@ -56,6 +54,12 @@ pub struct HypervisorData {
     #[cfg(feature = "iommu")]
     host_memory_pool: memmap::host_memory_pool::HostMemoryPool,
 }
+
+// # Safety
+// `HypervisorData` is only accessed through `HYPERVISOR_DATA` lock.
+// Raw pointers in it (e.g. `fdt::standard_nodes::MemoryRegion`) hold physical addresses of
+// devices, which are the same on all harts.
+unsafe impl Send for HypervisorData {}
 
 impl HypervisorData {
     /// Initialize hypervisor.

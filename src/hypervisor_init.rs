@@ -139,7 +139,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
     hfence_gvma_all();
 
     // initialize hypervisor data
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let mut hypervisor_data = HYPERVISOR_DATA.lock();
     hypervisor_data.get_or_init(|| {
         HypervisorData::new(
             device_tree,
@@ -200,7 +200,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
 #[inline(never)]
 fn hart_entry(guest_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
     // aquire hypervisor data
-    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let hypervisor_data = HYPERVISOR_DATA.lock();
     let stack_top = hypervisor_data.get().unwrap().guest().stack_top();
     // release HYPERVISOR_DATA lock
     drop(hypervisor_data);

@@ -53,7 +53,7 @@ pub fn load_guest_page_fault() {
         )
     };
 
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let mut hypervisor_data = HYPERVISOR_DATA.lock();
     let hart_id = hypervisor_data.get().unwrap().guest().hart_id();
     let guest_hart_id = hypervisor_data.get().unwrap().guest().guest_hart_id();
     if let Ok(value) = hypervisor_data
@@ -164,7 +164,7 @@ pub fn store_guest_page_fault() {
         )
     };
 
-    let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let mut hypervisor_data = HYPERVISOR_DATA.lock();
     let guest = hypervisor_data.get().unwrap().guest();
     let hart_id = guest.hart_id();
     let guest_hart_id = guest.guest_hart_id();

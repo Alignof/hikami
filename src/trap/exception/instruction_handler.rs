@@ -54,11 +54,7 @@ pub fn virtual_instruction() {
 
     // emulate CSR set
     if fault_inst.rs2.unwrap() == 0x10a {
-        let mut context = unsafe { HYPERVISOR_DATA.lock() }
-            .get()
-            .unwrap()
-            .guest()
-            .context;
+        let mut context = HYPERVISOR_DATA.lock().get().unwrap().guest().context;
 
         let mut csr: u64;
         unsafe {

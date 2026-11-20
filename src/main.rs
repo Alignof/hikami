@@ -1,8 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
-// TODO: FIX AND REMOVE IT!!!
-#![allow(static_mut_refs)]
 
 mod hypervisor_init;
 mod linker;

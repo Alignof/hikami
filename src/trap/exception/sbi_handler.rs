@@ -145,7 +145,7 @@ pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     use sbi_rt::HartMask;
     use sbi_spec::rfnc::{REMOTE_FENCE_I, REMOTE_SFENCE_VMA, REMOTE_SFENCE_VMA_ASID};
-    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
+    let hypervisor_data = HYPERVISOR_DATA.lock();
     let current_hart_id = hypervisor_data.get().unwrap().guest().hart_id();
     let current_guest_hart_id = hypervisor_data.get().unwrap().guest().guest_hart_id();
     assert_eq!(args[0].trailing_ones() - 1, current_guest_hart_id as u32);

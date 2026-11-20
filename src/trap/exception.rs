@@ -119,7 +119,7 @@ pub fn trap_exception(exception_code: usize) -> ! {
         // Enum not found in `riscv` crate.
         Err(err_exp) => match HvException::from(err_exp) {
             HvException::EcallFromVsMode => {
-                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+                let mut context = HYPERVISOR_DATA.lock().get().unwrap().guest().context;
                 sbi_vs_mode_handler(&mut context);
                 context.set_sepc(context.sepc() + 4);
             }
