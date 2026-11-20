@@ -44,8 +44,6 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 ///
 /// - set stack pointer
 /// - jump to hstart
-///
-/// TODO: Remove the `.attribute arch, "rv64gc"` directive when the LLVM problem is fixed.
 #[unsafe(link_section = ".text.entry")]
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
@@ -53,7 +51,6 @@ extern "C" fn _start() -> ! {
     // set stack pointer
     naked_asm!(
         r#"
-            .attribute arch, "rv64gc"
             li t0, {stack_size_per_hart}
             mul t1, a0, t0
             la sp, {stack_top}
