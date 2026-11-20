@@ -163,8 +163,6 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
         // sstatus.SUM = 1, sstatus.SPP = 0
         sstatus::set_sum();
         sstatus::set_spp(sstatus::SPP::Supervisor);
-        // sstatus.sie = 1
-        sstatus::set_sie();
         // sstatus.fs = 1
         sstatus::set_fs(FS::Initial);
 
