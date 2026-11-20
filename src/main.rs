@@ -18,9 +18,6 @@ use hikami_core::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
 use hikami_core::println;
 use hypervisor_init::hstart;
 use linker::_top_b_stack;
-use target_board::{
-    GUEST_DTB_CORE0, GUEST_DTB_CORE1, GUEST_DTB_CORE2, GUEST_DTB_CORE3, GUEST_KERNEL,
-};
 
 /// Guest intird
 #[unsafe(link_section = ".guest_initrd")]

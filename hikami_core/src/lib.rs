@@ -10,6 +10,7 @@ compile_error!("features `identity_map` and `iommu` are mutually exclusive");
 compile_error!("either `identity_map` or `iommu` feature must be enabled");
 
 extern crate alloc;
+pub mod board;
 pub mod device;
 pub mod emulate_extension;
 pub mod guest;
@@ -152,9 +153,7 @@ impl HypervisorData {
         hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         stack_top_addr: HostPhysicalAddress,
-        guest_kernel: &'static [u8],
-        guest_dtb: &'static [u8],
-        guest_initrd: &'static [u8],
+        board: &board::Board,
     ) -> (usize, GuestPhysicalAddress) {
         // decide guest HART ID
         let guest_hart_id = self
@@ -169,22 +168,25 @@ impl HypervisorData {
             guest_hart_id,
             root_page_table,
             stack_top_addr,
-            guest_dtb,
-            guest_initrd,
+            board
+                .guest_dtbs
+                .get(hart_id)
+                .expect("guest device tree for this hart is not found"),
+            board.guest_initrd,
         );
 
         // load guest elf `from GUEST_KERNEL`
         let guest_elf = unsafe {
             ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-                guest_kernel.as_ptr(),
-                guest_kernel.len(),
+                board.guest_kernel.as_ptr(),
+                board.guest_kernel.len(),
             ))
             .unwrap()
         };
 
         // load guest image
         let guest_entry_point =
-            unsafe { new_guest.load_guest_elf(&guest_elf, guest_kernel.as_ptr()) };
+            unsafe { new_guest.load_guest_elf(&guest_elf, board.guest_kernel.as_ptr()) };
 
         self.guests[guest_hart_id] = Some(new_guest);
 

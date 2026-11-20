@@ -1,11 +1,9 @@
 //! HS-mode level initialization.
 
 use crate::linker::{_hv_heap_size, _stack_start, _start_heap};
+use crate::target_board::BOARD;
 use crate::trap::hstrap_vector;
-use crate::{
-    ALLOCATOR, GUEST_DTB_CORE0, GUEST_DTB_CORE1, GUEST_DTB_CORE2, GUEST_DTB_CORE3, GUEST_INITRD,
-    GUEST_KERNEL,
-};
+use crate::{ALLOCATOR, GUEST_INITRD};
 use hikami_core::guest::context::ContextData;
 use hikami_core::h_extension::csrs::{
     VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, hgatp, hideleg, hie, hstatus,
@@ -149,15 +147,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         hart_id,
         &ROOT_PAGE_TABLE,
         HostPhysicalAddress(core::ptr::addr_of!(_stack_start) as usize),
-        &GUEST_KERNEL,
-        match hart_id {
-            0 => &GUEST_DTB_CORE0,
-            1 => &GUEST_DTB_CORE1,
-            2 => &GUEST_DTB_CORE2,
-            3 => &GUEST_DTB_CORE3,
-            _ => unreachable!(),
-        },
-        &GUEST_INITRD,
+        &BOARD,
     );
 
     // initialize emulate_extension data
