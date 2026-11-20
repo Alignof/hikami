@@ -33,29 +33,6 @@
 		reg = <0x01 0x00000000 0x00 0x80000000>;
 	};
 
-    reserved-memory {
-		#address-cells = <0x00000002>;
-		#size-cells = <0x00000002>;
-		ranges;
-        hyprvisor_resv0@83000000 {
-            no-map;
-            reg = <0x00 0x83000000 0x00 0xd000000>;
-            phandle = <0x61>;
-        };
-
-        hyprvisor_resv1@d0000000 {
-            no-map;
-            reg = <0x00 0xd0000000 0x00 0x8000000>;
-            phandle = <0x62>;
-        };
-
-        hyprvisor_resv2@f0000000 {
-            no-map;
-            reg = <0x00 0xf0000000 0x00 0x800000>;
-            phandle = <0x63>;
-        };
-    };
-
 	cpus {
 		#address-cells = <0x01>;
 		#size-cells = <0x00>;
