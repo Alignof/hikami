@@ -1,6 +1,6 @@
 //! HS-mode level initialization.
 
-use crate::linker::{_hv_heap_size, _stack_start, _start_heap};
+use crate::linker::{_hv_heap_size, _hypervisor_end, _hypervisor_start, _stack_start, _start_heap};
 use crate::target_board::BOARD;
 use crate::trap::hstrap_vector;
 use crate::{ALLOCATOR, GUEST_INITRD};
@@ -139,6 +139,8 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
         HypervisorData::new(
             HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize),
             device_tree,
+            HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_start) as usize)
+                ..HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_end) as usize),
         )
     });
 

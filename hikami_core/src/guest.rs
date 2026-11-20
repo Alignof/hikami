@@ -3,6 +3,7 @@
 pub mod context;
 
 use crate::PageBlock;
+use crate::board::Board;
 use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
 use crate::memmap::{
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
@@ -12,8 +13,10 @@ use crate::memmap::{
 };
 use context::{Context, ContextData};
 
+use alloc::vec::Vec;
 use core::ops::Range;
 use elf::{ElfBytes, endian::AnyEndian};
+use fdt::Fdt;
 
 /// Guest Information
 #[derive(Debug)]
@@ -29,8 +32,8 @@ pub struct Guest {
     dtb_addr: GuestPhysicalAddress,
     /// Stack top address
     stack_top_addr: HostPhysicalAddress,
-    /// Allocated memory region
-    memory_region: Range<GuestPhysicalAddress>,
+    /// Guest DRAM regions given by `/memory` of the guest device tree
+    memory_regions: Vec<Range<GuestPhysicalAddress>>,
     /// Guest context data
     pub context: Context,
 }
@@ -46,37 +49,46 @@ impl Guest {
         guest_hart_id: usize,
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         stack_top_addr: HostPhysicalAddress,
-        guest_dtb: &'static [u8],
-        guest_dtb_base: GuestPhysicalAddress,
-        guest_initrd: &'static [u8],
+        board: &Board,
+        reserved_regions: &[Range<usize>],
     ) -> Self {
-        // Calculate guest memory region.
-        let guest_memory_begin: GuestPhysicalAddress =
-            guest_memory::DRAM_BASE + guest_hart_id * guest_memory::DRAM_SIZE_PER_GUEST;
+        let guest_dtb = *board
+            .guest_dtbs
+            .get(hart_id)
+            .expect("guest device tree for this hart is not found");
+        let guest_device_tree = Fdt::new(guest_dtb).expect("failed to parse guest device tree");
 
-        let memory_region =
-            guest_memory_begin..guest_memory_begin + guest_memory::DRAM_SIZE_PER_GUEST;
-
-        crate::println!(
-            "guest memory region (hart {}, guest id {}): Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
-            hart_id,
-            guest_hart_id,
-            guest_memory::DRAM_SIZE_PER_GUEST,
-            memory_region.start.raw(),
-            memory_region.end.raw(),
-        );
+        // Guest DRAM is defined by the guest device tree.
+        let memory_regions: Vec<Range<GuestPhysicalAddress>> =
+            crate::memmap::memory_regions(&guest_device_tree)
+                .into_iter()
+                .map(|region| GuestPhysicalAddress(region.start)..GuestPhysicalAddress(region.end))
+                .collect();
 
         let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
 
         // map guest memory space
-        Self::allocate_memory_region(page_table_addr, &memory_region);
+        for region in &memory_regions {
+            crate::println!(
+                "guest memory region (hart {}, guest id {}): GPA [{:#x} - {:#x}]",
+                hart_id,
+                guest_hart_id,
+                region.start.raw(),
+                region.end.raw(),
+            );
+            Self::allocate_memory_region(page_table_addr, region, reserved_regions);
+        }
 
         // load guest dtb to memory
-        let dtb_addr =
-            Self::load_guest_dtb(guest_hart_id, page_table_addr, guest_dtb, guest_dtb_base);
+        let dtb_addr = Self::load_guest_dtb(
+            guest_hart_id,
+            page_table_addr,
+            guest_dtb,
+            board.guest_dtb_base,
+        );
 
         // laod guest initrd
-        Self::load_initrd(guest_hart_id, guest_initrd, &memory_region);
+        Self::load_initrd(guest_hart_id, board.guest_initrd, &guest_device_tree);
 
         Guest {
             hart_id,
@@ -84,7 +96,7 @@ impl Guest {
             page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
             dtb_addr,
             stack_top_addr,
-            memory_region,
+            memory_regions,
             context: Context::new(stack_top_addr - core::mem::size_of::<ContextData>()),
         }
     }
@@ -94,6 +106,7 @@ impl Guest {
     fn allocate_memory_region(
         page_table_addr: HostPhysicalAddress,
         region: &Range<GuestPhysicalAddress>,
+        _reserved_regions: &[Range<usize>],
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
 
@@ -117,38 +130,57 @@ impl Guest {
         }
     }
 
-    /// Allocate guest memory space from heap and create corresponding page table.
+    /// Map guest memory space to the same host physical addresses.
+    ///
+    /// `reserved_regions` are excluded. The guest device tree must not use them as memory
+    /// (e.g. list them in `/reserved-memory`).
     #[cfg(feature = "identity_map")]
     fn allocate_memory_region(
         page_table_addr: HostPhysicalAddress,
         region: &Range<GuestPhysicalAddress>,
+        reserved_regions: &[Range<usize>],
     ) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
         const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
 
-        // create memory mapping
-        page_table::sv39x4::generate_page_table(
-            page_table_addr,
-            &[MemoryMap::new(
-                region.clone(),
-                HostPhysicalAddress(region.start.raw())..HostPhysicalAddress(region.end.raw()),
+        let memory_maps: Vec<MemoryMap> = crate::memmap::subtract_ranges(
+            &(region.start.raw()..region.end.raw()),
+            reserved_regions,
+        )
+        .into_iter()
+        .map(|part| {
+            MemoryMap::new(
+                GuestPhysicalAddress(part.start)..GuestPhysicalAddress(part.end),
+                HostPhysicalAddress(part.start)..HostPhysicalAddress(part.end),
                 G_STAGE_PTE_FLAGS,
-            )],
-        );
+            )
+        })
+        .collect();
+        page_table::sv39x4::generate_page_table(page_table_addr, &memory_maps);
     }
 
-    /// Load guest's initrd
-    fn load_initrd(
-        guest_hart_id: usize,
-        guest_initrd: &'static [u8],
-        memory_region: &Range<GuestPhysicalAddress>,
-    ) {
-        if guest_initrd.is_empty() {
+    /// Load guest's initrd to the address given by `/chosen` of the guest device tree.
+    fn load_initrd(guest_hart_id: usize, guest_initrd: &'static [u8], guest_device_tree: &Fdt) {
+        let Some(chosen) = guest_device_tree.find_node("/chosen") else {
             return;
-        }
-
-        let aligned_initrd_size = guest_initrd.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
-        let initrd_start = memory_region.end - aligned_initrd_size;
+        };
+        let read_property = |name: &str| {
+            chosen
+                .property(name)
+                .and_then(fdt::node::NodeProperty::as_usize)
+        };
+        let (Some(initrd_start), Some(initrd_end)) = (
+            read_property("linux,initrd-start"),
+            read_property("linux,initrd-end"),
+        ) else {
+            return;
+        };
+        let initrd_start = GuestPhysicalAddress(initrd_start);
+        assert_eq!(
+            initrd_end - initrd_start.raw(),
+            guest_initrd.len(),
+            "initrd size does not match `linux,initrd-start` and `linux,initrd-end`"
+        );
 
         crate::println!(
             "initrd (guest id:{}): Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
@@ -251,10 +283,10 @@ impl Guest {
         self.dtb_addr
     }
 
-    /// Return guest dram space start
+    /// Return guest DRAM regions.
     #[must_use]
-    pub fn memory_region(&self) -> &Range<GuestPhysicalAddress> {
-        &self.memory_region
+    pub fn memory_regions(&self) -> &[Range<GuestPhysicalAddress>] {
+        &self.memory_regions
     }
 
     /// Load an elf to new allocated guest memory page.
@@ -342,12 +374,16 @@ impl Guest {
                     let guest_physical_addr =
                         kernel_base + (prog_header.p_paddr - base_paddr) as usize + offset;
 
-                    // Check if the target address is within the pre-allocated guest memory region
-                    if !self.memory_region.contains(&guest_physical_addr) {
+                    // Check if the target address is within the guest memory regions
+                    if !self
+                        .memory_regions
+                        .iter()
+                        .any(|region| region.contains(&guest_physical_addr))
+                    {
                         panic!(
-                            "ELF segment paddr {:#x} out of guest memory region {:#x?}",
+                            "ELF segment paddr {:#x} out of guest memory regions {:#x?}",
                             guest_physical_addr.raw(),
-                            self.memory_region
+                            self.memory_regions
                         );
                     }
 

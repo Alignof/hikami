@@ -13,4 +13,8 @@ unsafe extern "C" {
     pub static _start_bss: u8;
     /// End of bss and sbss section.
     pub static _end_bss: u8;
+    /// Start of the range occupied by the hypervisor.
+    pub static _hypervisor_start: u8;
+    /// End of the range occupied by the hypervisor.
+    pub static _hypervisor_end: u8;
 }

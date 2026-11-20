@@ -49,6 +49,10 @@ pub struct HypervisorData {
     guests: [Option<guest::Guest>; MAX_HART_NUM],
     /// Devices data.
     devices: device::Devices,
+    /// Host physical regions that must not be mapped to guests.
+    ///
+    /// The hypervisor itself and `/reserved-memory` of the host device tree.
+    reserved_regions: Vec<core::ops::Range<usize>>,
 }
 
 impl HypervisorData {
@@ -57,11 +61,21 @@ impl HypervisorData {
     /// # Panics
     /// It will be panic when parsing device tree failed.
     #[must_use]
-    pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
+    pub fn new(
+        root_page_table_addr: HostPhysicalAddress,
+        device_tree: Fdt,
+        hypervisor_region: core::ops::Range<HostPhysicalAddress>,
+    ) -> Self {
         // init page table
         page_table::sv39x4::initialize_page_table(root_page_table_addr);
 
-        Self::map_all_device_region(root_page_table_addr, device_tree);
+        Self::map_all_device_region(root_page_table_addr, &device_tree);
+
+        let mut reserved_regions = memmap::reserved_memory_regions(&device_tree);
+        reserved_regions.push(hypervisor_region.start.raw()..hypervisor_region.end.raw());
+        for region in &reserved_regions {
+            crate::println!("[Reserved] {:#x}..{:#x}", region.start, region.end);
+        }
 
         HypervisorData {
             // fix to zero for now
@@ -71,57 +85,32 @@ impl HypervisorData {
             current_guest_hart: 0,
             guests: [const { None }; MAX_HART_NUM],
             devices: Devices::new(root_page_table_addr, device_tree),
+            reserved_regions,
         }
     }
 
-    /// Map all regions for memory mapped divices.
-    fn map_all_device_region(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) {
+    /// Map all regions except the host DRAM as devices.
+    ///
+    /// Regions emulated by the hypervisor are unmapped later by each device.
+    fn map_all_device_region(root_page_table_addr: HostPhysicalAddress, device_tree: &Fdt) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
         const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
+        /// End of guest physical address space in Sv39x4 (41 bit).
+        const GPA_SPACE_END: usize = 1 << 41;
 
-        let dram_start = device_tree
-            .find_node("/memory")
-            .unwrap()
-            .reg()
-            .unwrap()
-            .next()
-            .expect("couldn't get memory region")
-            .starting_address as usize;
-
-        crate::println!(
-            "map memory mapped device region Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
-            dram_start,
-            0,
-            dram_start
-        );
-
-        // TODO: avoid hard coding the address.
-        // 0x0 .. 0x8000_0000
-        // 0x8000_0000 .. 0x9000_0000
-        // 0xb000_0000 .. 0x4_0000_0000
-        let all_memory_map = [
-            MemoryMap::new(
-                GuestPhysicalAddress(0x0)..GuestPhysicalAddress(dram_start),
-                HostPhysicalAddress(0x0)..HostPhysicalAddress(dram_start),
-                G_STAGE_PTE_FLAGS,
-            ),
-            MemoryMap::new(
-                GuestPhysicalAddress(0x8008_0000)..GuestPhysicalAddress(0x9000_0000),
-                HostPhysicalAddress(0x8008_0000)..HostPhysicalAddress(0x9000_0000),
-                G_STAGE_PTE_FLAGS,
-            ),
-            MemoryMap::new(
-                GuestPhysicalAddress(0x1_8000_0000)..GuestPhysicalAddress(0x4_8000_0000),
-                HostPhysicalAddress(0x1_8000_0000)..HostPhysicalAddress(0x4_8000_0000),
-                G_STAGE_PTE_FLAGS,
-            ),
-            MemoryMap::new(
-                GuestPhysicalAddress(0x80_0000_0000)..GuestPhysicalAddress(0x100_0000_0000),
-                HostPhysicalAddress(0x80_0000_0000)..HostPhysicalAddress(0x100_0000_0000),
-                G_STAGE_PTE_FLAGS,
-            ),
-        ];
-        page_table::sv39x4::generate_page_table(root_page_table_addr, &all_memory_map);
+        let host_dram = memmap::memory_regions(device_tree);
+        let device_maps: Vec<MemoryMap> = memmap::subtract_ranges(&(0..GPA_SPACE_END), &host_dram)
+            .into_iter()
+            .map(|region| {
+                crate::println!("[Device Map] {:#x}..{:#x}", region.start, region.end);
+                MemoryMap::new(
+                    GuestPhysicalAddress(region.start)..GuestPhysicalAddress(region.end),
+                    HostPhysicalAddress(region.start)..HostPhysicalAddress(region.end),
+                    G_STAGE_PTE_FLAGS,
+                )
+            })
+            .collect();
+        page_table::sv39x4::generate_page_table(root_page_table_addr, &device_maps);
     }
 
     /// Return Device objects.
@@ -168,12 +157,8 @@ impl HypervisorData {
             guest_hart_id,
             root_page_table,
             stack_top_addr,
-            board
-                .guest_dtbs
-                .get(hart_id)
-                .expect("guest device tree for this hart is not found"),
-            board.guest_dtb_base,
-            board.guest_initrd,
+            board,
+            &self.reserved_regions,
         );
 
         // load guest elf `from GUEST_KERNEL`

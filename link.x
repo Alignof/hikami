@@ -10,6 +10,13 @@ REGION_ALIAS("REGION_STACK", L2_LIM);
 
 _stack_start = ORIGIN(L2_LIM) + LENGTH(L2_LIM);
 
+/* Range occupied by the hypervisor. FLASH must be the lowest region and L2_LIM the highest. */
+_hypervisor_start = ORIGIN(FLASH);
+_hypervisor_end = ORIGIN(L2_LIM) + LENGTH(L2_LIM);
+ASSERT(ORIGIN(BOOT_RAM) >= _hypervisor_start && ORIGIN(BOOT_RAM) + LENGTH(BOOT_RAM) <= _hypervisor_end, "BOOT_RAM is out of the hypervisor range")
+ASSERT(ORIGIN(RAM_HEAP) >= _hypervisor_start && ORIGIN(RAM_HEAP) + LENGTH(RAM_HEAP) <= _hypervisor_end, "RAM_HEAP is out of the hypervisor range")
+ASSERT(ORIGIN(RAM) >= _hypervisor_start && ORIGIN(RAM) + LENGTH(RAM) <= _hypervisor_end, "RAM is out of the hypervisor range")
+
 /* defined section in hikami */
 SECTIONS
 {
