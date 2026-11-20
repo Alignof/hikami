@@ -1,10 +1,9 @@
 //! HS-mode level initialization.
 
+use crate::linker::{_hv_heap_size, _hypervisor_end, _hypervisor_start, _stack_start, _start_heap};
+use crate::target_board::BOARD;
 use crate::trap::hstrap_vector;
-use crate::{
-    ALLOCATOR, GUEST_DTB_CORE0, GUEST_DTB_CORE1, GUEST_DTB_CORE2, GUEST_DTB_CORE3, GUEST_INITRD,
-    GUEST_KERNEL,
-};
+use crate::{ALLOCATOR, GUEST_INITRD};
 use hikami_core::guest::context::ContextData;
 use hikami_core::h_extension::csrs::{
     VsInterruptKind, hcounteren, hedeleg, hedeleg::ExceptionKind, hgatp, hideleg, hie, hstatus,
@@ -12,9 +11,8 @@ use hikami_core::h_extension::csrs::{
 };
 use hikami_core::h_extension::instruction::hfence_gvma_all;
 use hikami_core::memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::ROOT_PAGE_TABLE,
+    GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::root_page_table_addr,
 };
-use hikami_core::{_hv_heap_size, _start_heap};
 use hikami_core::{HYPERVISOR_DATA, HypervisorData};
 
 use core::arch::asm;
@@ -24,6 +22,9 @@ use riscv::register::{sepc, sie, sscratch, sstatus, sstatus::FS, stvec};
 /// Entry point to HS-mode.
 #[inline(never)]
 pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
+    use hikami_core::h_extension::csrs::{henvcfg, hstateen0};
+    use hikami_core::isa::has_extension;
+
     crate::println!("welcome to hikami");
     crate::println!(
         "hart_id: {}, dtb address: {:#x}, initrd address: {:#x}",
@@ -37,7 +38,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 
     // clear bss section
     unsafe {
-        use crate::{_end_bss, _start_bss};
+        use crate::linker::{_end_bss, _start_bss};
         use core::ptr::addr_of;
 
         core::slice::from_raw_parts_mut(
@@ -53,6 +54,33 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
             core::ptr::addr_of_mut!(_start_heap),
             core::ptr::addr_of!(_hv_heap_size) as usize,
         );
+    }
+
+    // parse device tree
+    let device_tree = unsafe {
+        match fdt::Fdt::from_ptr(dtb_addr as *const u8) {
+            Ok(fdt) => fdt,
+            Err(e) => panic!("{}", e),
+        }
+    };
+
+    // enable bits depends on extension by aquire from device tree.
+    if has_extension(&device_tree, hart_id, "sstc") {
+        henvcfg::set_stce();
+    }
+    if has_extension(&device_tree, hart_id, "ssccfg") {
+        henvcfg::set_cde();
+    }
+    if has_extension(&device_tree, hart_id, "zicboz") {
+        henvcfg::set_cbze();
+    }
+    if has_extension(&device_tree, hart_id, "zicbom") {
+        henvcfg::set_cbcfe();
+    }
+
+    if has_extension(&device_tree, hart_id, "smstateen") {
+        hstateen0::all_state_set();
+        hstateen0::clear_envcfg();
     }
 
     // clear all hs-mode to vs-mode interrupts.
@@ -74,21 +102,6 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
     hie::set(VsInterruptKind::External);
     hie::set(VsInterruptKind::Timer);
     hie::set(VsInterruptKind::Software);
-
-    if cfg!(feature = "qemu") {
-        use hikami_core::h_extension::csrs::henvcfg;
-        use hikami_core::h_extension::csrs::hstateen0;
-
-        // enable Sstc extention
-        henvcfg::set_stce();
-        henvcfg::set_cde();
-        henvcfg::set_cbze();
-        henvcfg::set_cbcfe();
-
-        // disable `ENVCFG` state
-        hstateen0::all_state_set();
-        hstateen0::clear_envcfg();
-    }
 
     // enable hypervisor counter
     hcounteren::set(0xffff_ffff);
@@ -114,49 +127,32 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
             | VsInterruptKind::Software as usize,
     );
 
-    vsmode_setup(hart_id, HostPhysicalAddress(dtb_addr));
+    vsmode_setup(hart_id, device_tree);
 }
 
 /// Setup for VS-mode
 ///
-/// * Parse DTB
 /// * Setup page table
-fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress) -> ! {
+fn vsmode_setup(hart_id: usize, device_tree: fdt::Fdt) -> ! {
     // enable two-level address translation
-    let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
-    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr().raw() >> 12);
     hfence_gvma_all();
-
-    // parse device tree
-    let device_tree = unsafe {
-        match fdt::Fdt::from_ptr(dtb_addr.raw() as *const u8) {
-            Ok(fdt) => fdt,
-            Err(e) => panic!("{}", e),
-        }
-    };
 
     // initialize hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     hypervisor_data.get_or_init(|| {
         HypervisorData::new(
-            HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize),
             device_tree,
+            HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_start) as usize)
+                ..HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_end) as usize),
         )
     });
 
     // create and register a new guest
     let (guest_hart_id, guest_entry_point) = hypervisor_data.get_mut().unwrap().register_new_guest(
         hart_id,
-        &ROOT_PAGE_TABLE,
-        &GUEST_KERNEL,
-        match hart_id {
-            0 => &GUEST_DTB_CORE0,
-            1 => &GUEST_DTB_CORE1,
-            2 => &GUEST_DTB_CORE2,
-            3 => &GUEST_DTB_CORE3,
-            _ => unreachable!(),
-        },
-        &GUEST_INITRD,
+        HostPhysicalAddress(core::ptr::addr_of!(_stack_start) as usize),
+        &BOARD,
     );
 
     // initialize emulate_extension data

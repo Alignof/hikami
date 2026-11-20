@@ -2,19 +2,22 @@
 
 ## Device tree
 
-Place `guest.dts` to be given to the guest.  
-It should require a change in memory layout etc.  
+Place `<board>/cpu<hart id>.dts` to be given to the guest on each hart.
+The guest memory and the initrd address are read from it.
 Build is done automatically by cargo build.
+
+`fpga.dts` is kept for reference and is not built.
 
 ## Initrd
 
 Place the symbolic link to the initrd.
-It is automatically embedded in the binary.  
+It is automatically embedded in the binary,
+and loaded only when `/chosen` of the guest device tree has `linux,initrd-start` and `linux,initrd-end`.
 Or copy directly to `.guest_initrd` section with a bootloader such as u-boot.
 
 ## Linux
 
-Place the symbolic link to the vmlinux.
+Place the symbolic link to the vmlinux in `<board>/`.
 It is automatically embedded in the binary.
 
 ## Example

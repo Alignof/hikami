@@ -69,11 +69,12 @@ $ cd buildroot/
 $ make qemu_riscv64_virt_defconfig
 $ make -j$(nproc)
 $ ln -s output/images/rootfs.ext2 path/to/hikami/rootfs.ext2
-$ ln -s output/build/linux-x.x.x/vmlinux path/to/hikami/guest_image/vmlinux
+$ ln -s output/build/linux-x.x.x/vmlinux path/to/hikami/guest_image/qemu/vmlinux
 # optional
 $ ln -s path/to/initrd path/to/hikami/guest_image/initrd
 
-# copy host dts and edit to change user memory config
+# The guest device trees are guest_image/<board>/cpu<hart id>.dts.
+# Edit them to change the guest memory layout etc.
 # QEMU's dtb can be obtained by adding the option `-machine dumpdtb=qemu.dtb`.
 $ vim guest_image/guest.dts
 ```
@@ -85,6 +86,7 @@ $ vim guest_image/guest.dts
 $ cargo r --features qemu,identity_map
 ```
 
+One of the board features (`qemu` or `megrez`) must be enabled.
 Either `identity_map` or `iommu` must be enabled to select how guest memory and DMA are handled.
 
 - `identity_map`: guest physical addresses are mapped to the same host physical addresses, so devices can use them for DMA as is.

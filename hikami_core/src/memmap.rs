@@ -7,6 +7,7 @@ use crate::memmap::page_table::PteFlag;
 
 use alloc::vec::Vec;
 use core::ops::Range;
+use fdt::{Fdt, standard_nodes::MemoryRegion};
 
 /// Utility for `Range<Address>`
 trait AddressRangeUtil {
@@ -177,4 +178,63 @@ impl From<fdt::standard_nodes::MemoryRegion> for MemoryMap {
             ],
         )
     }
+}
+
+/// Return the parts of `range` that do not overlap any of `holes`, in ascending order.
+#[must_use]
+pub fn subtract_ranges(range: &Range<usize>, holes: &[Range<usize>]) -> Vec<Range<usize>> {
+    let mut holes: Vec<Range<usize>> = holes
+        .iter()
+        .filter(|hole| hole.start < range.end && range.start < hole.end)
+        .cloned()
+        .collect();
+    holes.sort_by_key(|hole| hole.start);
+
+    let mut result = Vec::new();
+    let mut cursor = range.start;
+    for hole in holes {
+        if cursor < hole.start {
+            result.push(cursor..hole.start);
+        }
+        cursor = cursor.max(hole.end);
+    }
+    if cursor < range.end {
+        result.push(cursor..range.end);
+    }
+    result
+}
+
+/// Return the regions of all `memory` nodes in the device tree.
+#[must_use]
+pub fn memory_regions(device_tree: &Fdt) -> Vec<Range<usize>> {
+    device_tree
+        .all_nodes()
+        .filter(|node| {
+            node.property("device_type")
+                .and_then(fdt::node::NodeProperty::as_str)
+                == Some("memory")
+        })
+        .filter_map(fdt::node::FdtNode::reg)
+        .flatten()
+        .map(region_to_range)
+        .collect()
+}
+
+/// Return the regions of all children of `/reserved-memory` in the device tree.
+#[must_use]
+pub fn reserved_memory_regions(device_tree: &Fdt) -> Vec<Range<usize>> {
+    device_tree
+        .find_node("/reserved-memory")
+        .into_iter()
+        .flat_map(fdt::node::FdtNode::children)
+        .filter_map(fdt::node::FdtNode::reg)
+        .flatten()
+        .map(region_to_range)
+        .collect()
+}
+
+/// Convert `MemoryRegion` of the device tree to an address range.
+fn region_to_range(region: MemoryRegion) -> Range<usize> {
+    let start = region.starting_address as usize;
+    start..start + region.size.unwrap_or(0)
 }

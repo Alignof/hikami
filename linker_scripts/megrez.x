@@ -1,0 +1,22 @@
+/* Memory layout of hikami on Milk-V Megrez. Included from link.x. */
+
+MEMORY
+{
+  FLASH (rx) : ORIGIN = 0x83000000, LENGTH = 2M
+  BOOT_RAM (rw) : ORIGIN = 0x83200000, LENGTH = 6M
+  RAM_HEAP (rwx) : ORIGIN = 0x84000000, LENGTH = 1024M
+  RAM (rwx) : ORIGIN = 0xd0000000, LENGTH = 128M
+  L2_LIM (rw) : ORIGIN = 0xf0000000, LENGTH = 8M
+}
+
+/*
+ * FLASH (TEXT), 0x8300_0000..0x8320_0000
+ * BOOT_RAM, 0x8320_0000..0x8380_0000
+ * RAM_HEAP (HEAP), 0x8400_0000..0xc400_0000
+ * RAM (DATA, BSS), 0xd000_0000..0xd800_0000
+ * L2_LIM (STACK), 0xf000_0000..0xf080_0000
+ */
+
+_hv_heap_size = 0x40000000;
+_b_stack_size = 0x200000;
+

@@ -9,7 +9,7 @@ pub mod uart;
 mod virtio;
 
 use crate::memmap::page_table::{PteFlag, constants::PAGE_SIZE};
-use crate::memmap::{HostPhysicalAddress, MemoryMap, page_table};
+use crate::memmap::{MemoryMap, page_table};
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -43,23 +43,14 @@ pub enum DeviceEmulateError {
 #[allow(clippy::module_name_repetitions)]
 pub trait MmioDevice {
     /// Create self instance.
-    /// * `root_page_table_addr` - root page table address
     /// * `device_tree` - struct Fdt
     /// * `compatibles` - compatible name list
-    fn try_new(
-        root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        compatibles: &[&str],
-    ) -> Option<Self>
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
     where
         Self: Sized;
 
     /// Create page table
-    fn create_page_table(
-        root_page_table_addr: HostPhysicalAddress,
-        memory_regions: &[MemoryRegion],
-        node_name: &str,
-    ) {
+    fn create_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
         for map in memory_regions {
             crate::println!(
                 "[Device Map] {}: {:#x}..{:#x}",
@@ -81,7 +72,7 @@ pub trait MmioDevice {
                 }
             })
             .collect();
-        page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+        page_table::sv39x4::generate_page_table(&memory_maps);
     }
 
     /// Invalidate page table
@@ -145,42 +136,20 @@ impl Devices {
     /// # Panics
     /// Panics if UART or PLIC or CLINT are not found in device tree.
     #[must_use]
-    pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
-        let uart = uart::Uart::try_new(
-            root_page_table_addr,
-            &device_tree,
-            &["ns16550a", "snps,dw-apb-uart"],
-        )
-        .expect("uart is not found in fdt");
-        let virtio_list =
-            virtio::VirtIoList::new(root_page_table_addr, &device_tree, "/soc/virtio_mmio");
-        let plic = plic::Plic::try_new(
-            root_page_table_addr,
-            &device_tree,
-            &["riscv,plic0", "sifive,plic-1.0.0"],
-        )
-        .expect("plic is not found in fdt");
-        let clint = clint::Clint::try_new(
-            root_page_table_addr,
-            &device_tree,
-            &["sifive,clint0", "riscv,clint0"],
-        );
+    pub fn new(device_tree: Fdt) -> Self {
+        let uart = uart::Uart::try_new(&device_tree, &["ns16550a", "snps,dw-apb-uart"])
+            .expect("uart is not found in fdt");
+        let virtio_list = virtio::VirtIoList::new(&device_tree, "/soc/virtio_mmio");
+        let plic = plic::Plic::try_new(&device_tree, &["riscv,plic0", "sifive,plic-1.0.0"])
+            .expect("plic is not found in fdt");
+        let clint = clint::Clint::try_new(&device_tree, &["sifive,clint0", "riscv,clint0"]);
         let aclint = aclint::Aclint::try_new_aclint(
-            root_page_table_addr,
             &device_tree,
             &["thead,c900-aclint-mswi"],
             &["thead,c900-aclint-mtimer"],
         );
-        let pci = pci::Pci::try_new(
-            root_page_table_addr,
-            &device_tree,
-            &["pci-host-ecam-generic"],
-        );
-        let axi_sdc = axi_sdc::Mmc::try_new(
-            root_page_table_addr,
-            &device_tree,
-            &["riscv,axi-sd-card-1.0"],
-        );
+        let pci = pci::Pci::try_new(&device_tree, &["pci-host-ecam-generic"]);
+        let axi_sdc = axi_sdc::Mmc::try_new(&device_tree, &["riscv,axi-sd-card-1.0"]);
 
         // mapping other devices except for devices have already mapped.
         let mut exclude_list: Vec<_> = virtio_list.iter().map(|x| x.name()).collect();

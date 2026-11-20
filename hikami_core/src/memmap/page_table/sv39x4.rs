@@ -18,10 +18,17 @@ use core::slice::from_raw_parts_mut;
 /// First page table size
 pub const FIRST_LV_PAGE_TABLE_LEN: usize = 2048;
 
-/// Device tree blob that is passed to guest
+/// Root page table of G-stage address translation.
+///
+/// It is written by `generate_page_table`, so it must be `static mut`.
 #[unsafe(link_section = ".root_page_table")]
-pub static ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
+static mut ROOT_PAGE_TABLE: [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN] =
     [PageTableEntry(0u64); FIRST_LV_PAGE_TABLE_LEN];
+
+/// Return the address of the root page table to be set to `hgatp`.
+pub fn root_page_table_addr() -> HostPhysicalAddress {
+    HostPhysicalAddress(&raw const ROOT_PAGE_TABLE as usize)
+}
 
 /// Pte field for Sv39x4
 trait PteFieldSv39x4 {
@@ -61,17 +68,20 @@ impl AddressFieldSv39x4 for GuestPhysicalAddress {
     }
 }
 
-/// Zero filling root page table
-pub fn initialize_page_table(root_table_start_addr: HostPhysicalAddress) {
-    let first_lv_page_table: &mut [PageTableEntry] = unsafe {
-        from_raw_parts_mut(
-            root_table_start_addr.raw() as *mut PageTableEntry,
-            FIRST_LV_PAGE_TABLE_LEN,
-        )
-    };
+/// Return `ROOT_PAGE_TABLE` as a mutable slice.
+///
+/// # Panics
+/// Panics if `ROOT_PAGE_TABLE` is not aligned 16 KiB.
+fn root_page_table() -> &'static mut [PageTableEntry] {
+    let root_page_table = &raw mut ROOT_PAGE_TABLE;
+    assert!((root_page_table as usize).is_multiple_of(16 * 1024)); // root page table must be aligned 16 KiB
 
-    // zero filling page table
-    first_lv_page_table.fill(PageTableEntry(0));
+    unsafe { &mut *root_page_table }
+}
+
+/// Zero filling root page table
+pub fn initialize_page_table() {
+    root_page_table().fill(PageTableEntry(0));
 }
 
 /// Splits a single MemoryMap into multiple MemoryMaps to satisfy superpage alignment requirements.
@@ -125,24 +135,14 @@ fn split_memory_maps(memmaps: &[MemoryMap]) -> Vec<MemoryMap> {
     split_maps
 }
 
-/// Generate third-level page table. (Sv39x4)
+/// Generate third-level page table under `ROOT_PAGE_TABLE`. (Sv39x4)
 ///
 /// The number of address translation stages is determined by the size of the range.
-///
-/// # Panics
-/// Panics if `root_table_start_addr` is not aligned 16 Kib.
 #[allow(clippy::module_name_repetitions)]
-pub fn generate_page_table(root_table_start_addr: HostPhysicalAddress, memmaps: &[MemoryMap]) {
+pub fn generate_page_table(memmaps: &[MemoryMap]) {
     use crate::memmap::AddressRangeUtil;
 
-    assert!(root_table_start_addr % (16 * 1024) == 0); // root_table_start_addr must be aligned 16 KiB
-
-    let first_lv_page_table: &mut [PageTableEntry] = unsafe {
-        from_raw_parts_mut(
-            root_table_start_addr.raw() as *mut PageTableEntry,
-            FIRST_LV_PAGE_TABLE_LEN,
-        )
-    };
+    let first_lv_page_table = root_page_table();
 
     // Split memory maps to ensure proper alignment for superpages.
     let aligned_memmaps = split_memory_maps(memmaps);
