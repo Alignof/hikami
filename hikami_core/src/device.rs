@@ -8,8 +8,7 @@ pub mod plic;
 pub mod uart;
 mod virtio;
 
-use crate::memmap::page_table::{PteFlag, constants::PAGE_SIZE};
-use crate::memmap::{MemoryMap, page_table};
+use crate::memmap::page_table::PteFlag;
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -48,32 +47,6 @@ pub trait MmioDevice {
     fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self>
     where
         Self: Sized;
-
-    /// Create page table
-    fn create_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
-        for map in memory_regions {
-            crate::println!(
-                "[Device Map] {}: {:#x}..{:#x}",
-                node_name,
-                map.starting_address as usize,
-                map.starting_address as usize + map.size.unwrap(),
-            )
-        }
-        let memory_maps: Vec<MemoryMap> = memory_regions
-            .iter()
-            .cloned()
-            .map(|mut region| {
-                if (region.starting_address as usize).is_multiple_of(PAGE_SIZE) {
-                    MemoryMap::from(region)
-                } else {
-                    region.starting_address =
-                        ((region.starting_address as usize) & !(PAGE_SIZE - 1)) as *const u8;
-                    MemoryMap::from(region)
-                }
-            })
-            .collect();
-        page_table::sv39x4::generate_page_table(&memory_maps);
-    }
 
     /// Invalidate page table
     ///
