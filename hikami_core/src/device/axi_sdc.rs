@@ -28,11 +28,7 @@ impl Mmc {
 }
 
 impl MmioDevice for Mmc {
-    fn try_new(
-        _root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        compatibles: &[&str],
-    ) -> Option<Self> {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let mmc_node = device_tree.find_compatible(compatibles)?;
         let register_map_region = mmc_node.reg().unwrap().next().unwrap();
 

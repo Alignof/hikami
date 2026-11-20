@@ -231,11 +231,7 @@ impl Pci {
 }
 
 impl MmioDevice for Pci {
-    fn try_new(
-        _root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        compatibles: &[&str],
-    ) -> Option<Self> {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let pci_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = pci_node.reg().unwrap().collect();
 

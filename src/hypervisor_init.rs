@@ -11,7 +11,7 @@ use hikami_core::h_extension::csrs::{
 };
 use hikami_core::h_extension::instruction::hfence_gvma_all;
 use hikami_core::memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::ROOT_PAGE_TABLE,
+    GuestPhysicalAddress, HostPhysicalAddress, page_table::sv39x4::root_page_table_addr,
 };
 use hikami_core::{HYPERVISOR_DATA, HypervisorData};
 
@@ -135,15 +135,13 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
 /// * Setup page table
 fn vsmode_setup(hart_id: usize, device_tree: fdt::Fdt) -> ! {
     // enable two-level address translation
-    let root_page_table_addr = HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize);
-    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr.raw() >> 12);
+    hgatp::set(hgatp::Mode::Sv39x4, 0, root_page_table_addr().raw() >> 12);
     hfence_gvma_all();
 
     // initialize hypervisor data
     let mut hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
     hypervisor_data.get_or_init(|| {
         HypervisorData::new(
-            HostPhysicalAddress(ROOT_PAGE_TABLE.as_ptr() as usize),
             device_tree,
             HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_start) as usize)
                 ..HostPhysicalAddress(core::ptr::addr_of!(_hypervisor_end) as usize),
@@ -153,7 +151,6 @@ fn vsmode_setup(hart_id: usize, device_tree: fdt::Fdt) -> ! {
     // create and register a new guest
     let (guest_hart_id, guest_entry_point) = hypervisor_data.get_mut().unwrap().register_new_guest(
         hart_id,
-        &ROOT_PAGE_TABLE,
         HostPhysicalAddress(core::ptr::addr_of!(_stack_start) as usize),
         &BOARD,
     );

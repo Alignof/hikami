@@ -259,11 +259,7 @@ impl Plic {
 
 impl MmioDevice for Plic {
     #[allow(clippy::cast_ptr_alignment)]
-    fn try_new(
-        _root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        compatibles: &[&str],
-    ) -> Option<Self> {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let plic_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = plic_node.reg().unwrap().collect();
 
@@ -277,11 +273,7 @@ impl MmioDevice for Plic {
         })
     }
 
-    fn create_page_table(
-        root_page_table_addr: HostPhysicalAddress,
-        memory_regions: &[MemoryRegion],
-        node_name: &str,
-    ) {
+    fn create_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
         for map in memory_regions {
             crate::println!(
                 "[Device Map] {} {:#x}..{:#x}",
@@ -303,7 +295,7 @@ impl MmioDevice for Plic {
                 )
             })
             .collect();
-        page_table::sv39x4::generate_page_table(root_page_table_addr, &memory_maps);
+        page_table::sv39x4::generate_page_table(&memory_maps);
     }
 
     /// Invalidate page table

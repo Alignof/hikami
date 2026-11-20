@@ -4,12 +4,11 @@ pub mod context;
 
 use crate::PageBlock;
 use crate::board::Board;
-use crate::memmap::page_table::sv39x4::FIRST_LV_PAGE_TABLE_LEN;
 use crate::memmap::{
     GuestPhysicalAddress, HostPhysicalAddress, MemoryMap,
     constant::guest_memory,
     page_table,
-    page_table::{PageTableEntry, PteFlag, constants::PAGE_SIZE},
+    page_table::{PteFlag, constants::PAGE_SIZE},
 };
 use context::{Context, ContextData};
 
@@ -25,9 +24,6 @@ pub struct Guest {
     hart_id: usize,
     /// Guest ID (min: 0)
     guest_hart_id: usize,
-    /// Page table that is passed to guest address
-    #[allow(dead_code)]
-    page_table_addr: HostPhysicalAddress,
     /// Device tree address
     dtb_addr: GuestPhysicalAddress,
     /// Stack top address
@@ -47,7 +43,6 @@ impl Guest {
     pub fn new(
         hart_id: usize,
         guest_hart_id: usize,
-        root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         stack_top_addr: HostPhysicalAddress,
         board: &Board,
         reserved_regions: &[Range<usize>],
@@ -65,8 +60,6 @@ impl Guest {
                 .map(|region| GuestPhysicalAddress(region.start)..GuestPhysicalAddress(region.end))
                 .collect();
 
-        let page_table_addr = HostPhysicalAddress(root_page_table.as_ptr() as usize);
-
         // map guest memory space
         for region in &memory_regions {
             crate::println!(
@@ -76,16 +69,11 @@ impl Guest {
                 region.start.raw(),
                 region.end.raw(),
             );
-            Self::allocate_memory_region(page_table_addr, region, reserved_regions);
+            Self::allocate_memory_region(region, reserved_regions);
         }
 
         // load guest dtb to memory
-        let dtb_addr = Self::load_guest_dtb(
-            guest_hart_id,
-            page_table_addr,
-            guest_dtb,
-            board.guest_dtb_base,
-        );
+        let dtb_addr = Self::load_guest_dtb(guest_hart_id, guest_dtb, board.guest_dtb_base);
 
         // laod guest initrd
         Self::load_initrd(guest_hart_id, board.guest_initrd, &guest_device_tree);
@@ -93,7 +81,6 @@ impl Guest {
         Guest {
             hart_id,
             guest_hart_id,
-            page_table_addr: HostPhysicalAddress(root_page_table.as_ptr() as usize),
             dtb_addr,
             stack_top_addr,
             memory_regions,
@@ -104,7 +91,6 @@ impl Guest {
     /// Allocate guest memory space from heap and create corresponding page table.
     #[cfg(feature = "iommu")]
     fn allocate_memory_region(
-        page_table_addr: HostPhysicalAddress,
         region: &Range<GuestPhysicalAddress>,
         _reserved_regions: &[Range<usize>],
     ) {
@@ -119,14 +105,11 @@ impl Guest {
             let aligned_page_size_block_addr: HostPhysicalAddress = PageBlock::alloc();
 
             // create memory mapping
-            page_table::sv39x4::generate_page_table(
-                page_table_addr,
-                &[MemoryMap::new(
-                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                    aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                    G_STAGE_PTE_FLAGS,
-                )],
-            );
+            page_table::sv39x4::generate_page_table(&[MemoryMap::new(
+                guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
+                G_STAGE_PTE_FLAGS,
+            )]);
         }
     }
 
@@ -136,7 +119,6 @@ impl Guest {
     /// (e.g. list them in `/reserved-memory`).
     #[cfg(feature = "identity_map")]
     fn allocate_memory_region(
-        page_table_addr: HostPhysicalAddress,
         region: &Range<GuestPhysicalAddress>,
         reserved_regions: &[Range<usize>],
     ) {
@@ -156,7 +138,7 @@ impl Guest {
             )
         })
         .collect();
-        page_table::sv39x4::generate_page_table(page_table_addr, &memory_maps);
+        page_table::sv39x4::generate_page_table(&memory_maps);
     }
 
     /// Load guest's initrd to the address given by `/chosen` of the guest device tree.
@@ -217,7 +199,6 @@ impl Guest {
     /// Load guest device tree and create corresponding page table
     fn load_guest_dtb(
         guest_hart_id: usize,
-        page_table_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8],
         guest_dtb_base: GuestPhysicalAddress,
     ) -> GuestPhysicalAddress {
@@ -245,15 +226,12 @@ impl Guest {
             }
 
             // create memory mapping
-            page_table::sv39x4::generate_page_table(
-                page_table_addr,
-                &[MemoryMap::new(
-                    guest_physical_addr..guest_physical_addr + PAGE_SIZE,
-                    aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
-                    // allow writing data to dtb to modify device tree on guest OS.
-                    &[Dirty, Accessed, Write, Read, User, Valid],
-                )],
-            );
+            page_table::sv39x4::generate_page_table(&[MemoryMap::new(
+                guest_physical_addr..guest_physical_addr + PAGE_SIZE,
+                aligned_page_size_block_addr..aligned_page_size_block_addr + PAGE_SIZE,
+                // allow writing data to dtb to modify device tree on guest OS.
+                &[Dirty, Accessed, Write, Read, User, Valid],
+            )]);
         }
 
         guest_dtb_addr

@@ -31,10 +31,8 @@ use spin::Mutex;
 use device::Devices;
 use guest::Guest;
 use memmap::constant::MAX_HART_NUM;
-use memmap::page_table::{PteFlag, sv39x4::FIRST_LV_PAGE_TABLE_LEN};
-use memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table, page_table::PageTableEntry,
-};
+use memmap::page_table::PteFlag;
+use memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 
 /// Singleton for this hypervisor.
 pub static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
@@ -62,15 +60,11 @@ impl HypervisorData {
     /// # Panics
     /// It will be panic when parsing device tree failed.
     #[must_use]
-    pub fn new(
-        root_page_table_addr: HostPhysicalAddress,
-        device_tree: Fdt,
-        hypervisor_region: core::ops::Range<HostPhysicalAddress>,
-    ) -> Self {
+    pub fn new(device_tree: Fdt, hypervisor_region: core::ops::Range<HostPhysicalAddress>) -> Self {
         // init page table
-        page_table::sv39x4::initialize_page_table(root_page_table_addr);
+        page_table::sv39x4::initialize_page_table();
 
-        Self::map_all_device_region(root_page_table_addr, &device_tree);
+        Self::map_all_device_region(&device_tree);
 
         let mut reserved_regions = memmap::reserved_memory_regions(&device_tree);
         reserved_regions.push(hypervisor_region.start.raw()..hypervisor_region.end.raw());
@@ -85,7 +79,7 @@ impl HypervisorData {
             // hart id.
             current_guest_hart: 0,
             guests: [const { None }; MAX_HART_NUM],
-            devices: Devices::new(root_page_table_addr, device_tree),
+            devices: Devices::new(device_tree),
             reserved_regions,
         }
     }
@@ -93,7 +87,7 @@ impl HypervisorData {
     /// Map all regions except the host DRAM as devices.
     ///
     /// Regions emulated by the hypervisor are unmapped later by each device.
-    fn map_all_device_region(root_page_table_addr: HostPhysicalAddress, device_tree: &Fdt) {
+    fn map_all_device_region(device_tree: &Fdt) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
         const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
         /// End of guest physical address space in Sv39x4 (41 bit).
@@ -111,7 +105,7 @@ impl HypervisorData {
                 )
             })
             .collect();
-        page_table::sv39x4::generate_page_table(root_page_table_addr, &device_maps);
+        page_table::sv39x4::generate_page_table(&device_maps);
     }
 
     /// Return Device objects.
@@ -141,7 +135,6 @@ impl HypervisorData {
     pub fn register_new_guest(
         &mut self,
         hart_id: usize,
-        root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         stack_top_addr: HostPhysicalAddress,
         board: &board::Board,
     ) -> (usize, GuestPhysicalAddress) {
@@ -156,7 +149,6 @@ impl HypervisorData {
         let new_guest = Guest::new(
             hart_id,
             guest_hart_id,
-            root_page_table,
             stack_top_addr,
             board,
             &self.reserved_regions,
