@@ -7,6 +7,11 @@ use core::arch::asm;
 #[allow(clippy::inline_always)]
 pub fn hfence_gvma_all() {
     unsafe {
-        asm!("hfence.gvma x0, x0");
+        asm!(
+            ".option push",
+            ".option arch, +h",
+            "hfence.gvma x0, x0",
+            ".option pop",
+        );
     }
 }
