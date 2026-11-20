@@ -114,7 +114,7 @@ impl PciAddressSpace {
     /// Constructor of `PciAddressSpace`.
     ///
     /// # Panics
-    /// Panics if `ranges` in device tree does not have seven fields or does not be aliged 4 bytes.
+    /// Panics if `ranges` in device tree does not have seven fields or is not aligned to 4 bytes.
     #[must_use]
     pub fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
         /// Bytes size of u32.

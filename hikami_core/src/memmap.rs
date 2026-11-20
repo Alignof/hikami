@@ -1,4 +1,4 @@
-//! See `memmap/constant` module for specefic memmory map.
+//! See `memmap/constant` module for specific memory map.
 
 #[cfg(feature = "iommu")]
 pub mod host_memory_pool;

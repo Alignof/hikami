@@ -203,6 +203,6 @@ pub fn trans_addr(
 
     Err((
         TransAddrError::NoLeafEntry,
-        "[sv57] cannnot reach to leaf entry",
+        "[sv57] cannot reach to leaf entry",
     ))
 }

@@ -1,10 +1,10 @@
 //! PLIC: Platform-Level Interrupt Controller  
 //! ref: [https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf](https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf)
 
-use super::{DeviceEmulateError, MmioDevice, PTE_FLAGS_FOR_DEVICE};
+use super::{DeviceEmulateError, MmioDevice};
 use crate::h_extension::csrs::{VsInterruptKind, hvip};
 use crate::memmap::constant::MAX_HART_NUM;
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, page_table};
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -263,7 +263,6 @@ impl MmioDevice for Plic {
         let plic_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = plic_node.reg().unwrap().collect();
 
-        // TODO: unmap
         Self::invalidate_page_table(&register_map_regions, plic_node.name);
 
         Some(Plic {
@@ -271,31 +270,6 @@ impl MmioDevice for Plic {
             register_map_regions,
             claim_complete: [0u32; MAX_CONTEXT_NUM],
         })
-    }
-
-    fn create_page_table(memory_regions: &[MemoryRegion], node_name: &str) {
-        for map in memory_regions {
-            crate::println!(
-                "[Device Map] {} {:#x}..{:#x}",
-                node_name,
-                map.starting_address as usize,
-                map.starting_address as usize + THRESHOLD_CLAIM_BASE,
-            )
-        }
-        let memory_maps: Vec<MemoryMap> = memory_regions
-            .iter()
-            .cloned()
-            .map(|region| {
-                let virt_start = GuestPhysicalAddress(region.starting_address as usize);
-                let phys_start = HostPhysicalAddress(region.starting_address as usize);
-                MemoryMap::new(
-                    virt_start..virt_start + ENABLE_BASE,
-                    phys_start..phys_start + ENABLE_BASE,
-                    &PTE_FLAGS_FOR_DEVICE,
-                )
-            })
-            .collect();
-        page_table::sv39x4::generate_page_table(&memory_maps);
     }
 
     /// Invalidate page table

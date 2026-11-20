@@ -61,7 +61,7 @@ fn sbi_vs_mode_handler(context: &mut guest::context::Context) {
     ];
 
     let sbiret = match ext_id {
-        sbi_spec::base::EID_BASE => sbi_base_handler(func_id),
+        sbi_spec::base::EID_BASE => sbi_base_handler(func_id, arguments),
         sbi_spec::pmu::EID_PMU => sbi_pmu_handler(func_id, arguments),
         sbi_spec::rfnc::EID_RFNC => sbi_rfnc_handler(func_id, arguments),
         sbi_spec::time::EID_TIME => sbi_time_handler(func_id, arguments),

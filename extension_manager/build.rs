@@ -35,11 +35,11 @@ fn main() {
         })
         .expect("Failed to find root_crate package");
 
-    // collect crates reguardless of `enable_extension`.
+    // collect crates regardless of `enable_extension`.
     let feature_dependencies: HashSet<String> = root_crate
         .get("features")
         .and_then(|v| v.as_object())
-        .and_then(|features| features.get("enable_extension")) // crates reguardless of `enable_extension`
+        .and_then(|features| features.get("enable_extension")) // crates regardless of `enable_extension`
         .and_then(|v| v.as_array())
         .map(|deps| {
             deps.iter()

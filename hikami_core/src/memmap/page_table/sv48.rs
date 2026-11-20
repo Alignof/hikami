@@ -170,6 +170,6 @@ pub fn trans_addr(
 
     Err((
         TransAddrError::NoLeafEntry,
-        "[sv48] cannnot reach to leaf entry",
+        "[sv48] cannot reach to leaf entry",
     ))
 }
