@@ -53,10 +53,24 @@ fn main() {
     }
     // --- End Device Tree Compilation ---
 
-    // Put the linker script somewhere the linker can find it.
-    fs::write(out_dir.join("memory.x"), include_bytes!("memory.x")).unwrap();
+    // --- Linker Script ---
+    // `link.x` includes `memory.x`, which is the memory layout of the target board.
+    let board = if env::var_os("CARGO_FEATURE_QEMU").is_some() {
+        "qemu"
+    } else if env::var_os("CARGO_FEATURE_MEGREZ").is_some() {
+        "megrez"
+    } else {
+        // `target_board` reports the missing board feature.
+        return;
+    };
+    let memory_x = PathBuf::from("linker_scripts").join(format!("{board}.x"));
+    fs::copy(&memory_x, out_dir.join("memory.x")).unwrap();
+    fs::copy("link.x", out_dir.join("link.x")).unwrap();
     println!("cargo:rustc-link-search={}", out_dir.display());
-    println!("cargo:rerun-if-changed=memory.x");
+    println!("cargo:rustc-link-arg-bins=-Tlink.x");
+    println!("cargo:rerun-if-changed={}", memory_x.display());
+    println!("cargo:rerun-if-changed=link.x");
+    // --- End Linker Script ---
 
     println!("cargo:rerun-if-changed=build.rs");
 }
