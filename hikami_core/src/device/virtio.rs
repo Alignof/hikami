@@ -39,7 +39,7 @@ pub struct VirtIo {
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
 
-    /// Interrupt Reqeust bit.
+    /// Interrupt Request bit.
     irq: u8,
 }
 

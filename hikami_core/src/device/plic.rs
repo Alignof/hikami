@@ -263,7 +263,6 @@ impl MmioDevice for Plic {
         let plic_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = plic_node.reg().unwrap().collect();
 
-        // TODO: unmap
         Self::invalidate_page_table(&register_map_regions, plic_node.name);
 
         Some(Plic {

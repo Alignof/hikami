@@ -59,7 +59,7 @@ pub trait MmioDevice {
     fn name(&self) -> &str;
 }
 
-/// Other memory mapped divice
+/// Other memory mapped device
 ///
 /// The all devices which aren't managed by the hypervisor is mapped identically.
 #[derive(Debug)]

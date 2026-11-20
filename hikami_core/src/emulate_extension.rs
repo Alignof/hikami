@@ -8,7 +8,7 @@ use core::arch::asm;
 use raki::Instruction;
 use riscv::register::sstatus;
 
-/// Trait for extention emulation.
+/// Trait for extension emulation.
 pub trait EmulateExtension {
     /// Emulate instruction
     fn instruction(&mut self, inst: &Instruction);

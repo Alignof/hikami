@@ -86,7 +86,7 @@ impl Guest {
         // load guest dtb to memory
         let dtb_addr = Self::load_guest_dtb(guest_hart_id, guest_dtb, board.guest_dtb_base);
 
-        // laod guest initrd
+        // load guest initrd
         Self::load_initrd(guest_hart_id, board.guest_initrd, &guest_device_tree);
 
         Guest {
@@ -291,7 +291,7 @@ impl Guest {
     /// Load an elf to new allocated guest memory page.
     ///
     /// It only load `PT_LOAD` type segments.
-    /// The entry segment is laoded at `kernel_base`.
+    /// The entry segment is loaded at `kernel_base`.
     ///
     /// # Return
     /// - Entry point address in Guest memory space.

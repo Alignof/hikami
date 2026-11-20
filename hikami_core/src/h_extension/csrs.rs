@@ -391,7 +391,7 @@ pub mod hstateen0 {
     /// Hypervisor State Enable 0 Register.
     pub struct HstateEn0(usize);
 
-    /// Enable all state except `C` bit
+    /// Enable all state including `C` bit
     pub fn all_state_set() {
         unsafe {
             core::arch::asm!("csrs hstateen0, {all_set}", all_set = in(reg) u64::MAX);

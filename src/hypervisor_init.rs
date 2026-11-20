@@ -64,7 +64,7 @@ pub extern "C" fn hstart(hart_id: usize, dtb_addr: usize) -> ! {
         }
     };
 
-    // enable bits depends on extension by aquire from device tree.
+    // enable bits of the extensions that the host device tree lists.
     if has_extension(&device_tree, hart_id, "sstc") {
         henvcfg::set_stce();
     }
@@ -199,7 +199,7 @@ fn vsmode_setup(hart_id: usize, dtb_addr: HostPhysicalAddress, device_tree: fdt:
 /// Entry for guest (VS-mode).
 #[inline(never)]
 fn hart_entry(guest_hart_id: usize, dtb_addr: GuestPhysicalAddress) -> ! {
-    // aquire hypervisor data
+    // acquire hypervisor data
     let hypervisor = HYPERVISOR.lock();
     let stack_top = hypervisor.get().unwrap().guest().stack_top();
     // release HYPERVISOR lock

@@ -24,10 +24,6 @@ pub struct IoMmu {
     reg_space: Range<HostPhysicalAddress>,
     /// Configuration space of the IOMMU function
     config_space: Range<HostPhysicalAddress>,
-    /// PCI Vender ID
-    _vender_id: u32,
-    /// PCI Device ID
-    _device_id: u32,
 }
 
 impl IoMmu {
@@ -107,10 +103,6 @@ impl IoMmu {
             },
             config_space: HostPhysicalAddress(config_space_header_addr)
                 ..HostPhysicalAddress(config_space_header_addr) + PAGE_SIZE,
-            // TODO: obtain from pci register.
-            // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html
-            _vender_id: 0x1efd,
-            _device_id: 0xedf1,
         })
     }
 
@@ -132,7 +124,7 @@ impl IoMmu {
         const OFFSET_IOHGATP: usize = 8;
         /// Size of leaf ddt entry [byte].
         const LEAF_DDT_ENTRY_SIZE: usize = 64; // 512 / 8 = 64 [byte]
-        /// V field in TC regsiter.
+        /// V field in TC register.
         const TC_V: u64 = 1;
 
         // set all ddt entry

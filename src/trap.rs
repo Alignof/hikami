@@ -24,7 +24,7 @@ use riscv::register::scause;
 #[inline(always)]
 #[allow(clippy::inline_always)]
 pub unsafe fn hstrap_exit() -> ! {
-    // aquire hypervisor data
+    // acquire hypervisor data
     let hypervisor = HYPERVISOR.lock();
     let stack_top = hypervisor.get().unwrap().guest().stack_top();
     // release HYPERVISOR lock

@@ -103,7 +103,7 @@ fn generate_csr_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
     })
 }
 
-/// Genrate all `EmulateExtension::instruction` arm from extension crate lists.
+/// Generate all `EmulateExtension::instruction` arm from extension crate lists.
 fn generate_instruction_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
     CRATES.iter().map(|crate_name| {
         let ext_name = crate_name
@@ -128,7 +128,7 @@ fn generate_instruction_arms() -> impl Iterator<Item = proc_macro2::TokenStream>
     })
 }
 
-/// Import all global varables.
+/// Import all global variables.
 #[proc_macro]
 pub fn import_global_variables(_input: TokenStream) -> TokenStream {
     let calls = CRATES.iter().map(|crate_name| {
