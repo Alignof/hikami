@@ -69,11 +69,12 @@ $ cd buildroot/
 $ make qemu_riscv64_virt_defconfig
 $ make -j$(nproc)
 $ ln -s output/images/rootfs.ext2 path/to/hikami/rootfs.ext2
-$ ln -s output/build/linux-x.x.x/vmlinux path/to/hikami/guest_image/vmlinux
+$ ln -s output/build/linux-x.x.x/vmlinux path/to/hikami/guest_image/qemu/vmlinux
 # optional
 $ ln -s path/to/initrd path/to/hikami/guest_image/initrd
 
-# copy host dts and edit to change user memory config
+# The guest device trees are guest_image/<board>/cpu<hart id>.dts.
+# Edit them to change the guest memory layout etc.
 # QEMU's dtb can be obtained by adding the option `-machine dumpdtb=qemu.dtb`.
 $ vim guest_image/guest.dts
 ```
