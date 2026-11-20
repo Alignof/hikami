@@ -47,6 +47,7 @@ impl Guest {
         root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
         stack_top_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8],
+        guest_dtb_base: GuestPhysicalAddress,
         guest_initrd: &'static [u8],
     ) -> Self {
         // Calculate guest memory region.
@@ -71,7 +72,8 @@ impl Guest {
         Self::allocate_memory_region(page_table_addr, &memory_region);
 
         // load guest dtb to memory
-        let dtb_addr = Self::load_guest_dtb(guest_hart_id, page_table_addr, guest_dtb);
+        let dtb_addr =
+            Self::load_guest_dtb(guest_hart_id, page_table_addr, guest_dtb, guest_dtb_base);
 
         // laod guest initrd
         Self::load_initrd(guest_hart_id, guest_initrd, &memory_region);
@@ -185,15 +187,14 @@ impl Guest {
         guest_hart_id: usize,
         page_table_addr: HostPhysicalAddress,
         guest_dtb: &'static [u8],
+        guest_dtb_base: GuestPhysicalAddress,
     ) -> GuestPhysicalAddress {
         use PteFlag::{Accessed, Dirty, Read, User, Valid, Write};
 
         assert!(guest_dtb.len() < guest_memory::GUEST_DTB_REGION_SIZE);
 
         // Guest device tree is loaded at a fixed offset from DRAM_BASE.
-        let host_dram_base = crate::memmap::constant::DRAM_BASE;
-        let guest_dtb_addr = GuestPhysicalAddress(host_dram_base)
-            + guest_hart_id * guest_memory::GUEST_DTB_REGION_SIZE;
+        let guest_dtb_addr = guest_dtb_base + guest_hart_id * guest_memory::GUEST_DTB_REGION_SIZE;
         let aligned_dtb_size = guest_dtb.len().div_ceil(PAGE_SIZE) * PAGE_SIZE;
 
         for offset in (0..aligned_dtb_size).step_by(PAGE_SIZE) {
@@ -256,15 +257,10 @@ impl Guest {
         &self.memory_region
     }
 
-    /// Return guest dram space start
-    fn dram_base(&self) -> GuestPhysicalAddress {
-        self.memory_region.start
-    }
-
     /// Load an elf to new allocated guest memory page.
     ///
     /// It only load `PT_LOAD` type segments.
-    /// Entry address is base address of the dram.
+    /// The entry segment is laoded at `kernel_base`.
     ///
     /// # Return
     /// - Entry point address in Guest memory space.
@@ -273,7 +269,7 @@ impl Guest {
     /// # Arguments
     /// * `guest_elf` - Elf loading guest space.
     /// * `elf_addr` - Elf address.
-    /// * `guest_initrd` - Initrd raw slice.
+    /// * `kernel_base` - Address of loading kernel image
     ///
     /// # Safety
     /// This function will be safe if `elf_addr` is valid pointer.
@@ -285,6 +281,7 @@ impl Guest {
         &self,
         guest_elf: &ElfBytes<AnyEndian>,
         elf_addr: *const u8,
+        kernel_base: GuestPhysicalAddress,
     ) -> GuestPhysicalAddress {
         /// Segment type `PT_LOAD`
         ///
@@ -343,7 +340,7 @@ impl Guest {
                 for offset in (0..aligned_segment_size).step_by(PAGE_SIZE) {
                     // Calculate the target GPA: Kernel's physical base + segment's physical offset + page offset
                     let guest_physical_addr =
-                        self.dram_base() + (prog_header.p_paddr - base_paddr) as usize + offset;
+                        kernel_base + (prog_header.p_paddr - base_paddr) as usize + offset;
 
                     // Check if the target address is within the pre-allocated guest memory region
                     if !self.memory_region.contains(&guest_physical_addr) {
@@ -410,7 +407,7 @@ impl Guest {
             .expect("No loadable segment found in ELF");
 
         // Calculate the physical entry point: physical_base + (virtual_entry - virtual_base)
-        let phys_entry = self.dram_base().raw() as u64 + (virt_entry - virt_base);
+        let phys_entry = kernel_base.raw() as u64 + (virt_entry - virt_base);
         GuestPhysicalAddress(phys_entry as usize)
     }
 }

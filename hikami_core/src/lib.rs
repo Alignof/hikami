@@ -172,6 +172,7 @@ impl HypervisorData {
                 .guest_dtbs
                 .get(hart_id)
                 .expect("guest device tree for this hart is not found"),
+            board.guest_dtb_base,
             board.guest_initrd,
         );
 
@@ -185,8 +186,13 @@ impl HypervisorData {
         };
 
         // load guest image
-        let guest_entry_point =
-            unsafe { new_guest.load_guest_elf(&guest_elf, board.guest_kernel.as_ptr()) };
+        let guest_entry_point = unsafe {
+            new_guest.load_guest_elf(
+                &guest_elf,
+                board.guest_kernel.as_ptr(),
+                board.guest_kernel_base,
+            )
+        };
 
         self.guests[guest_hart_id] = Some(new_guest);
 

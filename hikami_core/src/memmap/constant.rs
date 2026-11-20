@@ -11,10 +11,6 @@
 
 /// Max number of HART
 pub const MAX_HART_NUM: usize = 8;
-/// Base address of dram.
-pub const DRAM_BASE: usize = 0x8000_0000;
-/// Stack size for each HART.
-pub const STACK_SIZE_PER_HART: usize = 0x1_0000;
 
 pub mod guest_memory {
     //! Guest memory region on Guest Physical Address
@@ -24,8 +20,7 @@ pub mod guest_memory {
     /// Dram base address in guest memory
     ///
     /// It starts from as high as `DRAM_SIZE_PER_GUEST` to distinguish from HPA.
-    pub const DRAM_BASE: GuestPhysicalAddress =
-        GuestPhysicalAddress(super::DRAM_BASE + 0x8000_0000);
+    pub const DRAM_BASE: GuestPhysicalAddress = GuestPhysicalAddress(0x1_0000_0000);
     /// Dram memory space per HART.
     pub const DRAM_SIZE_PER_GUEST: usize = 2 * 1024 * 1024 * 1024; // 2 GB = 0x8000_0000
     /// Guest DTB space size

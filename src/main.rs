@@ -14,10 +14,12 @@ use core::panic::PanicInfo;
 
 use linked_list_allocator::LockedHeap;
 
-use hikami_core::memmap::constant::{DRAM_BASE, STACK_SIZE_PER_HART};
 use hikami_core::println;
 use hypervisor_init::hstart;
 use linker::_top_b_stack;
+
+/// Boot stack size for each HART.
+const STACK_SIZE_PER_HART: usize = 0x1_0000;
 
 /// Guest intird
 #[unsafe(link_section = ".guest_initrd")]
@@ -41,7 +43,6 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 /// Entry function of the hypervisor.
 ///
 /// - set stack pointer
-/// - init stvec
 /// - jump to hstart
 ///
 /// TODO: Remove the `.attribute arch, "rv64gc"` directive when the LLVM problem is fixed.
@@ -58,14 +59,10 @@ extern "C" fn _start() -> ! {
             la sp, {stack_top}
             sub sp, sp, t1
 
-            li t2, {DRAM_BASE}
-            csrw stvec, t2
-
             call {hstart}
             "#,
         stack_top = sym _top_b_stack,
         stack_size_per_hart = const STACK_SIZE_PER_HART,
-        DRAM_BASE = const DRAM_BASE,
         hstart = sym hstart,
     )
 }
