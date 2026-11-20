@@ -172,16 +172,16 @@ impl PciAddressSpace {
         }
     }
 
-    /// Return base address of 32-bit memory space.
+    /// Return end address of 32-bit memory space.
     #[must_use]
-    pub fn base_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
-        self.bit32_memory_space.start
+    pub fn end_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit32_memory_space.end
     }
 
-    /// Return base address of 64-bit memory space.
+    /// Return end address of 64-bit memory space.
     #[must_use]
-    pub fn base_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
-        self.bit64_memory_space.start
+    pub fn end_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit64_memory_space.end
     }
 }
 
@@ -214,6 +214,19 @@ impl Pci {
     #[must_use]
     pub fn pci_memory_maps(&self) -> &[MemoryMap] {
         &self.memory_maps
+    }
+
+    /// Return true if `addr` is in the configuration space hidden from the guest.
+    ///
+    /// The guest reads all ones from there, which means that no device exists.
+    #[cfg(feature = "iommu")]
+    #[must_use]
+    pub fn is_hidden_config_space(&self, addr: HostPhysicalAddress) -> bool {
+        // hide iommu config space because it's already used by hikami.
+        self.pci_devices
+            .iommu
+            .as_ref()
+            .is_some_and(|iommu| iommu.config_space().contains(&addr))
     }
 }
 
@@ -251,13 +264,27 @@ impl MmioDevice for Pci {
 
         // Initialize IOMMU
         #[cfg(feature = "iommu")]
-        pci_devices
-            .iommu
-            .as_ref()
-            .expect("`iommu` feature is enabled but IOMMU is not found in device tree")
-            .init(HostPhysicalAddress(
+        {
+            let iommu = pci_devices
+                .iommu
+                .as_ref()
+                .expect("`iommu` feature is enabled but IOMMU is not found in device tree");
+            iommu.init(HostPhysicalAddress(
                 register_map_regions[0].starting_address as usize,
             ));
+
+            for range in [iommu.config_space(), iommu.reg_space()] {
+                crate::println!(
+                    "[Device Unmap] iommu: {:#x}..{:#x}",
+                    range.start.raw(),
+                    range.end.raw()
+                );
+                crate::memmap::page_table::sv39x4::invalidate_address_range(
+                    GuestPhysicalAddress(range.start.raw())..GuestPhysicalAddress(range.end.raw()),
+                )
+                .expect("failed to unmap IOMMU from guest");
+            }
+        }
 
         Some(Pci {
             name: pci_node.name.to_string(),
