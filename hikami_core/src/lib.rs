@@ -15,6 +15,7 @@ pub mod device;
 pub mod emulate_extension;
 pub mod guest;
 pub mod h_extension;
+pub mod isa;
 pub mod log;
 pub mod memmap;
 pub mod trap;
