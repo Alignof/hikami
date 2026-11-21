@@ -1,12 +1,12 @@
 //! Handle VS-mode Ecall exception\
 //! See [https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/download/v2.0/riscv-sbi.pdf)
 
-use hikami_core::HYPERVISOR_DATA;
+use hikami_core::HYPERVISOR;
 use hikami_core::h_extension::csrs::{VsInterruptKind, hvip};
 
 use riscv::register::sie;
 use sbi_rt::SbiRet;
-use sbi_rt::{ConfigFlags, StartFlags, StopFlags};
+use sbi_rt::{ConfigFlags, CounterMask, StartFlags, StopFlags};
 
 /// SBI re-ecall
 ///
@@ -33,7 +33,7 @@ pub fn sbi_call(ext_id: usize, func_id: usize, args: &[u64; 5]) -> SbiRet {
 /// All functions in the base extension must be supported by all SBI implementations,
 /// so there are no error returns defined. (p.13)
 #[allow(clippy::module_name_repetitions)]
-pub fn sbi_base_handler(func_id: usize) -> SbiRet {
+pub fn sbi_base_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     use sbi_spec::base::{
         GET_MARCHID, GET_MIMPID, GET_MVENDORID, GET_SBI_IMPL_ID, GET_SBI_IMPL_VERSION,
         GET_SBI_SPEC_VERSION, PROBE_EXTENSION,
@@ -45,7 +45,7 @@ pub fn sbi_base_handler(func_id: usize) -> SbiRet {
         }
         GET_SBI_IMPL_ID => sbi_rt::get_sbi_impl_id(),
         GET_SBI_IMPL_VERSION => sbi_rt::get_sbi_impl_version(),
-        PROBE_EXTENSION => sbi_rt::probe_extension(sbi_rt::Base).raw,
+        PROBE_EXTENSION => sbi_call(sbi_spec::base::EID_BASE, PROBE_EXTENSION, args).value,
         GET_MVENDORID => sbi_rt::get_mvendorid(),
         GET_MIMPID => sbi_rt::get_mimpid(),
         GET_MARCHID => sbi_rt::get_marchid(),
@@ -72,7 +72,7 @@ pub fn sbi_time_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
 
             sbi_ret
         }
-        _ => panic!("unsupported fid: {}", func_id),
+        _ => panic!("unsupported fid: {func_id}"),
     }
 }
 
@@ -117,38 +117,37 @@ pub fn sbi_pmu_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
         },
         COUNTER_GET_INFO => sbi_rt::pmu_counter_get_info(args[0] as usize),
         COUNTER_CONFIG_MATCHING => sbi_rt::pmu_counter_config_matching(
-            args[0] as usize,
-            args[1] as usize,
+            CounterMask::from_mask_base(args[1] as usize, args[0] as usize),
             PmuFlag::new(args[2]),
             args[3] as usize,
             args[4],
         ),
         COUNTER_START => sbi_rt::pmu_counter_start(
-            args[0] as usize,
-            args[1] as usize,
+            CounterMask::from_mask_base(args[1] as usize, args[0] as usize),
             PmuFlag::new(args[2]),
             args[3],
         ),
-        COUNTER_STOP => {
-            sbi_rt::pmu_counter_stop(args[0] as usize, args[1] as usize, PmuFlag::new(args[2]))
-        }
+        COUNTER_STOP => sbi_rt::pmu_counter_stop(
+            CounterMask::from_mask_base(args[1] as usize, args[0] as usize),
+            PmuFlag::new(args[2]),
+        ),
         COUNTER_FW_READ => sbi_rt::pmu_counter_fw_read(args[0] as usize),
         COUNTER_FW_READ_HI => sbi_rt::pmu_counter_fw_read_hi(args[0] as usize),
         // `sbi_rt::pmu_snapshot_set_shmem` is unimplemented.
         // thus it is called by ecall instruction directly.
         SNAPSHOT_SET_SHMEM => sbi_call(EID_PMU, SNAPSHOT_SET_SHMEM, args),
-        _ => panic!("unsupported fid: {}", func_id),
+        _ => panic!("unsupported fid: {func_id}"),
     }
 }
 
 /// SBI ecall handler for RFENCE Extension (EID: #0x52464E43)
 #[allow(clippy::module_name_repetitions, clippy::cast_possible_truncation)]
 pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
-    use rustsbi::HartMask;
+    use sbi_rt::HartMask;
     use sbi_spec::rfnc::{REMOTE_FENCE_I, REMOTE_SFENCE_VMA, REMOTE_SFENCE_VMA_ASID};
-    let hypervisor_data = unsafe { HYPERVISOR_DATA.lock() };
-    let current_hart_id = hypervisor_data.get().unwrap().guest().hart_id();
-    let current_guest_hart_id = hypervisor_data.get().unwrap().guest().guest_hart_id();
+    let hypervisor = HYPERVISOR.lock();
+    let current_hart_id = hypervisor.get().unwrap().guest().hart_id();
+    let current_guest_hart_id = hypervisor.get().unwrap().guest().guest_hart_id();
     assert_eq!(args[0].trailing_ones() - 1, current_guest_hart_id as u32);
     assert_eq!(args[1], 0);
 
@@ -168,7 +167,7 @@ pub fn sbi_rfnc_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
             args[3] as usize,
             args[4] as usize,
         ),
-        _ => panic!("unsupported fid: {}", func_id),
+        _ => panic!("unsupported fid: {func_id}"),
     }
 }
 
@@ -215,22 +214,18 @@ pub fn sbi_fwft_handler(func_id: usize, args: &[u64; 5]) -> SbiRet {
     /// Firmware Features Get (FID #1)
     const FWFT_GET: usize = 1;
 
-    let feature = args[0] as usize;
+    let Ok(feature) = FwftFeature::try_from(args[0] as usize) else {
+        // reserved or platform-specific feature
+        return SbiRet::denied();
+    };
 
     match func_id {
-        FWFT_SET => match FwftFeature::try_from(feature).unwrap() {
+        FWFT_GET | FWFT_SET => match feature {
             FwftFeature::ShadowStack => {
                 // hypervisor does not use shadow stack.
                 SbiRet::success(0)
             }
-            feat => unimplemented!("unimplemented feature {:?}", feat),
-        },
-        FWFT_GET => match FwftFeature::try_from(feature).unwrap() {
-            FwftFeature::ShadowStack => {
-                // hypervisor does not use shadow stack.
-                SbiRet::success(0)
-            }
-            feat => unimplemented!("unimplemented feature {:?}", feat),
+            _ => SbiRet::not_supported(),
         },
         _ => unreachable!(),
     }

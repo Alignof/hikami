@@ -17,7 +17,7 @@ target/
 .gdb_history
 *.dtb
 vmlinux*
-rootfs.*
+/rootfs.*
 initrd
 guest_image/megrez/*_eval
 guest_image/qemu/*_eval

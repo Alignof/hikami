@@ -1,0 +1,70 @@
+# Tasks for running hikami on QEMU with guest images built by Nix.
+#
+#   cargo make run    # boot Linux and get a shell on the guest
+#   cargo make test   # boot Linux and check that it powers off normally
+#
+# The QEMU command line is the runner in .cargo/config.toml.
+
+[config]
+default_to_workspace = false
+skip_core_tasks = true
+
+[env]
+# Set `HIKAMI_FEATURES=qemu,iommu` to translate DMA addresses by the IOMMU. 
+HIKAMI_FEATURES = { value = "qemu,identity_map", condition = { env_not_set = [
+  "HIKAMI_FEATURES",
+] } }
+GUEST_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/target/guest"
+TEST_TIMEOUT = { value = "300", condition = { env_not_set = ["TEST_TIMEOUT"] } }
+
+[tasks.guest-linux]
+description = "Build the guest Linux with Nix and place it as guest_image/qemu/vmlinux"
+script_runner = "bash"
+script = '''
+set -euo pipefail
+nix build .#guest-linux -o "${GUEST_DIR}/linux"
+# Copy instead of symlinking: files in the Nix store have a fixed mtime,
+# so cargo would not notice that the kernel changed.
+install -m644 "${GUEST_DIR}/linux/vmlinux" guest_image/qemu/vmlinux
+# The QEMU device trees do not use an initrd.
+[ -e guest_image/initrd ] || touch guest_image/initrd
+'''
+
+[tasks.guest-rootfs]
+description = "Build the interactive guest rootfs with Nix and place it as rootfs.ext2"
+script_runner = "bash"
+script = '''
+set -euo pipefail
+nix build .#guest-rootfs -o "${GUEST_DIR}/rootfs"
+# QEMU opens the disk read-write.
+install -m644 "${GUEST_DIR}/rootfs" rootfs.ext2
+'''
+
+[tasks.guest-rootfs-test]
+description = "Build the test guest rootfs with Nix and place it as rootfs.ext2"
+script_runner = "bash"
+script = '''
+set -euo pipefail
+nix build .#guest-rootfs-test -o "${GUEST_DIR}/rootfs-test"
+install -m644 "${GUEST_DIR}/rootfs-test" rootfs.ext2
+'''
+
+[tasks.run]
+description = "Boot Linux on hikami and get a shell"
+dependencies = ["guest-linux", "guest-rootfs"]
+command = "cargo"
+args = ["run", "--release", "--features", "${HIKAMI_FEATURES}"]
+
+[tasks.test]
+description = "Boot Linux on hikami and check that it powers off normally"
+dependencies = ["guest-linux", "guest-rootfs-test"]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+cargo build --release --features "${HIKAMI_FEATURES}"
+log="${GUEST_DIR}/test.log"
+timeout "${TEST_TIMEOUT}" cargo run --release --features "${HIKAMI_FEATURES}" < /dev/null 2>&1 | tee "${log}"
+grep -q "hikami-guest: boot ok" "${log}"
+grep -q "reboot: Power down" "${log}"
+echo "hikami test: passed"
+'''

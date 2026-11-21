@@ -1,6 +1,6 @@
 [package]
 name = "hikami"
-version = "3.0.0"
+version = "3.1.0"
 edition = "2024"
 
 [lints.clippy]
@@ -21,15 +21,14 @@ codegen-units = 1
 members = ["extension_manager", "hikami_core"]
 
 [workspace.dependencies]
-elf = { version = "0.7.2", default-features = false }
+elf = { version = "0.8.0", default-features = false }
 fdt = "0.1.5"
-linked_list_allocator = "0.10.5"
+linked_list_allocator = "0.10.6"
 raki = { git = "https://github.com/Alignof/raki", branch = "feature/zbs" }
-riscv = "0.11.1"
-rustsbi = "0.4.0"
-sbi-rt = "0.0.3"
-sbi-spec = { version = "0.0.8", features = ["legacy"] }
-spin = "0.9.8"
+riscv = "0.16.1"
+sbi-rt = "0.0.4"
+sbi-spec = { version = "0.0.9", features = ["legacy"] }
+spin = "0.12.3"
 
 [build-dependencies]
 walkdir = "2"
@@ -39,23 +38,25 @@ walkdir = "2"
 debug_log = ["hikami_core/debug_log"]
 # identity memory map
 identity_map = ["hikami_core/identity_map"]
-# target qemu
+# IOMMU
+iommu = ["hikami_core/iommu"]
+# target QEMU virt
 qemu = []
+# target Milk-V Megrez
+megrez = []
 # default on
 default = ["enable_extension"]
 # for `extension_manager`
-enable_extension = ["hikami_zbs"]
+enable_extension = ["hikami_zbs", "extension_manager/enable_extension"]
 
 [dependencies]
 hikami_core = { path = "hikami_core" }
 hikami_zbs = { git = "https://github.com/Alignof/hikami_zbs", branch = "develop", optional = true }
 extension_manager = { path = "extension_manager" }
 
-elf = { workspace = true }
 fdt = { workspace = true }
 raki = { workspace = true }
 riscv = { workspace = true }
-rustsbi = { workspace = true }
 sbi-rt = { workspace = true }
 sbi-spec = { workspace = true }
 linked_list_allocator = { workspace = true }

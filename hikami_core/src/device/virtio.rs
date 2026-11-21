@@ -1,7 +1,6 @@
 //! A virtualization standard for network and disk device drivers.
 
 use super::MmioDevice;
-use crate::memmap::HostPhysicalAddress;
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -15,15 +14,11 @@ pub struct VirtIoList(Vec<VirtIo>);
 
 impl VirtIoList {
     /// Create each Virt IO data when device has multiple IOs.
-    pub fn new(
-        root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        node_path: &str,
-    ) -> Self {
+    pub fn new(device_tree: &Fdt, node_path: &str) -> Self {
         VirtIoList(
             device_tree
                 .find_all_nodes(node_path)
-                .map(|virtio_node| VirtIo::new_with_node(root_page_table_addr, &virtio_node))
+                .map(|virtio_node| VirtIo::new_with_node(&virtio_node))
                 .collect(),
         )
     }
@@ -44,16 +39,13 @@ pub struct VirtIo {
     /// Memory maps for memory mapped register.
     register_map_regions: Vec<MemoryRegion>,
 
-    /// Interrupt Reqeust bit.
+    /// Interrupt Request bit.
     irq: u8,
 }
 
 impl VirtIo {
     /// Create self with fdt node
-    pub fn new_with_node(
-        _root_page_table_addr: HostPhysicalAddress,
-        virtio_node: &FdtNode,
-    ) -> Self {
+    pub fn new_with_node(virtio_node: &FdtNode) -> Self {
         let register_map_regions: Vec<MemoryRegion> = virtio_node.reg().unwrap().collect();
 
         VirtIo {
@@ -70,11 +62,7 @@ impl VirtIo {
 }
 
 impl MmioDevice for VirtIo {
-    fn try_new(
-        _root_page_table_addr: HostPhysicalAddress,
-        _device_tree: &Fdt,
-        _compatibles: &[&str],
-    ) -> Option<Self> {
+    fn try_new(_device_tree: &Fdt, _compatibles: &[&str]) -> Option<Self> {
         unreachable!("use `VirtIo::new_with_node` instead.")
     }
 

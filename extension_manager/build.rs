@@ -35,20 +35,27 @@ fn main() {
         })
         .expect("Failed to find root_crate package");
 
-    // collect crates reguardless of `enable_extension`.
+    // collect crates regardless of `enable_extension`.
     let feature_dependencies: HashSet<String> = root_crate
         .get("features")
         .and_then(|v| v.as_object())
-        .and_then(|features| features.get("enable_extension")) // crates reguardless of `enable_extension`
+        .and_then(|features| features.get("enable_extension")) // crates regardless of `enable_extension`
         .and_then(|v| v.as_array())
         .map(|deps| {
             deps.iter()
                 .filter_map(|dep| dep.as_str())
+                .filter(|dep| !dep.contains('/'))
                 .map(|dep| dep.replace('-', "_")) // replace `-` with `_`
                 .collect()
         })
         .unwrap_or_default();
-    let crate_names = feature_dependencies.into_iter().collect::<Vec<_>>();
+
+    // Extension crates are only linked when the root crate enables `enable_extension`.
+    let crate_names = if env::var_os("CARGO_FEATURE_ENABLE_EXTENSION").is_some() {
+        feature_dependencies.into_iter().collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
 
     // output crates list to `OUT_DIR/dependencies.rs`
     let out_dir = env::var("OUT_DIR").unwrap();

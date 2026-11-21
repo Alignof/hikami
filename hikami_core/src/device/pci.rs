@@ -2,13 +2,11 @@
 
 // PCI devices
 pub mod iommu;
-mod sata;
 
 pub mod config_register;
 
 use super::{MmioDevice, PTE_FLAGS_FOR_DEVICE};
-use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
-use config_register::{ConfigSpaceHeaderField, read_config_register};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap};
 
 use alloc::string::{String, ToString};
 use alloc::vec;
@@ -76,92 +74,27 @@ pub trait PciDevice {
 /// Pci devices
 pub struct PciDevices {
     /// IOMMU: I/O memory management unit.
+    #[cfg(feature = "iommu")]
     iommu: Option<iommu::IoMmu>,
-    /// SATA: Serial ATA
-    pub sata: Option<sata::Sata>,
 }
 
 impl PciDevices {
     /// Constructor of `PciDevices`.
     #[allow(clippy::cast_possible_truncation)]
+    #[cfg_attr(not(feature = "iommu"), allow(unused_variables))]
     pub fn new(
         device_tree: &Fdt,
         pci_config_space_base_addr: HostPhysicalAddress,
         pci_addr_space: &PciAddressSpace,
     ) -> Self {
-        /// Max PCI bus size.
-        const PCI_MAX_BUS: u8 = 255;
-        /// Max PCI device size.
-        const PCI_MAX_DEVICE: u8 = 31;
-        /// Max PCI function size.
-        const PCI_MAX_FUNCTION: u8 = 7;
-
-        let mut sata = None;
-        for bus in 0..=PCI_MAX_BUS {
-            for device in 0..=PCI_MAX_DEVICE {
-                for function in 0..=PCI_MAX_FUNCTION {
-                    let bdf = Bdf {
-                        bus: bus.into(),
-                        device: device.into(),
-                        function: function.into(),
-                    };
-                    let config_space_header_addr =
-                        pci_config_space_base_addr.raw() | bdf.calc_config_space_header_offset();
-
-                    let vendor_id = read_config_register(
-                        config_space_header_addr,
-                        ConfigSpaceHeaderField::VenderId,
-                    ) as u16;
-                    // device is disconnected (not a valid device)
-                    if vendor_id == 0xFFFF {
-                        continue;
-                    }
-
-                    let header_type = read_config_register(
-                        config_space_header_addr,
-                        ConfigSpaceHeaderField::HeaderType,
-                    ) as u8;
-                    let device_id = read_config_register(
-                        config_space_header_addr,
-                        ConfigSpaceHeaderField::DeviceId,
-                    ) as u16;
-
-                    let class_code = read_config_register(
-                        config_space_header_addr,
-                        ConfigSpaceHeaderField::ClassCode,
-                    );
-                    let (base_class, sub_class, interface) = (
-                        (class_code >> 16) & 0xff,
-                        (class_code >> 8) & 0xff,
-                        class_code & 0xff,
-                    );
-
-                    if let (1, 6, 1) = (base_class, sub_class, interface) {
-                        sata = Some(sata::Sata::new(
-                            bdf,
-                            vendor_id.into(),
-                            device_id.into(),
-                            pci_config_space_base_addr,
-                            pci_addr_space,
-                        ));
-                    }
-
-                    // skip remain function id if it's not multi function device.
-                    if function == 0 && header_type & 0x80 == 0 {
-                        break;
-                    }
-                }
-            }
-        }
-
         PciDevices {
+            #[cfg(feature = "iommu")]
             iommu: iommu::IoMmu::new_from_dtb(
                 device_tree,
                 &["riscv,pci-iommu"],
                 pci_config_space_base_addr,
                 pci_addr_space,
             ),
-            sata,
         }
     }
 }
@@ -181,7 +114,7 @@ impl PciAddressSpace {
     /// Constructor of `PciAddressSpace`.
     ///
     /// # Panics
-    /// Panics if `ranges` in device tree does not have seven fields or does not be aliged 4 bytes.
+    /// Panics if `ranges` in device tree does not have seven fields or is not aligned to 4 bytes.
     #[must_use]
     pub fn new(device_tree: &Fdt, compatibles: &[&str]) -> Self {
         /// Bytes size of u32.
@@ -197,8 +130,8 @@ impl PciAddressSpace {
             .unwrap()
             .value;
 
-        assert!(ranges.len() % 4 == 0);
-        assert!((ranges.len() / 4) % 7 == 0);
+        assert!(ranges.len().is_multiple_of(4));
+        assert!((ranges.len() / 4).is_multiple_of(7));
 
         let get_u32 = |range: &[u8], four_bytes_index: usize| {
             let index = four_bytes_index * 4;
@@ -239,16 +172,16 @@ impl PciAddressSpace {
         }
     }
 
-    /// Return base address of 32-bit memory space.
+    /// Return end address of 32-bit memory space.
     #[must_use]
-    pub fn base_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
-        self.bit32_memory_space.start
+    pub fn end_addr_32bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit32_memory_space.end
     }
 
-    /// Return base address of 64-bit memory space.
+    /// Return end address of 64-bit memory space.
     #[must_use]
-    pub fn base_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
-        self.bit64_memory_space.start
+    pub fn end_addr_64bit_memory_space(&self) -> HostPhysicalAddress {
+        self.bit64_memory_space.end
     }
 }
 
@@ -282,14 +215,23 @@ impl Pci {
     pub fn pci_memory_maps(&self) -> &[MemoryMap] {
         &self.memory_maps
     }
+
+    /// Return true if `addr` is in the configuration space hidden from the guest.
+    ///
+    /// The guest reads all ones from there, which means that no device exists.
+    #[cfg(feature = "iommu")]
+    #[must_use]
+    pub fn is_hidden_config_space(&self, addr: HostPhysicalAddress) -> bool {
+        // hide iommu config space because it's already used by hikami.
+        self.pci_devices
+            .iommu
+            .as_ref()
+            .is_some_and(|iommu| iommu.config_space().contains(&addr))
+    }
 }
 
 impl MmioDevice for Pci {
-    fn try_new(
-        _root_page_table_addr: HostPhysicalAddress,
-        device_tree: &Fdt,
-        compatibles: &[&str],
-    ) -> Option<Self> {
+    fn try_new(device_tree: &Fdt, compatibles: &[&str]) -> Option<Self> {
         let pci_node = device_tree.find_compatible(compatibles)?;
         let register_map_regions: Vec<MemoryRegion> = pci_node.reg().unwrap().collect();
 
@@ -316,38 +258,27 @@ impl MmioDevice for Pci {
             ),
         ];
 
-        // map PCI device's register map field if identity_map *disabled*.
-        if cfg!(not(feature = "identity_map")) {
-            crate::println!(
-                "[Device Unmap] pci: {:#x?}",
-                pci_addr_space.bit32_memory_space.start.raw()
-                    ..pci_addr_space.bit32_memory_space.end.raw(),
-            );
-            crate::println!(
-                "[Device Unmap] pci: {:#x?}",
-                pci_addr_space.bit64_memory_space.start.raw()
-                    ..pci_addr_space.bit64_memory_space.end.raw(),
-            );
-
-            // unmapping whole memory mapped register region of block divices for emulation.
-            page_table::sv39x4::invalidate_address_range(
-                GuestPhysicalAddress(pci_addr_space.bit32_memory_space.start.raw())
-                    ..GuestPhysicalAddress(pci_addr_space.bit32_memory_space.end.raw()),
-            )
-            .expect("failed to invalidate pci memory map field");
-            page_table::sv39x4::invalidate_address_range(
-                GuestPhysicalAddress(pci_addr_space.bit64_memory_space.start.raw())
-                    ..GuestPhysicalAddress(pci_addr_space.bit64_memory_space.end.raw()),
-            )
-            .expect("failed to invalidate pci memory map field");
-        }
-
         // Initialize IOMMU
-        if cfg!(not(feature = "identity_map")) {
-            if let Some(ref iommu) = pci_devices.iommu {
-                iommu.init(HostPhysicalAddress(
-                    register_map_regions[0].starting_address as usize,
-                ));
+        #[cfg(feature = "iommu")]
+        {
+            let iommu = pci_devices
+                .iommu
+                .as_ref()
+                .expect("`iommu` feature is enabled but IOMMU is not found in device tree");
+            iommu.init(HostPhysicalAddress(
+                register_map_regions[0].starting_address as usize,
+            ));
+
+            for range in [iommu.config_space(), iommu.reg_space()] {
+                crate::println!(
+                    "[Device Unmap] iommu: {:#x}..{:#x}",
+                    range.start.raw(),
+                    range.end.raw()
+                );
+                crate::memmap::page_table::sv39x4::invalidate_address_range(
+                    GuestPhysicalAddress(range.start.raw())..GuestPhysicalAddress(range.end.raw()),
+                )
+                .expect("failed to unmap IOMMU from guest");
             }
         }
 

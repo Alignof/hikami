@@ -1,6 +1,6 @@
 [package]
 name = "hikami_core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [features]
@@ -8,13 +8,13 @@ edition = "2024"
 debug_log = []
 # identity memory map
 identity_map = []
+# use IOMMU
+iommu = []
 
 [dependencies]
 elf = { workspace = true }
 fdt = { workspace = true }
 raki = { workspace = true }
 riscv = { workspace = true }
-rustsbi = { workspace = true }
 sbi-rt = { workspace = true }
-sbi-spec = { workspace = true }
 spin = { workspace = true }

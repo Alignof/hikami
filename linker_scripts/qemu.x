@@ -1,0 +1,21 @@
+/* Memory layout of hikami on QEMU virt. Included from link.x. */
+
+MEMORY
+{
+  FLASH (rx) : ORIGIN = 0x83000000, LENGTH = 2M
+  BOOT_RAM (rw) : ORIGIN = 0x83200000, LENGTH = 6M
+  RAM_HEAP (rwx) : ORIGIN = 0x84000000, LENGTH = 64M
+  RAM (rwx) : ORIGIN = 0x88000000, LENGTH = 128M
+  L2_LIM (rw) : ORIGIN = 0x90000000, LENGTH = 8M
+}
+
+/*
+ * FLASH (TEXT), 0x8300_0000..0x8320_0000
+ * BOOT_RAM, 0x8320_0000..0x8380_0000
+ * RAM_HEAP (HEAP), 0x8400_0000..0x8800_0000
+ * RAM (DATA, BSS), 0x8800_0000..0x9000_0000
+ * L2_LIM (STACK), 0x9000_0000..0x9080_0000
+ */
+
+_hv_heap_size = 0x4000000;
+_b_stack_size = 0x200000;

@@ -1,6 +1,6 @@
 //! Extension emulation
 
-use crate::HYPERVISOR_DATA;
+use crate::HYPERVISOR;
 use crate::h_extension::csrs::vstvec;
 use crate::trap::hstrap_exit;
 
@@ -8,7 +8,7 @@ use core::arch::asm;
 use raki::Instruction;
 use riscv::register::sstatus;
 
-/// Trait for extention emulation.
+/// Trait for extension emulation.
 pub trait EmulateExtension {
     /// Emulate instruction
     fn instruction(&mut self, inst: &Instruction);
@@ -62,11 +62,11 @@ impl EmulatedCsr {
 /// * `trap_value`: Trap value. (stored to vstval)
 ///
 /// # Panics
-/// Panics if failed to get `hypervisor_data`.
+/// Panics if failed to get `hypervisor`.
 pub fn pseudo_vs_exception(exception_num: usize, trap_value: usize) -> ! {
     unsafe {
-        let hypervisor_data = HYPERVISOR_DATA.lock();
-        let mut context = hypervisor_data.get().unwrap().guest().context;
+        let hypervisor = HYPERVISOR.lock();
+        let mut context = hypervisor.get().unwrap().guest().context;
         asm!(
             "csrw vsepc, {sepc}",
             "csrw vscause, {cause}",
@@ -94,7 +94,7 @@ pub fn pseudo_vs_exception(exception_num: usize, trap_value: usize) -> ! {
 
         context.set_sepc(vstvec::read().bits());
 
-        drop(hypervisor_data);
+        drop(hypervisor);
 
         hstrap_exit();
     }

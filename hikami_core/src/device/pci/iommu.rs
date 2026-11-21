@@ -22,10 +22,8 @@ pub struct IoMmu {
     _ident: Bdf,
     /// IOMMU memory mapped register
     reg_space: Range<HostPhysicalAddress>,
-    /// PCI Vender ID
-    _vender_id: u32,
-    /// PCI Device ID
-    _device_id: u32,
+    /// Configuration space of the IOMMU function
+    config_space: Range<HostPhysicalAddress>,
 }
 
 impl IoMmu {
@@ -65,17 +63,20 @@ impl IoMmu {
             ConfigSpaceHeaderField::BaseAddressRegister0,
         ) >> 1)
             & 0b11;
-        let iommu_reg_addr = match memory_space_kind {
-            0b00 => pci_addr_space.base_addr_32bit_memory_space(),
-            0b10 => pci_addr_space.base_addr_64bit_memory_space(),
-            0b01 | 0b11 => panic!("[pci BAR] reserved field"),
-            _ => unreachable!(),
-        };
 
         let bar_size = get_bar_size(
             config_space_header_addr,
             ConfigSpaceHeaderField::BaseAddressRegister0,
-        );
+        ) as usize;
+        // Place the registers at the end of the memory space so that they do not collide with BARs
+        // that the guest assigns from the start. The guest device tree must exclude them.
+        let iommu_reg_addr = match memory_space_kind {
+            0b00 => pci_addr_space.end_addr_32bit_memory_space(),
+            0b10 => pci_addr_space.end_addr_64bit_memory_space(),
+            0b01 | 0b11 => panic!("[pci BAR] reserved field"),
+            _ => unreachable!(),
+        } - bar_size;
+
         // set iommu reg space
         write_config_register(
             config_space_header_addr,
@@ -90,7 +91,7 @@ impl IoMmu {
         write_config_register(
             config_space_header_addr,
             ConfigSpaceHeaderField::Command,
-            0b10, // enable memory space
+            0b110, // enable memory space and bus master
         );
 
         // https://www.kernel.org/doc/Documentation/devicetree/bindings/pci/pci.txt
@@ -98,13 +99,23 @@ impl IoMmu {
             _ident: ident,
             reg_space: Range {
                 start: iommu_reg_addr,
-                end: iommu_reg_addr + bar_size as usize,
+                end: iommu_reg_addr + bar_size,
             },
-            // TODO: obtain from pci register.
-            // source of these values: https://www.qemu.org/docs/master/specs/riscv-iommu.html
-            _vender_id: 0x1efd,
-            _device_id: 0xedf1,
+            config_space: HostPhysicalAddress(config_space_header_addr)
+                ..HostPhysicalAddress(config_space_header_addr) + PAGE_SIZE,
         })
+    }
+
+    /// Return the range of memory mapped registers.
+    #[must_use]
+    pub fn reg_space(&self) -> &Range<HostPhysicalAddress> {
+        &self.reg_space
+    }
+
+    /// Return the range of the configuration space.
+    #[must_use]
+    pub fn config_space(&self) -> &Range<HostPhysicalAddress> {
+        &self.config_space
     }
 
     /// Set page table in IOMMU.
@@ -113,7 +124,7 @@ impl IoMmu {
         const OFFSET_IOHGATP: usize = 8;
         /// Size of leaf ddt entry [byte].
         const LEAF_DDT_ENTRY_SIZE: usize = 64; // 512 / 8 = 64 [byte]
-        /// V field in TC regsiter.
+        /// V field in TC register.
         const TC_V: u64 = 1;
 
         // set all ddt entry
@@ -142,6 +153,13 @@ impl PciDevice for IoMmu {
 
     #[allow(clippy::cast_possible_truncation)]
     fn init(&self, _pci_config_space_base_addr: HostPhysicalAddress) {
+        /// Size of a command-queue entry [byte].
+        const COMMAND_SIZE: usize = 16;
+        /// Size of a fault-queue record [byte].
+        const FAULT_RECORD_SIZE: usize = 32;
+        /// Size of a page-request-queue entry [byte].
+        const PAGE_REQUEST_SIZE: usize = 16;
+
         let registers = self.reg_space.start.raw() as *mut IoMmuRegisters;
         let registers = unsafe { &mut *registers };
 
@@ -170,7 +188,7 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(command_queue_ptr, 0u8, PAGE_SIZE);
         }
-        registers.cqb.set(command_queue, 4096);
+        registers.cqb.set(command_queue, PAGE_SIZE / COMMAND_SIZE);
         // cqt = 0
         registers.cqt.write(0);
         // cqcsr.cqen = 1
@@ -188,7 +206,9 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(fault_queue_ptr, 0u8, PAGE_SIZE);
         }
-        registers.fqb.set(fault_queue, 4096);
+        registers
+            .fqb
+            .set(fault_queue, PAGE_SIZE / FAULT_RECORD_SIZE);
         // fqt = 0
         registers.fqt.write(0);
         // fqcsr.fqen = 1
@@ -206,7 +226,9 @@ impl PciDevice for IoMmu {
         unsafe {
             core::ptr::write_bytes(page_request_queue_ptr, 0u8, PAGE_SIZE);
         }
-        registers.pqb.set(page_request_queue, 4096);
+        registers
+            .pqb
+            .set(page_request_queue, PAGE_SIZE / PAGE_REQUEST_SIZE);
         // pqt = 0
         registers.pqt.write(0);
         // pqcsr.pqen = 1

@@ -1,14 +1,19 @@
 //! hikami library
 
 #![no_std]
-// TODO: FIX AND REMOVE IT!!!
-#![allow(static_mut_refs)]
+
+#[cfg(all(feature = "identity_map", feature = "iommu"))]
+compile_error!("features `identity_map` and `iommu` are mutually exclusive");
+#[cfg(not(any(feature = "identity_map", feature = "iommu")))]
+compile_error!("either `identity_map` or `iommu` feature must be enabled");
 
 extern crate alloc;
+pub mod board;
 pub mod device;
 pub mod emulate_extension;
 pub mod guest;
 pub mod h_extension;
+pub mod isa;
 pub mod log;
 pub mod memmap;
 pub mod trap;
@@ -24,98 +29,108 @@ use spin::Mutex;
 use device::Devices;
 use guest::Guest;
 use memmap::constant::MAX_HART_NUM;
-use memmap::page_table::{PteFlag, sv39x4::FIRST_LV_PAGE_TABLE_LEN};
-use memmap::{
-    GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table, page_table::PageTableEntry,
-};
+use memmap::page_table::PteFlag;
+use memmap::{GuestPhysicalAddress, HostPhysicalAddress, MemoryMap, page_table};
 
 /// Singleton for this hypervisor.
-pub static mut HYPERVISOR_DATA: Mutex<OnceCell<HypervisorData>> = Mutex::new(OnceCell::new());
+pub static HYPERVISOR: Mutex<OnceCell<Hypervisor>> = Mutex::new(OnceCell::new());
 
 /// Global data for hypervisor.
-///
-/// FIXME: Rename me!
 #[derive(Debug)]
-pub struct HypervisorData {
+pub struct Hypervisor {
     /// Current guest hart id (zero indexed).
     current_guest_hart: usize,
     /// Guests data
     guests: [Option<guest::Guest>; MAX_HART_NUM],
     /// Devices data.
     devices: device::Devices,
+    /// Host physical regions that must not be mapped to guests.
+    ///
+    /// The hypervisor itself and `/reserved-memory` of the host device tree.
+    reserved_regions: Vec<core::ops::Range<usize>>,
+    /// Host memory that backs guest memory.
+    #[cfg(feature = "iommu")]
+    host_memory_pool: memmap::host_memory_pool::HostMemoryPool,
 }
 
-impl HypervisorData {
+// SAFETY: `Hypervisor` is only accessed through the `HYPERVISOR` lock.
+// Raw pointers in it (e.g. `fdt::standard_nodes::MemoryRegion`) hold physical addresses of
+// devices, which are the same on all harts.
+unsafe impl Send for Hypervisor {}
+
+impl Hypervisor {
     /// Initialize hypervisor.
     ///
     /// # Panics
     /// It will be panic when parsing device tree failed.
     #[must_use]
-    pub fn new(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) -> Self {
+    #[cfg_attr(not(feature = "iommu"), allow(unused_variables))]
+    pub fn new(
+        device_tree: Fdt,
+        host_dtb_addr: HostPhysicalAddress,
+        hypervisor_region: core::ops::Range<HostPhysicalAddress>,
+    ) -> Self {
         // init page table
-        page_table::sv39x4::initialize_page_table(root_page_table_addr);
+        page_table::sv39x4::initialize_page_table();
 
-        Self::map_all_device_region(root_page_table_addr, device_tree);
+        Self::map_all_device_region(&device_tree);
 
-        HypervisorData {
+        let mut reserved_regions = memmap::reserved_memory_regions(&device_tree);
+        reserved_regions.push(hypervisor_region.start.raw()..hypervisor_region.end.raw());
+        for region in &reserved_regions {
+            crate::println!("[Reserved] {:#x}..{:#x}", region.start, region.end);
+        }
+
+        #[cfg(feature = "iommu")]
+        let host_memory_pool = {
+            let host_dtb_region =
+                host_dtb_addr.raw()..host_dtb_addr.raw() + device_tree.total_size();
+            let pool = memmap::host_memory_pool::HostMemoryPool::new(
+                &memmap::memory_regions(&device_tree),
+                &[reserved_regions.as_slice(), &[host_dtb_region]].concat(),
+            );
+            for range in pool.free_ranges() {
+                crate::println!("[Guest Memory Pool] {:#x}..{:#x}", range.start, range.end);
+            }
+            pool
+        };
+
+        Hypervisor {
             // fix to zero for now
             //
             // TODO: save `hart_id` and `guest_hart_id` to `ContextData` and decide current guest
             // hart id.
             current_guest_hart: 0,
             guests: [const { None }; MAX_HART_NUM],
-            devices: Devices::new(root_page_table_addr, device_tree),
+            devices: Devices::new(device_tree),
+            reserved_regions,
+            #[cfg(feature = "iommu")]
+            host_memory_pool,
         }
     }
 
-    /// Map all regions for memory mapped divices.
-    fn map_all_device_region(root_page_table_addr: HostPhysicalAddress, device_tree: Fdt) {
+    /// Map all regions except the host DRAM as devices.
+    ///
+    /// Regions emulated by the hypervisor are unmapped later by each device.
+    fn map_all_device_region(device_tree: &Fdt) {
         use PteFlag::{Accessed, Dirty, Exec, Read, User, Valid, Write};
         const G_STAGE_PTE_FLAGS: &[PteFlag; 7] = &[Dirty, Accessed, Read, Write, Exec, User, Valid];
+        /// End of guest physical address space in Sv39x4 (41 bit).
+        const GPA_SPACE_END: usize = 1 << 41;
 
-        let dram_start = device_tree
-            .find_node("/memory")
-            .unwrap()
-            .reg()
-            .unwrap()
-            .next()
-            .expect("couldn't get memory region")
-            .starting_address as usize;
-
-        crate::println!(
-            "map memory mapped device region Mapping {:#x} bytes to GPA [{:#x} - {:#x}]",
-            dram_start,
-            0,
-            dram_start
-        );
-
-        // TODO: avoid hard coding the address.
-        // 0x0 .. 0x8000_0000
-        // 0x8000_0000 .. 0x9000_0000
-        // 0xb000_0000 .. 0x4_0000_0000
-        let all_memory_map = [
-            MemoryMap::new(
-                GuestPhysicalAddress(0x0)..GuestPhysicalAddress(dram_start),
-                HostPhysicalAddress(0x0)..HostPhysicalAddress(dram_start),
-                G_STAGE_PTE_FLAGS,
-            ),
-            MemoryMap::new(
-                GuestPhysicalAddress(0x8008_0000)..GuestPhysicalAddress(0x9000_0000),
-                HostPhysicalAddress(0x8008_0000)..HostPhysicalAddress(0x9000_0000),
-                G_STAGE_PTE_FLAGS,
-            ),
-            MemoryMap::new(
-                GuestPhysicalAddress(0x1_8000_0000)..GuestPhysicalAddress(0x4_8000_0000),
-                HostPhysicalAddress(0x1_8000_0000)..HostPhysicalAddress(0x4_8000_0000),
-                G_STAGE_PTE_FLAGS,
-            ),
-            MemoryMap::new(
-                GuestPhysicalAddress(0x80_0000_0000)..GuestPhysicalAddress(0x100_0000_0000),
-                HostPhysicalAddress(0x80_0000_0000)..HostPhysicalAddress(0x100_0000_0000),
-                G_STAGE_PTE_FLAGS,
-            ),
-        ];
-        page_table::sv39x4::generate_page_table(root_page_table_addr, &all_memory_map);
+        let host_dram = memmap::memory_regions(device_tree);
+        let device_maps: Vec<MemoryMap> = memmap::subtract_ranges(&(0..GPA_SPACE_END), &host_dram)
+            .into_iter()
+            .map(|region| {
+                crate::println!("[Device Map] {:#x}..{:#x}", region.start, region.end);
+                MemoryMap::new(
+                    GuestPhysicalAddress(region.start)..GuestPhysicalAddress(region.end),
+                    HostPhysicalAddress(region.start)..HostPhysicalAddress(region.end),
+                    G_STAGE_PTE_FLAGS,
+                )
+            })
+            .collect();
+        page_table::sv39x4::generate_page_table(&device_maps);
     }
 
     /// Return Device objects.
@@ -145,10 +160,8 @@ impl HypervisorData {
     pub fn register_new_guest(
         &mut self,
         hart_id: usize,
-        root_page_table: &'static [PageTableEntry; FIRST_LV_PAGE_TABLE_LEN],
-        guest_kernel: &'static [u8],
-        guest_dtb: &'static [u8],
-        guest_initrd: &'static [u8],
+        stack_top_addr: HostPhysicalAddress,
+        board: &board::Board,
     ) -> (usize, GuestPhysicalAddress) {
         // decide guest HART ID
         let guest_hart_id = self
@@ -161,43 +174,35 @@ impl HypervisorData {
         let new_guest = Guest::new(
             hart_id,
             guest_hart_id,
-            root_page_table,
-            guest_dtb,
-            guest_initrd,
+            stack_top_addr,
+            board,
+            &self.reserved_regions,
+            #[cfg(feature = "iommu")]
+            &mut self.host_memory_pool,
         );
 
         // load guest elf `from GUEST_KERNEL`
         let guest_elf = unsafe {
             ElfBytes::<AnyEndian>::minimal_parse(core::slice::from_raw_parts(
-                guest_kernel.as_ptr(),
-                guest_kernel.len(),
+                board.guest_kernel.as_ptr(),
+                board.guest_kernel.len(),
             ))
             .unwrap()
         };
 
         // load guest image
-        let guest_entry_point =
-            unsafe { new_guest.load_guest_elf(&guest_elf, guest_kernel.as_ptr()) };
+        let guest_entry_point = unsafe {
+            new_guest.load_guest_elf(
+                &guest_elf,
+                board.guest_kernel.as_ptr(),
+                board.guest_kernel_base,
+            )
+        };
 
         self.guests[guest_hart_id] = Some(new_guest);
 
         (guest_hart_id, guest_entry_point)
     }
-}
-
-unsafe extern "C" {
-    /// stack top (defined in `memory.x`)
-    pub static _stack_start: u8;
-    /// start of heap (defined in `memory.x`)
-    pub static mut _start_heap: u8;
-    /// heap size (defined in `memory.x`)
-    pub static _hv_heap_size: u8;
-    /// boot stack top (defined in `memory.x`)
-    pub static _top_b_stack: u8;
-    /// start of bss and sbss section.
-    pub static _start_bss: u8;
-    /// end of bss and sbss section.
-    pub static _end_bss: u8;
 }
 
 /// Aligned page size memory block

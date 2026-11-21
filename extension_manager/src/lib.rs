@@ -46,7 +46,7 @@ fn generate_csr_field_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
                     &fault_inst,
                 );
 
-                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+                let mut context = HYPERVISOR.lock().get().unwrap().guest().context;
                 context.update_sepc_by_inst(&fault_inst);
 
                 return;
@@ -71,7 +71,7 @@ pub fn handle_illegal_inst(_input: TokenStream) -> TokenStream {
             _ => hs_forward_exception(),
         }
 
-        let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+        let mut context = HYPERVISOR.lock().get().unwrap().guest().context;
         context.update_sepc_by_inst(&fault_inst);
     };
 
@@ -94,7 +94,7 @@ fn generate_csr_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
                     .unwrap()
                     .csr(&fault_inst);
 
-                let mut context = unsafe { HYPERVISOR_DATA.lock().get().unwrap().guest().context };
+                let mut context = HYPERVISOR.lock().get().unwrap().guest().context;
                 context.update_sepc_by_inst(&fault_inst);
 
                 return;
@@ -103,7 +103,7 @@ fn generate_csr_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
     })
 }
 
-/// Genrate all `EmulateExtension::instruction` arm from extension crate lists.
+/// Generate all `EmulateExtension::instruction` arm from extension crate lists.
 fn generate_instruction_arms() -> impl Iterator<Item = proc_macro2::TokenStream> {
     CRATES.iter().map(|crate_name| {
         let ext_name = crate_name
@@ -128,7 +128,7 @@ fn generate_instruction_arms() -> impl Iterator<Item = proc_macro2::TokenStream>
     })
 }
 
-/// Import all global varables.
+/// Import all global variables.
 #[proc_macro]
 pub fn import_global_variables(_input: TokenStream) -> TokenStream {
     let calls = CRATES.iter().map(|crate_name| {
