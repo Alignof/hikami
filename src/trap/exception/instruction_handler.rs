@@ -7,6 +7,8 @@ use super::hs_forward_exception;
 use hikami_core::HYPERVISOR;
 #[cfg(feature = "enable_extension")]
 use hikami_core::emulate_extension::EmulateExtension;
+use hikami_core::h_extension::instruction::fetch_guest_instruction;
+use hikami_core::memmap::GuestVirtualAddress;
 
 use core::arch::asm;
 use raki::{Instruction, OpcodeKind, ZicsrOpcode};
@@ -14,21 +16,27 @@ use riscv::register::{sepc, stval};
 
 extension_manager::import_global_variables!();
 
+/// Return the instruction that caused the exception.
+///
+/// `stval` holds the instruction on some implementations and is zero on the others.
+fn fault_instruction() -> usize {
+    match stval::read() {
+        // SAFETY: the guest has fetched the instruction that caused this exception.
+        0 => unsafe { fetch_guest_instruction(GuestVirtualAddress(sepc::read())) },
+        value => value,
+    }
+}
+
 /// Trap `Illegal instruction` exception.
 #[inline]
 #[allow(clippy::similar_names)]
 pub fn illegal_instruction() {
-    let fault_inst_value = stval::read();
+    let fault_inst_value = fault_instruction();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        use hikami_core::memmap::GuestVirtualAddress;
-        let gva = GuestVirtualAddress(sepc::read());
-        let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
-        let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
-
         panic!(
-            "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
-            sepc::read(), gpa.raw(), hpa.raw()
-        );
+            "decoding fault instruction failed: {fault_inst_value:#x} at {:#x}",
+            sepc::read()
+        )
     });
 
     // emulate the instruction
@@ -39,17 +47,12 @@ pub fn illegal_instruction() {
 #[inline]
 #[allow(clippy::similar_names)]
 pub fn virtual_instruction() {
-    let fault_inst_value = stval::read();
+    let fault_inst_value = fault_instruction();
     let fault_inst = Instruction::try_from(fault_inst_value).unwrap_or_else(|_| {
-        use hikami_core::memmap::GuestVirtualAddress;
-        let gva = GuestVirtualAddress(sepc::read());
-        let gpa = hikami_core::memmap::page_table::vs_stage_trans_addr(gva).unwrap();
-        let hpa = hikami_core::memmap::page_table::g_stage_trans_addr(gpa).unwrap();
-
         panic!(
-            "decoding load fault instruction failed: fault inst value: {fault_inst_value:#x} at {:#x}(GPA: {:#x}, HPA: {:#x})",
-            sepc::read(), gpa.raw(), hpa.raw()
-        );
+            "decoding fault instruction failed: {fault_inst_value:#x} at {:#x}",
+            sepc::read()
+        )
     });
 
     // emulate CSR set

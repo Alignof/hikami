@@ -1,11 +1,8 @@
 //! Page table for address translation.
 
-pub mod sv39;
 pub mod sv39x4;
-pub mod sv48;
-pub mod sv57;
 
-use crate::memmap::{GuestPhysicalAddress, GuestVirtualAddress, HostPhysicalAddress};
+use crate::memmap::{GuestPhysicalAddress, HostPhysicalAddress};
 
 pub mod constants {
     //! Constants of page table.
@@ -35,10 +32,6 @@ pub enum TransAddrError {
 #[derive(Copy, Clone, PartialEq)]
 #[allow(clippy::module_name_repetitions)]
 enum PageTableLevel {
-    /// 256TB = 48 bit = vpn\[3\] (9 bit) + vpn\[2\] (9 bit) + vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
-    Lv256TB = 4,
-    /// 512GB = 39 bit = vpn\[2\] (9 bit) + vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
-    Lv512GB = 3,
     /// 1GB = 30 bit = vpn\[1\] (9 bit) + vpn\[0\] (9 bit) + offset (12 bit)
     Lv1GB = 2,
     /// 2MB = 21 bit = vpn\[0\] (9 bit) + offset (12 bit)
@@ -51,8 +44,6 @@ impl PageTableLevel {
     /// Return usize.
     fn size(self) -> usize {
         match self {
-            Self::Lv256TB => 0x1_0000_0000_0000,
-            Self::Lv512GB => 0x80_0000_0000,
             Self::Lv1GB => 0x4000_0000,
             Self::Lv2MB => 0x0020_0000,
             Self::Lv4KB => 0x1000,
@@ -158,19 +149,6 @@ impl PageTableAddress {
     fn to_pte_ptr(self) -> *mut PageTableEntry {
         self.0 as *mut PageTableEntry
     }
-
-    /// Convert guest physical page table address to host physical one.
-    fn to_host_physical_ptr(self) -> *mut PageTableEntry {
-        let hpa = g_stage_trans_addr(GuestPhysicalAddress(self.0)).unwrap();
-        hpa.0 as *mut PageTableEntry
-    }
-}
-
-impl GuestVirtualAddress {
-    /// Return page offset.
-    fn page_offset(self) -> usize {
-        self.0 & 0xfff
-    }
 }
 
 impl GuestPhysicalAddress {
@@ -184,25 +162,6 @@ impl HostPhysicalAddress {
     /// Return page number
     fn page_number(self) -> u64 {
         self.0 as u64 / constants::PAGE_SIZE as u64
-    }
-}
-
-/// VS-stage address translation.
-///
-/// # Errors
-/// Returns an error when call it in Bare mode or unsupported mode.
-pub fn vs_stage_trans_addr(
-    gva: GuestVirtualAddress,
-) -> Result<GuestPhysicalAddress, (TransAddrError, &'static str)> {
-    use crate::h_extension::csrs::vsatp;
-
-    let vsatp = vsatp::read();
-    match vsatp.mode() {
-        vsatp::Mode::Bare => Ok(GuestPhysicalAddress(gva.0)),
-        vsatp::Mode::Sv39 => sv39::trans_addr(gva),
-        vsatp::Mode::Sv48 => sv48::trans_addr(gva),
-        vsatp::Mode::Sv57 => sv57::trans_addr(gva),
-        vsatp::Mode::Sv64 => unimplemented!(),
     }
 }
 

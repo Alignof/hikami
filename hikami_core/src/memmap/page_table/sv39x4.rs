@@ -179,7 +179,6 @@ pub fn generate_page_table(memmaps: &[MemoryMap]) {
             ] {
                 let vpn = v_start.vpn(current_level as usize);
                 let current_page_table = match current_level {
-                    PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                     PageTableLevel::Lv1GB => &mut *first_lv_page_table,
                     PageTableLevel::Lv2MB | PageTableLevel::Lv4KB => unsafe {
                         from_raw_parts_mut(next_table_addr.to_pte_ptr(), PAGE_TABLE_LEN)
@@ -242,7 +241,6 @@ pub fn trans_addr(
         PageTableLevel::Lv4KB,
     ] {
         let page_table = match level {
-            PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
             PageTableLevel::Lv1GB => unsafe {
                 from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
             },
@@ -260,7 +258,6 @@ pub fn trans_addr(
 
         if pte.is_leaf() {
             match level {
-                PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                 PageTableLevel::Lv1GB => {
                     if pte.ppn(1) != 0 {
                         return Err((
@@ -489,7 +486,6 @@ pub fn invalidate_address_range(
             PageTableLevel::Lv4KB,
         ] {
             let page_table = match level {
-                PageTableLevel::Lv256TB | PageTableLevel::Lv512GB => unreachable!(),
                 PageTableLevel::Lv1GB => unsafe {
                     from_raw_parts_mut(page_table_addr.to_pte_ptr(), FIRST_LV_PAGE_TABLE_LEN)
                 },
