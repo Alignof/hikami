@@ -53,8 +53,7 @@ pub struct Hypervisor {
     host_memory_pool: memmap::host_memory_pool::HostMemoryPool,
 }
 
-// # Safety
-// `Hypervisor` is only accessed through the `HYPERVISOR` lock.
+// SAFETY: `Hypervisor` is only accessed through the `HYPERVISOR` lock.
 // Raw pointers in it (e.g. `fdt::standard_nodes::MemoryRegion`) hold physical addresses of
 // devices, which are the same on all harts.
 unsafe impl Send for Hypervisor {}
